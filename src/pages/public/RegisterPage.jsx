@@ -1,14 +1,17 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Navbar from '../../components/Navbar.jsx';
 
 function RegisterPage() {
+  const location = useLocation();
+  const defaultRole = location.state?.defaultRole === 'employer' ? 'employer' : 'applicant';
+
   const [form, setForm] = useState({
     fullName: '',
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'applicant',
+    role: defaultRole,
   });
   const [error, setError] = useState('');
   const navigate = useNavigate();
@@ -27,7 +30,7 @@ function RegisterPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navbar links={[{ to: '/', label: 'Home' }]} />
+      <Navbar links={[{}]} />
       <div className="mx-auto flex max-w-md px-4 py-10 sm:px-6">
         <form onSubmit={handleSubmit} className="w-full rounded-xl bg-white p-5 shadow-sm sm:p-6">
           <h1 className="text-2xl font-semibold text-[#1F4E79]">Register</h1>

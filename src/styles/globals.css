@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+:root {
+  --color-primary: #1f4e79;
+  --color-accent: #2e75b6;
+  --hero-art-bg: #e4edf5;
+  --hero-art-bg-mid: #dde7f1;
+  --hero-art-bg-foot: #d2e0ed;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes landing-float {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-6px);
+    }
+  }
+
+  .landing-illustration-float {
+    animation: landing-float 5s ease-in-out infinite;
+  }
+}
