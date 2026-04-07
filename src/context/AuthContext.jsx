@@ -29,17 +29,15 @@ export function AuthProvider({ children }) {
       role,
       user: {
         email,
-        fullName: fullName || 'Demo User',
+        fullName: fullName || 'User',
       },
     };
 
-    // TODO: Replace with API call to /api/auth/login.
     localStorage.setItem(STORAGE_KEY, JSON.stringify(nextAuth));
     setAuth(nextAuth);
   };
 
   const logout = () => {
-    // TODO: Replace with API call to /api/auth/logout.
     localStorage.removeItem(STORAGE_KEY);
     setAuth({ isAuthenticated: false, role: null, user: null });
   };

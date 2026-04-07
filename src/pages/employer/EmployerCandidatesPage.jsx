@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import ApplicantCard from '../../components/ApplicantCard.jsx';
+import WorkerCard from '../../components/ApplicantCard.jsx';
 import Modal from '../../components/Modal.jsx';
 import PageHeader from '../../components/PageHeader.jsx';
-import applicants from '../../data/applicants.js';
+import workers from '../../data/applicants.js';
 import jobs from '../../data/jobs.js';
 
 function EmployerCandidatesPage() {
@@ -12,47 +12,65 @@ function EmployerCandidatesPage() {
 
   const job = useMemo(() => jobs.find((item) => item.id === jobId), [jobId]);
 
-  const rankedCandidates = useMemo(() => {
-    if (!job) {
-      return [];
-    }
+  const rankedWorkers = useMemo(() => {
+    if (!job) return [];
 
-    return applicants
-      .map((applicant) => {
-        const matchedSkills = applicant.skills.filter((skill) => job.requiredSkills.includes(skill));
-        return { ...applicant, matchedSkills, matchCount: matchedSkills.length };
+    return workers
+      .map((worker) => {
+        const matchedSkills = worker.skills.filter((s) => job.requiredSkills.includes(s));
+        return { ...worker, matchedSkills, matchCount: matchedSkills.length };
       })
-      .filter((item) => item.matchCount > 0)
-      .sort((a, b) => b.matchCount - a.matchCount);
+      .filter((w) => w.matchCount > 0)
+      .sort((a, b) => {
+        if (b.matchCount !== a.matchCount) return b.matchCount - a.matchCount;
+        return (b.rating || 0) - (a.rating || 0);
+      });
   }, [job]);
 
   return (
     <div>
       <PageHeader
-        title="Ranked Candidates"
-        subtitle={job ? `Matched applicants for ${job.title}` : 'Job not found.'}
+        title="Matched Workers"
+        subtitle={job ? `System-ranked workers for "${job.title}"` : 'Job not found.'}
       />
 
+      {job ? (
+        <div className="mb-5 rounded-xl border border-blue-100 bg-blue-50/60 p-4 text-sm text-[#1F4E79]">
+          <p className="font-medium">These workers were matched automatically</p>
+          <p className="mt-1 text-gray-600">
+            Ranked by skill overlap, availability, reliability score, and proximity to {job.location}.
+            Matched skills are highlighted in navy on each card.
+          </p>
+        </div>
+      ) : null}
+
       <div className="grid gap-3">
-        {rankedCandidates.map((candidate) => (
-          <ApplicantCard
-            key={candidate.id}
-            applicant={candidate}
-            matchedSkills={candidate.matchedSkills}
+        {rankedWorkers.map((worker) => (
+          <WorkerCard
+            key={worker.id}
+            applicant={worker}
+            matchedSkills={worker.matchedSkills}
             onViewProfile={setSelected}
-            onHire={setSelected}
+            onSelect={setSelected}
           />
         ))}
+        {rankedWorkers.length === 0 ? (
+          <p className="rounded-xl bg-white p-6 text-center text-sm text-gray-500 shadow-sm">
+            No workers matched yet. The system is still searching — check back shortly.
+          </p>
+        ) : null}
       </div>
 
       <Modal
         isOpen={Boolean(selected)}
-        title={selected ? selected.name : ''}
+        title={selected ? `Select ${selected.name}?` : ''}
         onClose={() => setSelected(null)}
         onConfirm={() => setSelected(null)}
-        confirmText="Close"
+        confirmText="Confirm Selection"
       >
-        {selected ? `Experience level: ${selected.experienceLevel}. Skills matched for this job are highlighted in blue.` : ''}
+        {selected
+          ? `${selected.name} will be notified and the job will move to "In Progress." Rating: ${selected.rating || 'N/A'} · ${selected.jobsCompleted} jobs completed · ${selected.completionRate}% completion rate.`
+          : ''}
       </Modal>
     </div>
   );

@@ -35,7 +35,7 @@ function AvailabilityPicker({ value = [], onChange }) {
                     key={key}
                     type="button"
                     onClick={() => toggleSlot(day, slot)}
-                    className={`w-full rounded-md px-2 py-1 text-xs font-medium ${
+                    className={`cursor-pointer w-full rounded-md px-2 py-1 text-xs font-medium ${
                       isActive ? 'bg-[#1F4E79] text-white' : 'bg-gray-100 text-gray-700'
                     }`}
                   >

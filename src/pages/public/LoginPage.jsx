@@ -26,7 +26,7 @@ function LoginPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navbar links={[{}]} />
+      <Navbar links={[]} />
       <div className="mx-auto flex max-w-md px-4 py-10 sm:px-6">
         <form onSubmit={handleSubmit} className="w-full rounded-xl bg-white p-5 shadow-sm sm:p-6">
           <h1 className="text-2xl font-semibold text-[#1F4E79]">Login</h1>
@@ -36,24 +36,24 @@ function LoginPage() {
             <input
               type="email"
               value={form.email}
-              onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
+              onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
               placeholder="Email"
             />
             <input
               type="password"
               value={form.password}
-              onChange={(event) => setForm((prev) => ({ ...prev, password: event.target.value }))}
+              onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))}
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
               placeholder="Password"
             />
             <select
               value={form.role}
-              onChange={(event) => setForm((prev) => ({ ...prev, role: event.target.value }))}
+              onChange={(e) => setForm((prev) => ({ ...prev, role: e.target.value }))}
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
             >
-              <option value="applicant">Applicant</option>
-              <option value="employer">Employer</option>
+              <option value="applicant">Worker (Service Provider)</option>
+              <option value="employer">Client (Homeowner)</option>
               <option value="admin">Admin / LGU-PESO Officer</option>
             </select>
           </div>

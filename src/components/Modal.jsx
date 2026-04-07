@@ -12,14 +12,14 @@ function Modal({ isOpen, title, children, onClose, onConfirm, confirmText = 'Con
           <button
             type="button"
             onClick={onClose}
-            className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700"
+            className="cursor-pointer w-full rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700"
           >
             Cancel
           </button>
           <button
             type="button"
             onClick={onConfirm}
-            className="w-full rounded-lg bg-[#1F4E79] px-4 py-2 text-sm font-medium text-white"
+            className="cursor-pointer w-full rounded-lg bg-[#1F4E79] px-4 py-2 text-sm font-medium text-white"
           >
             {confirmText}
           </button>

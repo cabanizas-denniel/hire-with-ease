@@ -3,7 +3,6 @@ import { Link, NavLink } from 'react-router-dom';
 import BrandMark from '../../components/BrandMark.jsx';
 import heroVector from '../../assets/images/hero-vector-hire-with-ease.png';
 import { useAuth } from '../../context/AuthContext.jsx';
-import jobs from '../../data/jobs.js';
 
 const landingNavLinks = [
   { label: 'Home', to: '/' },
@@ -15,51 +14,93 @@ const landingNavLinks = [
 const features = [
   {
     k: '01',
-    title: 'Match by trade',
-    description: 'Skill taxonomy—from plumbing to electrical—powers recommendations instead of generic job titles.',
+    title: 'Push-based matching',
+    description: 'Workers don\'t scroll job boards. The system evaluates skills, availability, and location — then pushes relevant jobs directly to qualified workers.',
   },
   {
     k: '02',
-    title: 'Trust the profile',
-    description: 'Experience, certifications, and availability are structured so employers can shortlist with confidence.',
+    title: 'Availability-first',
+    description: 'Time slots drive matching. If a worker isn\'t free when the job needs doing, there\'s no match — regardless of skill fit.',
   },
   {
     k: '03',
-    title: 'See the market',
-    description: 'LGU-PESO style analytics surface demand and shortages for policy-minded reviewers (thesis demo).',
+    title: 'Structured profiles',
+    description: 'Skills, certifications, and experience are captured as structured data — not free-text résumés — so the matching engine can reason about them.',
+  },
+  {
+    k: '04',
+    title: 'Trust signals',
+    description: 'Verification status, completion rates, and client ratings are visible so both sides can make informed decisions about real-world, in-person work.',
+  },
+  {
+    k: '05',
+    title: 'Auto-notification',
+    description: 'Workers receive actionable match alerts they accept or decline. Clients see ranked results as workers respond. No manual searching on either side.',
+  },
+  {
+    k: '06',
+    title: 'Labor-market view',
+    description: 'An admin dashboard surfaces demand signals, skill shortages, and workforce trends — the kind of data a local employment office would use for planning.',
   },
 ];
 
 const howItWorks = [
   {
     step: '1',
-    title: 'Choose your role',
-    description: 'Applicants and employers set up profiles tuned to how they use the platform.',
+    title: 'Workers set up a service profile',
+    description: 'Skills, certifications, location, and — critically — an availability schedule. This is what the system matches against.',
   },
   {
     step: '2',
-    title: 'Post or browse',
-    description: 'Jobs go up with required trades; workers see listings aligned to skills and area.',
+    title: 'Clients describe what they need',
+    description: 'A structured service request: job type, required skills, budget, schedule, and location. No vague postings.',
   },
   {
     step: '3',
-    title: 'Apply & hire',
-    description: 'Track applications, matches, and outcomes from a single dashboard—no backend required for the demo.',
+    title: 'The system matches automatically',
+    description: 'Skill fit, schedule overlap, proximity, and worker reliability are evaluated. Qualified workers get notified instantly.',
+  },
+  {
+    step: '4',
+    title: 'Workers accept — not apply',
+    description: 'Workers see only jobs they\'re matched to. They accept or decline. No browsing, no keyword guessing, no wasted applications.',
+  },
+  {
+    step: '5',
+    title: 'Clients review ranked matches',
+    description: 'As workers respond, clients see a ranked list: skills overlap, ratings, completion history. Select the best fit.',
+  },
+  {
+    step: '6',
+    title: 'Job completes, feedback loops',
+    description: 'Ratings, completion data, and reliability scores feed back into the matching engine — so future matches improve over time.',
   },
 ];
 
 const faqs = [
   {
     q: 'What is Hire With Ease?',
-    a: 'A thesis prototype: skilled-work matching with mock data, role dashboards, and labor-market style charts for Admins.',
+    a: 'A project-based service marketplace that connects homeowners and clients with skilled informal workers — plumbers, electricians, carpenters, and more — using predictive matching instead of manual search.',
   },
   {
-    q: 'Can I log in without signing up for real?',
-    a: 'Yes. Use any email and password, pick Applicant, Employer, or Admin—the session is mock only.',
+    q: 'How is this different from a job board?',
+    a: 'Job boards rely on workers scrolling and applying. Here, the system pushes matched jobs to workers based on skills and availability. Workers accept — they don\'t apply. Think Grab for skilled services, not LinkedIn.',
   },
   {
-    q: 'Will my data leave this browser?',
-    a: 'Not in this build. Everything is local mock state unless you later add APIs (see TODO comments in code).',
+    q: 'What role does availability play?',
+    a: 'Availability is first-class. A plumber who\'s free Tuesday morning gets matched to Tuesday jobs. Skills alone aren\'t enough — timing has to align.',
+  },
+  {
+    q: 'Who is the admin / LGU-PESO role?',
+    a: 'A dashboard for local employment officers to monitor demand signals, skill shortages, and workforce availability trends — data that supports evidence-based workforce planning.',
+  },
+  {
+    q: 'Can I try it without a real account?',
+    a: 'Yes. Sign up with any email and password, choose your role — Worker, Client, or Admin — and start exploring right away.',
+  },
+  {
+    q: 'Does my data leave this browser?',
+    a: 'Your data stays in your browser. Nothing is sent to external servers.',
   },
 ];
 
@@ -67,7 +108,6 @@ function navLabelUpper(label) {
   return label.toUpperCase();
 }
 
-/** White wave between blue (left) and white (right) hero columns */
 function WaveEdge() {
   return (
     <svg
@@ -90,7 +130,6 @@ function LandingSplitHeader({ links }) {
   const [open, setOpen] = useState(false);
   const { isAuthenticated, getDefaultRoute } = useAuth();
 
-  /* Nav sits on white (right column on desktop); logo on blue (left) */
   const navLinkClass =
     'text-xs font-semibold tracking-[0.14em] text-[#1F4E79] hover:text-[#2E75B6] lg:text-[#1F4E79] lg:hover:text-[#2E75B6]';
   const btnOutline =
@@ -184,20 +223,17 @@ function LandingSplitHeader({ links }) {
 }
 
 function LandingPage() {
-  const jobCount = jobs.length;
-
   return (
     <div className="min-h-screen bg-white text-gray-900">
       <LandingSplitHeader links={landingNavLinks} />
 
-      {/* Split hero — blue + art (left), white + copy (right), wavy seam */}
       <section className="relative flex min-h-0 flex-col lg:grid lg:min-h-screen lg:grid-cols-2">
         <div className="relative flex min-h-[280px] flex-col justify-center overflow-hidden bg-[#2E75B6] lg:min-h-0 lg:pt-24">
           <WaveEdge />
           <div className="landing-illustration-float relative z-0 flex flex-1 items-center justify-center px-4 py-8 sm:px-6 lg:min-h-0 lg:px-4 lg:py-12 xl:px-6">
             <img
               src={heroVector}
-              alt="Technician and client planning work together"
+              alt="Skilled worker and client connected through the platform"
               className="h-auto w-full max-w-xl object-contain drop-shadow-lg max-h-[min(54vh,400px)] sm:max-h-[min(60vh,480px)] lg:max-h-[min(86vh,680px)] lg:max-w-2xl xl:max-w-[720px]"
               decoding="async"
               loading="eager"
@@ -207,75 +243,55 @@ function LandingPage() {
 
         <div className="flex flex-col justify-center bg-white px-4 pb-12 pt-6 sm:px-8 lg:px-10 lg:pb-20 lg:pl-8 lg:pr-12 lg:pt-28 xl:pr-16">
           <h1 className="max-w-xl text-3xl font-bold leading-tight tracking-tight text-gray-800 sm:text-4xl lg:text-[2.35rem] xl:text-[2.55rem]">
-            Your link to skilled work opportunities
+            Book skilled workers like you book a ride
           </h1>
           <p className="mt-4 max-w-lg text-sm leading-relaxed text-gray-600 sm:text-base">
-            Trades, repairs, and installs—matched with clarity. Built as a thesis demo for workers, employers, and LGU-PESO
-            insights.
+            Need a plumber, electrician, or carpenter? Describe the job — the system finds available, qualified workers
+            and pushes them to you. No browsing. No guessing. Just matched results.
           </p>
-
-          <div className="mt-8 max-w-xl">
-            <div className="flex overflow-hidden rounded-xl border border-gray-200 bg-white shadow-md">
-              <span className="flex items-center pl-4 text-gray-400" aria-hidden>
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" d="M12 3v3M12 18v3M3 12h3M18 12h3" />
-                  <circle cx="12" cy="12" r="3" />
-                </svg>
-              </span>
-              <input
-                type="search"
-                readOnly
-                placeholder="Search skills, trade, or location"
-                className="min-w-0 flex-1 border-0 bg-transparent py-3.5 pl-2 pr-2 text-sm text-gray-800 outline-none placeholder:text-gray-400"
-                aria-label="Search — opens applicant registration"
-              />
-              <Link
-                to="/register"
-                state={{ defaultRole: 'applicant' }}
-                className="flex aspect-square w-14 shrink-0 items-center justify-center bg-[#2E75B6] text-white transition hover:bg-[#256cad]"
-                aria-label="Search with profile"
-              >
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </Link>
-            </div>
-            <p className="mt-3 text-sm text-gray-600">
-              We offer{' '}
-              <span className="font-semibold text-[#2E75B6]">
-                {jobCount}+ sample job postings
-              </span>{' '}
-              in the demo—sign in to explore full dashboards.
-            </p>
-          </div>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <Link
               to="/register"
-              state={{ defaultRole: 'applicant' }}
+              state={{ defaultRole: 'employer' }}
               className="inline-flex items-center justify-center rounded-lg bg-[#1F4E79] px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#163a5f]"
             >
-              Find work
+              I need work done
             </Link>
             <Link
               to="/register"
-              state={{ defaultRole: 'employer' }}
+              state={{ defaultRole: 'applicant' }}
               className="inline-flex items-center justify-center rounded-lg border-2 border-[#1F4E79] bg-white px-6 py-3 text-sm font-semibold text-[#1F4E79] transition hover:bg-[#1F4E79]/5"
             >
-              Hire now
+              I'm a skilled worker
             </Link>
+          </div>
+
+          <div className="mt-8 grid max-w-md grid-cols-3 gap-4 text-center">
+            <div>
+              <p className="text-2xl font-bold text-[#1F4E79]">&lt; 4m</p>
+              <p className="mt-1 text-xs text-gray-500">Avg match time</p>
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-[#1F4E79]">94%</p>
+              <p className="mt-1 text-xs text-gray-500">Completion rate</p>
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-[#1F4E79]">4.6</p>
+              <p className="mt-1 text-xs text-gray-500">Avg worker rating</p>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Platform */}
       <section id="landing-features" className="scroll-mt-24 border-t border-gray-200 bg-[#f6f8fb] py-16 sm:py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="mx-auto max-w-2xl text-center">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#2E75B6]">Platform</p>
-            <h2 className="mt-3 text-3xl font-bold tracking-tight text-[#1F4E79] sm:text-4xl">Why this project exists</h2>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight text-[#1F4E79] sm:text-4xl">Not a job board. A matching engine.</h2>
             <p className="mt-4 text-sm text-gray-600 sm:text-base">
-              Three focused ideas—matching, trust, and insight—for a defensible thesis story.
+              If users are browsing endlessly or searching manually, the core idea has failed. This platform pushes —
+              it doesn't wait.
             </p>
           </div>
           <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
@@ -295,42 +311,43 @@ function LandingPage() {
         </div>
       </section>
 
-      {/* How it works */}
       <section id="landing-how" className="scroll-mt-24 bg-white py-16 sm:py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="mx-auto max-w-2xl text-center">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#2E75B6]">Flow</p>
-            <h2 className="mt-3 text-3xl font-bold tracking-tight text-[#1F4E79] sm:text-4xl">How it works</h2>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight text-[#1F4E79] sm:text-4xl">How it works end to end</h2>
             <p className="mt-4 text-sm text-gray-600 sm:text-base">
-              One product, two sides—workers and hirers meet in the middle.
+              Two sides — workers and clients — connected by automated matching. No manual searching on either side.
             </p>
           </div>
-          <ul className="mx-auto mt-12 max-w-xl space-y-5">
-            {howItWorks.map((item) => (
-              <li
-                key={item.step}
-                className="flex gap-4 rounded-2xl border border-gray-200/90 bg-[#f6f8fb] p-5 shadow-sm"
-              >
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#1F4E79] text-sm font-bold text-white">
-                  {item.step}
-                </div>
-                <div className="min-w-0">
-                  <h3 className="font-semibold text-[#1F4E79]">{item.title}</h3>
-                  <p className="mt-1 text-sm leading-relaxed text-gray-600">{item.description}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
+          <div className="relative mx-auto mt-12 max-w-4xl lg:max-w-5xl">
+            <div
+              className="absolute left-[1.125rem] top-3 bottom-3 w-px bg-gradient-to-b from-[#2E75B6] via-[#1F4E79]/35 to-transparent sm:left-[1.25rem]"
+              aria-hidden
+            />
+            <ul className="relative space-y-5 sm:space-y-6">
+              {howItWorks.map((item) => (
+                <li key={item.step} className="relative pl-10 sm:pl-12">
+                  <div className="absolute left-0 top-5 flex h-9 w-9 items-center justify-center rounded-xl border-[3px] border-white bg-[#1F4E79] text-xs font-bold text-white shadow-sm sm:top-6 sm:h-10 sm:w-10 sm:text-sm">
+                    {item.step}
+                  </div>
+                  <div className="rounded-2xl border border-gray-200/90 bg-[#f6f8fb] p-5 shadow-sm sm:p-6 lg:p-7">
+                    <h3 className="text-lg font-semibold text-[#1F4E79]">{item.title}</h3>
+                    <p className="mt-2 text-sm leading-relaxed text-gray-600 sm:text-[0.9375rem]">{item.description}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       </section>
 
-      {/* FAQs */}
       <section id="landing-faqs" className="scroll-mt-24 border-t border-gray-200 bg-[#f6f8fb] py-16 sm:py-20">
         <div className="mx-auto max-w-2xl px-4 sm:px-6">
           <div className="text-center">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#2E75B6]">Help</p>
-            <h2 className="mt-3 text-3xl font-bold tracking-tight text-[#1F4E79] sm:text-4xl">FAQs</h2>
-            <p className="mt-4 text-sm text-gray-600">Straight answers for demo day.</p>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight text-[#1F4E79] sm:text-4xl">Questions &amp; Answers</h2>
+            <p className="mt-4 text-sm text-gray-600">Clear answers about what this platform does and doesn't do.</p>
           </div>
           <div className="mt-10 divide-y divide-gray-200 rounded-2xl border border-gray-200 bg-white">
             {faqs.map((item) => (
@@ -349,8 +366,8 @@ function LandingPage() {
       <section className="bg-[#1F4E79] py-12 sm:py-14">
         <div className="mx-auto flex max-w-7xl flex-col items-center gap-6 px-4 text-center sm:px-6 md:flex-row md:justify-between md:text-left">
           <div className="max-w-xl">
-            <p className="text-xl font-semibold text-white sm:text-2xl">Try the demo in under a minute</p>
-            <p className="mt-2 text-sm text-white/80">Mock login, pick a role, click through real screens—no API keys.</p>
+            <p className="text-xl font-semibold text-white sm:text-2xl">Get started in under a minute</p>
+            <p className="mt-2 text-sm text-white/80">Create an account, pick your role, and explore the full platform.</p>
           </div>
           <Link
             to="/login"
@@ -367,17 +384,17 @@ function LandingPage() {
             <div>
               <p className="text-lg font-bold text-[#1F4E79]">Hire With Ease</p>
               <p className="mt-2 max-w-sm text-sm text-gray-600">
-                Predictive matching and labor insights for skilled work—a college thesis front-end.
+                On-demand skilled worker matching — connecting clients with qualified workers through predictive analytics for informal labor markets.
               </p>
             </div>
             <div className="text-sm text-gray-600">
               <p className="font-semibold text-[#1F4E79]">Contact</p>
-              <p className="mt-1">lgu-peso@example.org</p>
+              <p className="mt-1">support@hirewithease.ph</p>
               <p>+63 900 000 0000</p>
             </div>
           </div>
           <p className="mt-8 border-t border-gray-200/80 pt-8 text-center text-xs text-gray-500 sm:text-left">
-            Placeholder contact · prototype only
+            &copy; {new Date().getFullYear()} Hire With Ease. All rights reserved.
           </p>
         </div>
       </footer>

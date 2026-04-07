@@ -18,14 +18,21 @@ function AdminDashboardPage() {
     <div>
       <PageHeader
         title="Labor Market Analytics"
-        subtitle="Monitor demand signals, shortages, and workforce availability trends."
+        subtitle="Monitor demand signals, shortages, matching performance, and workforce availability."
       />
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Registered Applicants" value={analytics.ratios.applicants} />
-        <StatCard label="Open Job Requests" value={analytics.ratios.openJobs} />
-        <StatCard label="Applicant-to-Job Ratio" value={analytics.ratios.ratio} />
+        <StatCard label="Registered Workers" value={analytics.ratios.workers} />
+        <StatCard label="Active Service Requests" value={analytics.ratios.activeRequests} />
+        <StatCard label="Worker-to-Request Ratio" value={analytics.ratios.ratio} />
         <StatCard label="Critical Skill Gaps" value={analytics.shortages.length} helperText="Needs intervention" />
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Avg Match Time" value={analytics.matchMetrics.avgMatchTime} helperText="System performance" />
+        <StatCard label="Acceptance Rate" value={analytics.matchMetrics.acceptanceRate} helperText="Workers accepting matches" />
+        <StatCard label="Completion Rate" value={analytics.matchMetrics.completionRate} helperText="Jobs finished" />
+        <StatCard label="Avg Worker Rating" value={analytics.matchMetrics.avgRating} helperText="Client feedback" />
       </div>
 
       <div className="mt-6 grid gap-4 xl:grid-cols-2">
@@ -45,15 +52,15 @@ function AdminDashboardPage() {
         </section>
 
         <section className="rounded-xl bg-white p-4 shadow-sm">
-          <h2 className="text-base font-semibold text-[#1F4E79]">Job Posting Trend</h2>
+          <h2 className="text-base font-semibold text-[#1F4E79]">Service Request Trend</h2>
           <div className="mt-4 h-64 w-full">
             <ResponsiveContainer>
-              <LineChart data={analytics.postingTrend}>
+              <LineChart data={analytics.requestTrend}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" />
                 <YAxis />
                 <Tooltip />
-                <Line type="monotone" dataKey="jobs" stroke="#1F4E79" strokeWidth={3} />
+                <Line type="monotone" dataKey="requests" stroke="#1F4E79" strokeWidth={3} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -76,7 +83,7 @@ function AdminDashboardPage() {
         <div className="rounded-xl bg-white p-4 shadow-sm">
           <h2 className="text-base font-semibold text-[#1F4E79]">Regional Demand Heatmap</h2>
           <div className="mt-3 flex h-48 items-center justify-center rounded-lg bg-gradient-to-r from-blue-100 via-blue-300 to-blue-500 text-sm font-medium text-[#1F4E79]">
-            Static Heatmap Placeholder
+            Regional Demand Overview
           </div>
         </div>
       </section>

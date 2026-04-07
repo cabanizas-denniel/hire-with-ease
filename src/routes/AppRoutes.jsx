@@ -37,7 +37,7 @@ function AppRoutes() {
   const { isAuthenticated, getDefaultRoute } = useAuth();
 
   return (
-    <Suspense fallback={<div className="min-h-screen bg-gray-50 p-4 text-sm text-gray-600">Loading...</div>}>
+    <Suspense fallback={<div className="min-h-screen bg-gray-50"></div>}>
       <Routes>
         <Route path="/" element={isAuthenticated ? <Navigate to={getDefaultRoute()} replace /> : <LandingPage />} />
         <Route path="/login" element={<LoginPage />} />

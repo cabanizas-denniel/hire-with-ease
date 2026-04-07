@@ -10,7 +10,7 @@ function AdminReportsPage() {
 
       <div className="rounded-xl bg-white p-5 shadow-sm">
         <p className="text-sm text-gray-600">
-          Download controls are intentionally disabled in this frontend-only thesis prototype.
+          Select a report type below to generate and download labor market insights.
         </p>
         <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-gray-600">
           <li>Monthly demand by skill category</li>

@@ -3,25 +3,21 @@ import { Link, NavLink, useNavigate } from 'react-router-dom';
 import BrandMark from './BrandMark.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 
-/**
- * @typedef {Object} NavItem
- * @property {string} label
- * @property {string} [to] - in-app route (NavLink)
- * @property {string} [hash] - same-page anchor e.g. #section (plain <a>)
- */
-
 function Navbar({ links = [], onMenuClick }) {
   const { isAuthenticated, role, logout, getDefaultRoute } = useAuth();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const handleLogout = () => {
+    if (!window.confirm('Log out of Hire With Ease?')) return;
     logout();
     navigate('/login');
   };
 
-  const linkClass = 'text-sm font-medium text-gray-600 hover:text-[#2E75B6]';
-  const activeClass = 'text-[#1F4E79]';
+  const linkBase =
+    'inline-flex items-center rounded-md px-2.5 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-[#1F4E79]';
+  const linkInactive = linkBase;
+  const linkActive = `${linkBase} bg-[#1F4E79]/10 font-semibold text-[#1F4E79] ring-1 ring-[#1F4E79]/15`;
 
   const renderLink = (item) => {
     if (item.hash) {
@@ -29,7 +25,7 @@ function Navbar({ links = [], onMenuClick }) {
         <a
           key={item.label}
           href={item.hash}
-          className={linkClass}
+          className={linkInactive}
           onClick={() => setMobileOpen(false)}
         >
           {item.label}
@@ -40,7 +36,8 @@ function Navbar({ links = [], onMenuClick }) {
       <NavLink
         key={item.label + (item.to || '')}
         to={item.to}
-        className={({ isActive }) => `${linkClass} ${isActive ? activeClass : ''}`}
+        end
+        className={({ isActive }) => (isActive ? linkActive : linkInactive)}
         onClick={() => setMobileOpen(false)}
       >
         {item.label}
@@ -58,7 +55,7 @@ function Navbar({ links = [], onMenuClick }) {
             <button
               type="button"
               onClick={onMenuClick}
-              className="rounded-md border border-gray-300 p-2 text-gray-700 lg:hidden"
+              className="cursor-pointer rounded-md border border-gray-300 p-2 text-gray-700 lg:hidden"
               aria-label="Open menu"
             >
               ☰
@@ -79,7 +76,7 @@ function Navbar({ links = [], onMenuClick }) {
           <div className="flex items-center md:hidden">
             <button
               type="button"
-              className="rounded-md border border-gray-300 px-2 py-2 text-sm text-[#1F4E79]"
+              className="cursor-pointer rounded-md border border-gray-300 px-2 py-2 text-sm text-[#1F4E79]"
               aria-expanded={mobileOpen}
               aria-label="Toggle menu"
               onClick={() => setMobileOpen((o) => !o)}
@@ -98,7 +95,7 @@ function Navbar({ links = [], onMenuClick }) {
               <button
                 type="button"
                 onClick={handleLogout}
-                className="rounded-lg bg-[#1F4E79] px-3 py-2 text-sm font-medium text-white"
+                className="rounded-lg bg-[#1F4E79] px-3 py-2 text-sm font-medium text-white cursor-pointer"
               >
                 Logout
               </button>

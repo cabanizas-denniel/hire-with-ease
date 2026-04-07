@@ -1,16 +1,33 @@
 import SkillBadge from './SkillBadge.jsx';
 
-function ApplicantCard({ applicant, onViewProfile, onHire, matchedSkills = [] }) {
+function WorkerCard({ applicant, onViewProfile, onSelect, matchedSkills = [] }) {
   return (
     <article className="rounded-xl bg-white p-4 shadow-sm">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h3 className="text-base font-semibold text-[#1F4E79]">{applicant.name}</h3>
-          <p className="text-sm text-gray-600">{applicant.location}</p>
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#1F4E79] text-sm font-bold text-white">
+            {applicant.name.charAt(0)}
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-base font-semibold text-[#1F4E79]">{applicant.name}</h3>
+              {applicant.verified ? (
+                <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-700">Verified</span>
+              ) : null}
+            </div>
+            <p className="text-sm text-gray-600">{applicant.location}</p>
+          </div>
         </div>
-        <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
-          {applicant.experienceLevel} ({applicant.yearsExperience} yrs)
-        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          {applicant.rating != null ? (
+            <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
+              &#9733; {applicant.rating}
+            </span>
+          ) : null}
+          <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
+            {applicant.jobsCompleted} jobs done
+          </span>
+        </div>
       </div>
 
       <div className="mt-3 flex flex-wrap gap-2">
@@ -36,24 +53,31 @@ function ApplicantCard({ applicant, onViewProfile, onHire, matchedSkills = [] })
         </div>
       ) : null}
 
+      {applicant.completionRate != null ? (
+        <div className="mt-3 flex items-center gap-4 text-xs text-gray-500">
+          <span>{applicant.completionRate}% completion rate</span>
+          <span>{applicant.experienceLevel} · {applicant.yearsExperience} yrs</span>
+        </div>
+      ) : null}
+
       <div className="mt-4 flex flex-col gap-2 sm:flex-row">
         <button
           type="button"
           onClick={() => onViewProfile?.(applicant)}
-          className="w-full rounded-lg border border-[#1F4E79] px-4 py-2 text-sm font-medium text-[#1F4E79]"
+          className="cursor-pointer w-full rounded-lg border border-[#1F4E79] px-4 py-2 text-sm font-medium text-[#1F4E79]"
         >
           View Profile
         </button>
         <button
           type="button"
-          onClick={() => onHire?.(applicant)}
-          className="w-full rounded-lg bg-[#1F4E79] px-4 py-2 text-sm font-medium text-white"
+          onClick={() => onSelect?.(applicant)}
+          className="cursor-pointer w-full rounded-lg bg-[#1F4E79] px-4 py-2 text-sm font-medium text-white"
         >
-          Hire
+          Select Worker
         </button>
       </div>
     </article>
   );
 }
 
-export default ApplicantCard;
+export default WorkerCard;

@@ -6,18 +6,24 @@ const analytics = {
     { skill: 'HVAC', demand: 34 },
     { skill: 'Welding', demand: 31 },
   ],
-  postingTrend: [
-    { month: 'Jan', jobs: 48 },
-    { month: 'Feb', jobs: 55 },
-    { month: 'Mar', jobs: 52 },
-    { month: 'Apr', jobs: 60 },
-    { month: 'May', jobs: 66 },
-    { month: 'Jun', jobs: 64 },
+  requestTrend: [
+    { month: 'Jan', requests: 48 },
+    { month: 'Feb', requests: 55 },
+    { month: 'Mar', requests: 52 },
+    { month: 'Apr', requests: 60 },
+    { month: 'May', requests: 66 },
+    { month: 'Jun', requests: 64 },
   ],
   ratios: {
-    applicants: 128,
-    openJobs: 92,
+    workers: 128,
+    activeRequests: 92,
     ratio: '1.39 : 1',
+  },
+  matchMetrics: {
+    avgMatchTime: '< 4 min',
+    acceptanceRate: '78%',
+    completionRate: '94%',
+    avgRating: '4.6',
   },
   shortages: [
     { skill: 'HVAC', level: 'High shortage', region: 'NCR North' },
