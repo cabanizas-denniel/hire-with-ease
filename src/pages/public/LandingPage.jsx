@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { AiOutlineClose } from 'react-icons/ai';
 import { Link, NavLink } from 'react-router-dom';
 import BrandMark from '../../components/BrandMark.jsx';
 import heroVector from '../../assets/images/hero-vector-hire-with-ease.png';
@@ -130,6 +131,20 @@ function LandingSplitHeader({ links }) {
   const [open, setOpen] = useState(false);
   const { isAuthenticated, getDefaultRoute } = useAuth();
 
+  useEffect(() => {
+    if (!open) return undefined;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (e) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
   const navLinkClass =
     'text-xs font-semibold tracking-[0.14em] text-[#1F4E79] hover:text-[#2E75B6] lg:text-[#1F4E79] lg:hover:text-[#2E75B6]';
   const btnOutline =
@@ -141,12 +156,12 @@ function LandingSplitHeader({ links }) {
         <BrandMark to="/" variant="landingSplit" />
         <button
           type="button"
-          className="rounded-md border border-gray-300 p-2 text-[#1F4E79] lg:hidden"
+          className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-gray-300 text-[#1F4E79] lg:hidden"
           aria-expanded={open}
-          aria-label="Toggle menu"
+          aria-label={open ? 'Close menu' : 'Open menu'}
           onClick={() => setOpen((o) => !o)}
         >
-          ☰
+          {open ? <AiOutlineClose className="text-xl" aria-hidden /> : <span className="text-lg leading-none">☰</span>}
         </button>
       </div>
 
@@ -188,34 +203,88 @@ function LandingSplitHeader({ links }) {
       </div>
 
       {open ? (
-        <div className="border-t border-gray-100 bg-white px-4 py-3 lg:hidden">
-          <nav className="flex flex-col gap-2 text-sm font-medium text-[#1F4E79]">
-            {links.map((item) =>
-              item.hash ? (
-                <a key={item.label} href={item.hash} onClick={() => setOpen(false)}>
-                  {item.label}
-                </a>
-              ) : (
-                <Link key={item.label} to={item.to} onClick={() => setOpen(false)}>
-                  {item.label}
-                </Link>
-              )
-            )}
-            {!isAuthenticated ? (
-              <>
-                <Link to="/register" state={{ defaultRole: 'applicant' }} onClick={() => setOpen(false)}>
-                  Sign up
-                </Link>
-                <Link to="/login" onClick={() => setOpen(false)}>
-                  Sign in
-                </Link>
-              </>
-            ) : (
-              <Link to={getDefaultRoute()} onClick={() => setOpen(false)}>
-                Dashboard
-              </Link>
-            )}
-          </nav>
+        <div
+          className="fixed inset-0 z-[60] lg:hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="landing-menu-title"
+        >
+          <button
+            type="button"
+            className="absolute inset-0 bg-[#0f172a]/45 backdrop-blur-[2px]"
+            aria-label="Close menu"
+            onClick={() => setOpen(false)}
+          />
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
+            <div className="pointer-events-auto flex max-h-[min(85dvh,28rem)] w-full max-w-sm flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-black/5">
+              <div className="flex shrink-0 items-center justify-between border-b border-gray-100 px-4 py-4">
+                <p id="landing-menu-title" className="text-lg font-semibold text-[#1F4E79]">
+                  Menu
+                </p>
+                <button
+                  type="button"
+                  className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100"
+                  aria-label="Close menu"
+                  onClick={() => setOpen(false)}
+                >
+                  <AiOutlineClose className="text-2xl" />
+                </button>
+              </div>
+              <nav className="flex min-h-0 flex-col gap-1 overflow-y-auto px-3 py-4">
+                <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Explore</p>
+                {links.map((item) =>
+                  item.hash ? (
+                    <a
+                      key={item.label}
+                      href={item.hash}
+                      className="rounded-xl px-3 py-3 text-base font-medium text-[#1F4E79] transition hover:bg-[#1F4E79]/8"
+                      onClick={() => setOpen(false)}
+                    >
+                      {item.label}
+                    </a>
+                  ) : (
+                    <Link
+                      key={item.label}
+                      to={item.to}
+                      className="rounded-xl px-3 py-3 text-base font-medium text-[#1F4E79] transition hover:bg-[#1F4E79]/8"
+                      onClick={() => setOpen(false)}
+                    >
+                      {item.label}
+                    </Link>
+                  )
+                )}
+                <div className="my-3 border-t border-gray-100" />
+                <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Account</p>
+                {!isAuthenticated ? (
+                  <>
+                    <Link
+                      to="/register"
+                      state={{ defaultRole: 'applicant' }}
+                      className="rounded-xl px-3 py-3 text-base font-semibold text-[#1F4E79] transition hover:bg-[#1F4E79]/8"
+                      onClick={() => setOpen(false)}
+                    >
+                      Sign up
+                    </Link>
+                    <Link
+                      to="/login"
+                      className="rounded-xl border border-[#1F4E79]/25 bg-[#1F4E79]/5 px-3 py-3 text-center text-base font-semibold text-[#1F4E79] transition hover:bg-[#1F4E79]/10"
+                      onClick={() => setOpen(false)}
+                    >
+                      Sign in
+                    </Link>
+                  </>
+                ) : (
+                  <Link
+                    to={getDefaultRoute()}
+                    className="rounded-xl border border-[#1F4E79]/25 bg-[#1F4E79]/5 px-3 py-3 text-center text-base font-semibold text-[#1F4E79] transition hover:bg-[#1F4E79]/10"
+                    onClick={() => setOpen(false)}
+                  >
+                    Dashboard
+                  </Link>
+                )}
+              </nav>
+            </div>
+          </div>
         </div>
       ) : null}
     </header>

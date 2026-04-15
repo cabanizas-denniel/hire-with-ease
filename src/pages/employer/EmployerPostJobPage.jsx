@@ -53,7 +53,7 @@ function EmployerPostJobPage() {
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-600">Category</label>
               <select
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
                 value={form.category}
                 onChange={(e) => setForm((prev) => ({ ...prev, category: e.target.value }))}
                 required
@@ -69,7 +69,7 @@ function EmployerPostJobPage() {
               <select
                 value={form.type}
                 onChange={(e) => setForm((prev) => ({ ...prev, type: e.target.value }))}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
               >
                 <option value="Scheduled">Scheduled (plan ahead)</option>
                 <option value="Rush">Rush (need it soon)</option>
@@ -79,7 +79,7 @@ function EmployerPostJobPage() {
           <div className="mt-3">
             <label className="mb-1 block text-xs font-medium text-gray-600">Short title for this job</label>
             <input
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
               placeholder="e.g. Kitchen faucet replacement"
               value={form.title}
               onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
@@ -89,7 +89,7 @@ function EmployerPostJobPage() {
           <div className="mt-3">
             <label className="mb-1 block text-xs font-medium text-gray-600">Description</label>
             <textarea
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
               rows={3}
               placeholder="Describe the issue, location details, what you need done..."
               value={form.description}
@@ -127,7 +127,7 @@ function EmployerPostJobPage() {
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-600">Budget range</label>
               <select
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
                 value={form.budget}
                 onChange={(e) => setForm((prev) => ({ ...prev, budget: e.target.value }))}
                 required
@@ -144,7 +144,7 @@ function EmployerPostJobPage() {
               <label className="mb-1 block text-xs font-medium text-gray-600">Preferred date/time</label>
               <input
                 type="datetime-local"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
                 value={form.schedule}
                 onChange={(e) => setForm((prev) => ({ ...prev, schedule: e.target.value }))}
               />
@@ -152,7 +152,7 @@ function EmployerPostJobPage() {
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-600">Job location / address</label>
               <input
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
                 placeholder="e.g. 123 Main St, Quezon City"
                 value={form.location}
                 onChange={(e) => setForm((prev) => ({ ...prev, location: e.target.value }))}
@@ -167,7 +167,7 @@ function EmployerPostJobPage() {
           <input
             type="file"
             accept="image/*"
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
             onChange={(e) => setForm((prev) => ({ ...prev, proof: e.target.files?.[0]?.name || '' }))}
           />
         </section>

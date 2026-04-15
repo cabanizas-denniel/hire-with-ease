@@ -25,7 +25,7 @@ function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-dvh min-h-screen bg-gray-50">
       <Navbar links={[]} />
       <div className="mx-auto flex max-w-md px-4 py-10 sm:px-6">
         <form onSubmit={handleSubmit} className="w-full rounded-xl bg-white p-5 shadow-sm sm:p-6">
@@ -37,20 +37,22 @@ function LoginPage() {
               type="email"
               value={form.email}
               onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
               placeholder="Email"
+              autoComplete="email"
             />
             <input
               type="password"
               value={form.password}
               onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
               placeholder="Password"
+              autoComplete="current-password"
             />
             <select
               value={form.role}
               onChange={(e) => setForm((prev) => ({ ...prev, role: e.target.value }))}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
             >
               <option value="applicant">Worker (Service Provider)</option>
               <option value="employer">Client (Homeowner)</option>

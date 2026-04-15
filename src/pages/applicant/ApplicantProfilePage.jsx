@@ -83,7 +83,7 @@ function ApplicantProfilePage() {
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-600">Full Name</label>
               <input
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
                 value={profile.fullName}
                 onChange={(e) => setProfile((prev) => ({ ...prev, fullName: e.target.value }))}
               />
@@ -91,7 +91,7 @@ function ApplicantProfilePage() {
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-600">Location</label>
               <input
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
                 value={profile.location}
                 onChange={(e) => setProfile((prev) => ({ ...prev, location: e.target.value }))}
               />
@@ -99,7 +99,7 @@ function ApplicantProfilePage() {
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-600">Service Radius</label>
               <select
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
                 value={profile.serviceRadius}
                 onChange={(e) => setProfile((prev) => ({ ...prev, serviceRadius: e.target.value }))}
               >
@@ -120,7 +120,7 @@ function ApplicantProfilePage() {
               <label className="mb-1 block text-xs font-medium text-gray-600">Work experience</label>
               <textarea
                 rows={3}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
                 value={profile.experience}
                 onChange={(e) => setProfile((prev) => ({ ...prev, experience: e.target.value }))}
               />
@@ -129,7 +129,7 @@ function ApplicantProfilePage() {
               <label className="mb-1 block text-xs font-medium text-gray-600">Certifications (optional)</label>
               <textarea
                 rows={2}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
                 value={profile.certifications}
                 onChange={(e) => setProfile((prev) => ({ ...prev, certifications: e.target.value }))}
               />

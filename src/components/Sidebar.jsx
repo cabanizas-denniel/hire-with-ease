@@ -14,7 +14,7 @@ function Sidebar({ links = [], open, onClose }) {
       ) : null}
 
       <aside
-        className={`fixed left-0 top-0 z-[51] h-full w-72 transform bg-white p-4 shadow-xl transition-transform lg:static lg:z-auto lg:h-auto lg:w-64 lg:translate-x-0 lg:shadow-none ${
+        className={`fixed inset-y-0 left-0 z-[51] w-72 max-w-[85vw] transform bg-white p-4 shadow-xl transition-transform lg:static lg:z-auto lg:h-auto lg:min-h-0 lg:w-64 lg:max-w-none lg:shrink-0 lg:translate-x-0 lg:shadow-none ${
           open ? 'translate-x-0' : '-translate-x-full'
         }`}
       >

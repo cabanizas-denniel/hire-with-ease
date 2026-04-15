@@ -3,12 +3,13 @@ import { useParams } from 'react-router-dom';
 import WorkerCard from '../../components/ApplicantCard.jsx';
 import Modal from '../../components/Modal.jsx';
 import PageHeader from '../../components/PageHeader.jsx';
-import workers from '../../data/applicants.js';
+import { useWorkerModeration } from '../../context/WorkerModerationContext.jsx';
 import jobs from '../../data/jobs.js';
 
 function EmployerCandidatesPage() {
   const { jobId } = useParams();
   const [selected, setSelected] = useState(null);
+  const { workers } = useWorkerModeration();
 
   const job = useMemo(() => jobs.find((item) => item.id === jobId), [jobId]);
 
@@ -16,6 +17,7 @@ function EmployerCandidatesPage() {
     if (!job) return [];
 
     return workers
+      .filter((w) => (w.moderationStatus || 'active') !== 'banned')
       .map((worker) => {
         const matchedSkills = worker.skills.filter((s) => job.requiredSkills.includes(s));
         return { ...worker, matchedSkills, matchCount: matchedSkills.length };
@@ -25,7 +27,7 @@ function EmployerCandidatesPage() {
         if (b.matchCount !== a.matchCount) return b.matchCount - a.matchCount;
         return (b.rating || 0) - (a.rating || 0);
       });
-  }, [job]);
+  }, [job, workers]);
 
   return (
     <div>

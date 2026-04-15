@@ -38,8 +38,8 @@ function AdminDashboardPage() {
       <div className="mt-6 grid gap-4 xl:grid-cols-2">
         <section className="rounded-xl bg-white p-4 shadow-sm">
           <h2 className="text-base font-semibold text-[#1F4E79]">Top 5 Most Demanded Skills</h2>
-          <div className="mt-4 h-64 w-full">
-            <ResponsiveContainer>
+          <div className="mt-4 h-64 w-full min-w-0">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <BarChart data={analytics.topSkills}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="skill" tick={{ fontSize: 12 }} interval={0} angle={-20} textAnchor="end" height={60} />
@@ -53,8 +53,8 @@ function AdminDashboardPage() {
 
         <section className="rounded-xl bg-white p-4 shadow-sm">
           <h2 className="text-base font-semibold text-[#1F4E79]">Service Request Trend</h2>
-          <div className="mt-4 h-64 w-full">
-            <ResponsiveContainer>
+          <div className="mt-4 h-64 w-full min-w-0">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <LineChart data={analytics.requestTrend}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" />

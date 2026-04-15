@@ -1,5 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useMemo, useState } from 'react';
+import { safeGetItem, safeRemoveItem, safeSetItem } from '../lib/safeStorage.js';
 
 const AuthContext = createContext(null);
 
@@ -13,7 +14,7 @@ const DASHBOARD_BY_ROLE = {
 
 function getStoredAuth() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = safeGetItem(STORAGE_KEY);
     return raw ? JSON.parse(raw) : { isAuthenticated: false, role: null, user: null };
   } catch {
     return { isAuthenticated: false, role: null, user: null };
@@ -33,12 +34,12 @@ export function AuthProvider({ children }) {
       },
     };
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(nextAuth));
+    safeSetItem(STORAGE_KEY, JSON.stringify(nextAuth));
     setAuth(nextAuth);
   };
 
   const logout = () => {
-    localStorage.removeItem(STORAGE_KEY);
+    safeRemoveItem(STORAGE_KEY);
     setAuth({ isAuthenticated: false, role: null, user: null });
   };
 

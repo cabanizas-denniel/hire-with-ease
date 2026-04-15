@@ -28,7 +28,7 @@ function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-dvh min-h-screen bg-gray-50">
       <Navbar links={[]} />
       <div className="mx-auto flex max-w-md px-4 py-10 sm:px-6">
         <form onSubmit={handleSubmit} className="w-full rounded-xl bg-white p-5 shadow-sm sm:p-6">
@@ -40,41 +40,45 @@ function RegisterPage() {
               type="text"
               value={form.fullName}
               onChange={(e) => setForm((prev) => ({ ...prev, fullName: e.target.value }))}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
               placeholder="Full name"
+              autoComplete="name"
               required
             />
             <input
               type="email"
               value={form.email}
               onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
               placeholder="Email"
+              autoComplete="email"
               required
             />
             <input
               type="password"
               value={form.password}
               onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
               placeholder="Password"
+              autoComplete="new-password"
               required
             />
             <input
               type="password"
               value={form.confirmPassword}
               onChange={(e) => setForm((prev) => ({ ...prev, confirmPassword: e.target.value }))}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
               placeholder="Confirm password"
+              autoComplete="new-password"
               required
             />
             <select
               value={form.role}
               onChange={(e) => setForm((prev) => ({ ...prev, role: e.target.value }))}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
             >
-              <option value="applicant">Worker (I provide services)</option>
-              <option value="employer">Client (I need work done)</option>
+              <option value="applicant">Worker (Provides Services)</option>
+              <option value="employer">Client (Need Work Done)</option>
             </select>
           </div>
 
