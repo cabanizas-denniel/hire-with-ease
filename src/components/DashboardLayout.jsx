@@ -19,6 +19,7 @@ const SIDEBAR_LINKS = {
   admin: [
     { to: '/admin/dashboard', label: 'Analytics' },
     { to: '/admin/workers', label: 'Workers' },
+    { to: '/admin/verification', label: 'Verification' },
     { to: '/admin/reports', label: 'Reports' },
   ],
 };
@@ -37,7 +38,7 @@ function DashboardLayout({ role, children }) {
         <div className="lg:hidden">
           <Sidebar links={links} open={open} onClose={() => setOpen(false)} />
         </div>
-        <main className="w-full">{children}</main>
+        <main className="w-full">{children}</main>  
       </div>
     </div>
   );

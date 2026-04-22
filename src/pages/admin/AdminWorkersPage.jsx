@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react';
+import { HiOutlineArrowUturnLeft, HiOutlineFlag, HiOutlineNoSymbol } from 'react-icons/hi2';
+import AvailabilityGrid from '../../components/AvailabilityGrid.jsx';
 import PageHeader from '../../components/PageHeader.jsx';
 import SkillBadge from '../../components/SkillBadge.jsx';
 import { useWorkerModeration } from '../../context/WorkerModerationContext.jsx';
@@ -18,34 +20,55 @@ function StatusBadge({ status }) {
   );
 }
 
+const ACTION_BUTTON_BASE =
+  'inline-flex min-h-[40px] items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-semibold shadow-sm transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 active:scale-[0.98]';
+
+const ACTION_VARIANTS = {
+  flag:
+    'border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100 hover:border-amber-300 focus-visible:ring-amber-400',
+  ban:
+    'border-red-200 bg-red-50 text-red-800 hover:bg-red-100 hover:border-red-300 focus-visible:ring-red-400',
+  restore:
+    'border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 hover:border-emerald-300 focus-visible:ring-emerald-400',
+};
+
 function ModerationActions({ worker, onFlag, onBan, onRestore }) {
   const s = worker.moderationStatus || 'active';
   return (
-    <div className="flex flex-wrap gap-1.5">
+    <div className="flex flex-wrap gap-2">
       {s !== 'flagged' && s !== 'banned' ? (
         <button
           type="button"
-          className="min-h-[44px] rounded-md border border-amber-300 bg-white px-3 py-2 text-sm font-medium text-amber-900 hover:bg-amber-50"
+          title="Flag this worker for review"
+          aria-label={`Flag ${worker.name} for review`}
+          className={`${ACTION_BUTTON_BASE} ${ACTION_VARIANTS.flag}`}
           onClick={() => onFlag(worker.id)}
         >
+          <HiOutlineFlag className="h-4 w-4" aria-hidden="true" />
           Flag
         </button>
       ) : null}
       {s !== 'banned' ? (
         <button
           type="button"
-          className="min-h-[44px] rounded-md border border-red-300 bg-white px-3 py-2 text-sm font-medium text-red-900 hover:bg-red-50"
+          title="Ban this worker from matching"
+          aria-label={`Ban ${worker.name} from matching`}
+          className={`${ACTION_BUTTON_BASE} ${ACTION_VARIANTS.ban}`}
           onClick={() => onBan(worker.id)}
         >
+          <HiOutlineNoSymbol className="h-4 w-4" aria-hidden="true" />
           Ban
         </button>
       ) : null}
       {s !== 'active' ? (
         <button
           type="button"
-          className="min-h-[44px] rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50"
+          title="Restore this worker to active status"
+          aria-label={`Restore ${worker.name} to active`}
+          className={`${ACTION_BUTTON_BASE} ${ACTION_VARIANTS.restore}`}
           onClick={() => onRestore(worker.id)}
         >
+          <HiOutlineArrowUturnLeft className="h-4 w-4" aria-hidden="true" />
           Restore
         </button>
       ) : null}
@@ -135,6 +158,12 @@ function AdminWorkersPage() {
                 <SkillBadge key={skill} skill={skill} />
               ))}
             </div>
+            <div className="mt-3">
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                Availability
+              </p>
+              <AvailabilityGrid availability={worker.availability} size="md" />
+            </div>
             <div className="mt-3 border-t border-gray-100 pt-3">
               <ModerationActions worker={worker} onFlag={handleFlag} onBan={handleBan} onRestore={handleRestore} />
             </div>
@@ -173,7 +202,9 @@ function AdminWorkersPage() {
                     ))}
                   </div>
                 </td>
-                <td className="px-4 py-3">{worker.availability.slice(0, 3).join(', ')}</td>
+                <td className="px-4 py-3">
+                  <AvailabilityGrid availability={worker.availability} size="sm" />
+                </td>
                 <td className="px-4 py-3">
                   <ModerationActions worker={worker} onFlag={handleFlag} onBan={handleBan} onRestore={handleRestore} />
                 </td>

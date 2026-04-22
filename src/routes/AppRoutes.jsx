@@ -23,6 +23,7 @@ const EmployerHiredPage = lazy(() => import('../pages/employer/EmployerHiredPage
 
 const AdminDashboardPage = lazy(() => import('../pages/admin/AdminDashboardPage.jsx'));
 const AdminWorkersPage = lazy(() => import('../pages/admin/AdminWorkersPage.jsx'));
+const AdminVerificationPage = lazy(() => import('../pages/admin/AdminVerificationPage.jsx'));
 const AdminReportsPage = lazy(() => import('../pages/admin/AdminReportsPage.jsx'));
 
 function RoleLayout({ role }) {
@@ -72,6 +73,7 @@ function AppRoutes() {
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<AdminDashboardPage />} />
             <Route path="workers" element={<AdminWorkersPage />} />
+            <Route path="verification" element={<AdminVerificationPage />} />
             <Route path="reports" element={<AdminReportsPage />} />
             <Route path="*" element={<Navigate to="dashboard" replace />} />
           </Route>

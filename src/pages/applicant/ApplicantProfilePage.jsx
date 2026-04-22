@@ -1,9 +1,15 @@
 import { useMemo, useState } from 'react';
 import AvailabilityPicker from '../../components/AvailabilityPicker.jsx';
 import PageHeader from '../../components/PageHeader.jsx';
+import VerificationCenter from '../../components/verification/VerificationCenter.jsx';
+import { useAuth } from '../../context/AuthContext.jsx';
 import skills from '../../data/skills.js';
+import { getCurrentUserId } from '../../utils/currentUser.js';
 
 function ApplicantProfilePage() {
+  const auth = useAuth();
+  const verificationUserId = getCurrentUserId(auth);
+
   const [profile, setProfile] = useState({
     fullName: 'Rafael Santos',
     location: 'Quezon City',
@@ -40,6 +46,14 @@ function ApplicantProfilePage() {
           relevant jobs to you automatically. Incomplete profiles get fewer matches.
         </p>
       </div>
+
+      {verificationUserId ? (
+        <VerificationCenter
+          userId={verificationUserId}
+          role="service-provider"
+          className="mt-5"
+        />
+      ) : null}
 
       <form className="mt-5 space-y-5 rounded-xl bg-white p-4 shadow-sm sm:p-5">
         <section>
