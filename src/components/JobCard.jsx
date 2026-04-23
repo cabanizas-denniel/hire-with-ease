@@ -2,10 +2,10 @@ import SkillBadge from './SkillBadge.jsx';
 import StatusBadge from './StatusBadge.jsx';
 
 function JobCard({ job, onAccept, onDecline, onViewDetails, compact = false, matchReasons }) {
-  const isUrgent = job.urgency === 'Urgent' || job.urgency === 'Emergency';
+  const isRush = job.type === 'Rush';
 
   return (
-    <article className={`rounded-xl bg-white p-4 shadow-sm ${isUrgent ? 'ring-2 ring-amber-300' : ''}`}>
+    <article className={`rounded-xl bg-white p-4 shadow-sm ${isRush ? 'ring-2 ring-amber-300' : ''}`}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <h3 className="text-base font-semibold text-[#1F4E79]">{job.title}</h3>
@@ -13,16 +13,15 @@ function JobCard({ job, onAccept, onDecline, onViewDetails, compact = false, mat
             <p className="mt-0.5 text-xs text-gray-500">Requested by {job.clientName}</p>
           ) : null}
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {isUrgent ? (
-            <span className="rounded-md bg-amber-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
-              {job.urgency}
-            </span>
-          ) : null}
-          <span className="rounded-md bg-[#2E75B6]/10 px-2 py-1 text-xs font-medium text-[#1F4E79]">
-            {job.type}
-          </span>
-        </div>
+        <span
+          className={`shrink-0 rounded-md px-2 py-1 text-xs font-medium ${
+            isRush
+              ? 'bg-amber-100 text-amber-800'
+              : 'bg-[#2E75B6]/10 text-[#1F4E79]'
+          }`}
+        >
+          {job.type}
+        </span>
       </div>
 
       <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600">

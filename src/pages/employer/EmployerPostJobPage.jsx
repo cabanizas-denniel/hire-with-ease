@@ -86,13 +86,14 @@ function EmployerPostJobPage() {
                   setForm((prev) => ({
                     ...prev,
                     type: e.target.value,
-                    schedule: e.target.value === 'Rush' ? 'ASAP' : '',
+                    schedule:
+                      e.target.value === 'Rush' ? 'ASAP · Dispatch now' : '',
                   }))
                 }
                 className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
               >
                 <option value="Scheduled">Scheduled (plan ahead)</option>
-                <option value="Rush">Rush (need it soon)</option>
+                <option value="Rush">Rush (dispatch now)</option>
               </select>
             </div>
           </div>
@@ -163,40 +164,40 @@ function EmployerPostJobPage() {
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-600">
                 {form.type === 'Rush'
-                  ? 'When do you need this done?'
+                  ? 'Dispatch window'
                   : 'Scheduled start date & time'}
               </label>
               {form.type === 'Rush' ? (
-                <select
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
-                  value={form.schedule || 'ASAP'}
-                  onChange={(e) =>
-                    setForm((prev) => ({ ...prev, schedule: e.target.value }))
-                  }
-                >
-                  <option value="ASAP · Within 1 hour">Within 1 hour</option>
-                  <option value="ASAP · Within 2 hours">Within 2 hours</option>
-                  <option value="ASAP · Today by 3:00 PM">Today, before 3 PM</option>
-                  <option value="ASAP · Today by 5:00 PM">Today, before 5 PM</option>
-                  <option value="ASAP · Tomorrow by 10:00 AM">
-                    Tomorrow morning
-                  </option>
-                </select>
+                <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
+                  <span className="mt-0.5 inline-block h-2 w-2 shrink-0 animate-pulse rounded-full bg-amber-500" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-amber-900">
+                      Dispatch now — taxi-style
+                    </p>
+                    <p className="mt-0.5 text-xs text-amber-800/90">
+                      The system will push this to the nearest available,
+                      qualified workers immediately. Please be on-site and
+                      ready to receive the worker within the hour.
+                    </p>
+                  </div>
+                </div>
               ) : (
-                <input
-                  type="datetime-local"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
-                  value={form.schedule}
-                  onChange={(e) =>
-                    setForm((prev) => ({ ...prev, schedule: e.target.value }))
-                  }
-                  required
-                />
+                <>
+                  <input
+                    type="datetime-local"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
+                    value={form.schedule}
+                    onChange={(e) =>
+                      setForm((prev) => ({ ...prev, schedule: e.target.value }))
+                    }
+                    required
+                  />
+                  <p className="mt-1 text-[11px] text-gray-500">
+                    Workers see this exact start time. Please be present at the
+                    location when they arrive.
+                  </p>
+                </>
               )}
-              <p className="mt-1 text-[11px] text-gray-500">
-                Workers see this exact start time. Please be present at the
-                location when they arrive.
-              </p>
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-600">Job location / address</label>
