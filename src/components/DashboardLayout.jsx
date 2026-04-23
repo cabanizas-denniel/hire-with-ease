@@ -8,10 +8,10 @@ const SIDEBAR_LINKS = {
     { to: '/applicant/profile', label: 'My Profile' },
     { to: '/applicant/jobs', label: 'Matched Jobs' },
     { to: '/applicant/applications', label: 'My Jobs' },
-    { to: '/applicant/notifications', label: 'Notifications' },
   ],
   employer: [
     { to: '/employer/dashboard', label: 'Dashboard' },
+    { to: '/employer/profile', label: 'My Profile' },
     { to: '/employer/post-job', label: 'Request Service' },
     { to: '/employer/jobs', label: 'My Requests' },
     { to: '/employer/hired', label: 'Job History' },

@@ -1,9 +1,19 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { HiOutlineExclamationTriangle, HiOutlineMapPin } from 'react-icons/hi2';
+import { Link } from 'react-router-dom';
+import ActiveJobCard from '../../components/employer/ActiveJobCard.jsx';
 import PageHeader from '../../components/PageHeader.jsx';
+import { useAuth } from '../../context/AuthContext.jsx';
 import skills from '../../data/skills.js';
 import { JOB_CATEGORIES } from '../../data/jobs.js';
+import { getActiveJob } from '../../utils/clientJobs.js';
+import { getCurrentUserId } from '../../utils/currentUser.js';
 
 function EmployerPostJobPage() {
+  const auth = useAuth();
+  const clientId = getCurrentUserId(auth);
+  const activeJob = useMemo(() => getActiveJob(clientId), [clientId]);
+
   const [form, setForm] = useState({
     category: '',
     title: '',
@@ -30,6 +40,10 @@ function EmployerPostJobPage() {
     event.preventDefault();
     alert('Service request submitted. The system will start matching workers and notify you when matches are found.');
   };
+
+  if (activeJob) {
+    return <BlockedByActiveJob activeJob={activeJob} />;
+  }
 
   return (
     <div>
@@ -68,7 +82,13 @@ function EmployerPostJobPage() {
               <label className="mb-1 block text-xs font-medium text-gray-600">Urgency</label>
               <select
                 value={form.type}
-                onChange={(e) => setForm((prev) => ({ ...prev, type: e.target.value }))}
+                onChange={(e) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    type: e.target.value,
+                    schedule: e.target.value === 'Rush' ? 'ASAP' : '',
+                  }))
+                }
                 className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
               >
                 <option value="Scheduled">Scheduled (plan ahead)</option>
@@ -141,13 +161,42 @@ function EmployerPostJobPage() {
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">Preferred date/time</label>
-              <input
-                type="datetime-local"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
-                value={form.schedule}
-                onChange={(e) => setForm((prev) => ({ ...prev, schedule: e.target.value }))}
-              />
+              <label className="mb-1 block text-xs font-medium text-gray-600">
+                {form.type === 'Rush'
+                  ? 'When do you need this done?'
+                  : 'Scheduled start date & time'}
+              </label>
+              {form.type === 'Rush' ? (
+                <select
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
+                  value={form.schedule || 'ASAP'}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, schedule: e.target.value }))
+                  }
+                >
+                  <option value="ASAP · Within 1 hour">Within 1 hour</option>
+                  <option value="ASAP · Within 2 hours">Within 2 hours</option>
+                  <option value="ASAP · Today by 3:00 PM">Today, before 3 PM</option>
+                  <option value="ASAP · Today by 5:00 PM">Today, before 5 PM</option>
+                  <option value="ASAP · Tomorrow by 10:00 AM">
+                    Tomorrow morning
+                  </option>
+                </select>
+              ) : (
+                <input
+                  type="datetime-local"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
+                  value={form.schedule}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, schedule: e.target.value }))
+                  }
+                  required
+                />
+              )}
+              <p className="mt-1 text-[11px] text-gray-500">
+                Workers see this exact start time. Please be present at the
+                location when they arrive.
+              </p>
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-600">Job location / address</label>
@@ -176,6 +225,82 @@ function EmployerPostJobPage() {
           Submit Request
         </button>
       </form>
+    </div>
+  );
+}
+
+function BlockedByActiveJob({ activeJob }) {
+  return (
+    <div>
+      <PageHeader
+        title="One Job at a Time"
+        subtitle="You already have an ongoing request. Finish it before posting a new one."
+      />
+
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 sm:p-5">
+        <div className="flex items-start gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+            <HiOutlineExclamationTriangle className="h-5 w-5" aria-hidden="true" />
+          </div>
+          <div className="min-w-0">
+            <h3 className="text-sm font-semibold text-amber-900 sm:text-base">
+              Why can't I post another request right now?
+            </h3>
+            <p className="mt-1 text-sm text-amber-900/90">
+              Workers are dispatched to <strong>your</strong> location and expect
+              you to be there when they arrive.
+            </p>
+            <ul className="mt-2 space-y-1 text-sm text-amber-900/90">
+              <li className="flex items-start gap-2">
+                <HiOutlineMapPin
+                  className="mt-0.5 h-4 w-4 shrink-0 text-amber-700"
+                  aria-hidden="true"
+                />
+                <span>
+                  You can't be in two places at once — stay focused on{' '}
+                  <strong>{activeJob.location}</strong> until this job is done.
+                </span>
+              </li>
+              <li className="flex items-start gap-2">
+                <HiOutlineExclamationTriangle
+                  className="mt-0.5 h-4 w-4 shrink-0 text-amber-700"
+                  aria-hidden="true"
+                />
+                <span>
+                  A second active request would mean a worker arriving at an
+                  empty address — bad for you, worse for them.
+                </span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-5">
+        <ActiveJobCard job={activeJob} />
+      </div>
+
+      <div className="mt-5 rounded-xl border border-gray-100 bg-white p-4 text-sm text-gray-600 shadow-sm sm:p-5">
+        <p>
+          Once this job is marked <span className="font-semibold">Completed</span>
+          , the <strong>Request a Service</strong> form will open back up
+          automatically.
+        </p>
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+          <Link
+            to="/employer/jobs"
+            className="inline-flex w-full items-center justify-center rounded-lg bg-[#1F4E79] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:brightness-110 sm:w-auto"
+          >
+            Go to My Requests
+          </Link>
+          <Link
+            to="/employer/dashboard"
+            className="inline-flex w-full items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 sm:w-auto"
+          >
+            Back to Dashboard
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }

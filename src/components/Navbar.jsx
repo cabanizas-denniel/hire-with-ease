@@ -1,7 +1,14 @@
 import { useState } from 'react';
+import { HiOutlineBell } from 'react-icons/hi2';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import BrandMark from './BrandMark.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
+import { getUnreadCount } from '../data/notifications.js';
+
+const NOTIFICATION_ROUTE = {
+  applicant: '/applicant/notifications',
+  employer: '/employer/notifications',
+};
 
 function Navbar({ links = [], onMenuClick }) {
   const { isAuthenticated, role, logout, getDefaultRoute } = useAuth();
@@ -89,6 +96,12 @@ function Navbar({ links = [], onMenuClick }) {
         <div className="flex shrink-0 items-center gap-2">
           {isAuthenticated ? (
             <>
+              {NOTIFICATION_ROUTE[role] ? (
+                <NotificationBell
+                  to={NOTIFICATION_ROUTE[role]}
+                  unread={getUnreadCount(role)}
+                />
+              ) : null}
               <span className="hidden rounded-md bg-gray-100 px-2 py-1 text-xs capitalize text-gray-600 sm:inline-block">
                 {role}
               </span>
@@ -119,6 +132,36 @@ function Navbar({ links = [], onMenuClick }) {
         </div>
       ) : null}
     </header>
+  );
+}
+
+function NotificationBell({ to, unread = 0 }) {
+  const hasUnread = unread > 0;
+  const badge = unread > 9 ? '9+' : String(unread);
+  return (
+    <NavLink
+      to={to}
+      end
+      aria-label={hasUnread ? `Notifications, ${unread} unread` : 'Notifications'}
+      title="Notifications"
+      className={({ isActive }) =>
+        `relative inline-flex h-10 w-10 items-center justify-center rounded-lg border transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1F4E79] focus-visible:ring-offset-1 ${
+          isActive
+            ? 'border-[#1F4E79]/30 bg-[#1F4E79]/10 text-[#1F4E79]'
+            : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:text-[#1F4E79]'
+        }`
+      }
+    >
+      <HiOutlineBell className="h-5 w-5" aria-hidden="true" />
+      {hasUnread ? (
+        <span
+          className="absolute -right-1 -top-1 inline-flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-white"
+          aria-hidden="true"
+        >
+          {badge}
+        </span>
+      ) : null}
+    </NavLink>
   );
 }
 

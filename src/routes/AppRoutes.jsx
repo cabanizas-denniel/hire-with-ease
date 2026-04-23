@@ -16,10 +16,12 @@ const ApplicantApplicationsPage = lazy(() => import('../pages/applicant/Applican
 const ApplicantNotificationsPage = lazy(() => import('../pages/applicant/ApplicantNotificationsPage.jsx'));
 
 const EmployerDashboardPage = lazy(() => import('../pages/employer/EmployerDashboardPage.jsx'));
+const EmployerProfilePage = lazy(() => import('../pages/employer/EmployerProfilePage.jsx'));
 const EmployerPostJobPage = lazy(() => import('../pages/employer/EmployerPostJobPage.jsx'));
 const EmployerJobsPage = lazy(() => import('../pages/employer/EmployerJobsPage.jsx'));
 const EmployerCandidatesPage = lazy(() => import('../pages/employer/EmployerCandidatesPage.jsx'));
 const EmployerHiredPage = lazy(() => import('../pages/employer/EmployerHiredPage.jsx'));
+const EmployerNotificationsPage = lazy(() => import('../pages/employer/EmployerNotificationsPage.jsx'));
 
 const AdminDashboardPage = lazy(() => import('../pages/admin/AdminDashboardPage.jsx'));
 const AdminWorkersPage = lazy(() => import('../pages/admin/AdminWorkersPage.jsx'));
@@ -60,10 +62,12 @@ function AppRoutes() {
           <Route path="/employer" element={<RoleLayout role="employer" />}>
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<EmployerDashboardPage />} />
+            <Route path="profile" element={<EmployerProfilePage />} />
             <Route path="post-job" element={<EmployerPostJobPage />} />
             <Route path="jobs" element={<EmployerJobsPage />} />
             <Route path="candidates/:jobId" element={<EmployerCandidatesPage />} />
             <Route path="hired" element={<EmployerHiredPage />} />
+            <Route path="notifications" element={<EmployerNotificationsPage />} />
             <Route path="*" element={<Navigate to="dashboard" replace />} />
           </Route>
         </Route>

@@ -1,51 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import PageHeader from '../../components/PageHeader.jsx';
-
-const notifications = [
-  {
-    id: 1,
-    type: 'match',
-    title: 'New job match: Emergency Pipe Leak',
-    message: 'A rush plumbing job in San Juan matches your skills and morning availability. Respond now.',
-    time: '2 min ago',
-    jobId: 'job-109',
-    unread: true,
-  },
-  {
-    id: 2,
-    type: 'match',
-    title: 'New job match: Residential Plumbing Repair',
-    message: 'A scheduled plumbing job in Quezon City matches 2 of your skills.',
-    time: '1 hour ago',
-    jobId: 'job-101',
-    unread: true,
-  },
-  {
-    id: 3,
-    type: 'status',
-    title: 'Job accepted: Office Repainting',
-    message: 'You confirmed for Office Repainting with Northlight Interiors. Job is now In Progress.',
-    time: '3 hours ago',
-    unread: false,
-  },
-  {
-    id: 4,
-    type: 'rating',
-    title: 'Client rated you ★ 5',
-    message: 'Maria Santos rated your work on Residential Plumbing Repair. Great job!',
-    time: '1 day ago',
-    unread: false,
-  },
-  {
-    id: 5,
-    type: 'system',
-    title: 'Complete your availability',
-    message: 'You have open slots on weekends. Adding Saturday availability could increase your matches by up to 40%.',
-    time: '2 days ago',
-    unread: false,
-  },
-];
+import { applicantNotifications } from '../../data/notifications.js';
 
 const TYPE_STYLES = {
   match: 'border-l-[#2E75B6]',
@@ -55,7 +11,7 @@ const TYPE_STYLES = {
 };
 
 function ApplicantNotificationsPage() {
-  const [items] = useState(notifications);
+  const [items] = useState(applicantNotifications);
 
   return (
     <div>
