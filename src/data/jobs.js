@@ -11,6 +11,20 @@ const JOB_CATEGORIES = [
   'General Maintenance',
 ];
 
+/** Skills used for worker matching when homeowners pick only a category. */
+const CATEGORY_REQUIRED_SKILLS = {
+  Plumbing: ['Plumbing', 'Pipe Fitting'],
+  'Electrical Work': ['Electrical', 'Safety Compliance'],
+  'Painting & Finishing': ['Painting', 'Safety Compliance'],
+  'Welding & Fabrication': ['Welding', 'Metal Fabrication'],
+  'Masonry & Tile': ['Masonry', 'Tile Setting'],
+  'HVAC & Cooling': ['HVAC', 'Electrical'],
+  Roofing: ['Roofing', 'General Labor'],
+  Carpentry: ['Carpentry'],
+  'Solar & Renewables': ['Solar Panel Installation', 'Electrical', 'Safety Compliance'],
+  'General Maintenance': ['General Labor', 'Machine Operation'],
+};
+
 const jobs = [
   {
     id: 'job-101',
@@ -494,5 +508,5 @@ const jobs = [
   },
 ];
 
-export { JOB_CATEGORIES };
+export { JOB_CATEGORIES, CATEGORY_REQUIRED_SKILLS };
 export default jobs;

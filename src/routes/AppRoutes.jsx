@@ -37,12 +37,23 @@ function RoleLayout({ role }) {
 }
 
 function AppRoutes() {
-  const { isAuthenticated, getDefaultRoute } = useAuth();
+  const { isAuthenticated, loading, getDefaultRoute } = useAuth();
 
   return (
     <Suspense fallback={<div className="min-h-screen bg-gray-50"></div>}>
       <Routes>
-        <Route path="/" element={isAuthenticated ? <Navigate to={getDefaultRoute()} replace /> : <LandingPage />} />
+        <Route
+          path="/"
+          element={
+            loading ? (
+              <div className="min-h-screen bg-gray-50" />
+            ) : isAuthenticated ? (
+              <Navigate to={getDefaultRoute()} replace />
+            ) : (
+              <LandingPage />
+            )
+          }
+        />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
 

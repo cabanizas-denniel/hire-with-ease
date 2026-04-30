@@ -1,49 +1,164 @@
-import { useMemo, useState } from 'react';
-import { HiOutlineExclamationTriangle, HiOutlineMapPin } from 'react-icons/hi2';
-import { Link } from 'react-router-dom';
+import { useMemo, useRef, useState } from 'react';
+import {
+  HiOutlineExclamationTriangle,
+  HiOutlineMapPin,
+  HiOutlinePhoto,
+  HiOutlineTrash,
+  HiOutlineXMark,
+} from 'react-icons/hi2';
+import { Link, useNavigate } from 'react-router-dom';
 import ActiveJobCard from '../../components/employer/ActiveJobCard.jsx';
+import LocationPicker from '../../components/maps/LocationPicker.jsx';
 import PageHeader from '../../components/PageHeader.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
-import skills from '../../data/skills.js';
-import { JOB_CATEGORIES } from '../../data/jobs.js';
-import { getActiveJob } from '../../utils/clientJobs.js';
-import { getCurrentUserId } from '../../utils/currentUser.js';
+import { CATEGORY_REQUIRED_SKILLS, JOB_CATEGORIES } from '../../data/jobs.js';
+import { storage } from '../../lib/firebase.js';
+import {
+  assertIssueMediaFile,
+  MAX_ISSUE_MEDIA_BYTES,
+  uploadJobIssueFiles,
+} from '../../lib/jobIssueMediaUpload.js';
+import { createJob, findActiveJob, newJobId } from '../../lib/matching/jobs.js';
+import { useJobsByOwner } from '../../lib/matching/hooks.js';
+import { isVideoMediaEntry } from '../../utils/jobMedia.js';
 
 function EmployerPostJobPage() {
   const auth = useAuth();
-  const clientId = getCurrentUserId(auth);
-  const activeJob = useMemo(() => getActiveJob(clientId), [clientId]);
+  const ownerUid = auth?.user?.uid || null;
+  const ownerName = auth?.user?.fullName || null;
+
+  const { data: myJobs, loading } = useJobsByOwner(ownerUid);
+  const activeJob = useMemo(() => findActiveJob(myJobs), [myJobs]);
+
+  const mediaInputRef = useRef(null);
+
+  const navigate = useNavigate();
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
 
   const [form, setForm] = useState({
     category: '',
     title: '',
     description: '',
-    requiredSkills: [],
     budget: '',
-    location: '',
+    locationPin: null,
+    addressDetails: '',
     type: 'Scheduled',
     schedule: '',
-    proof: '',
   });
 
-  const toggleSkill = (skill) => {
-    const selected = new Set(form.requiredSkills);
-    if (selected.has(skill)) {
-      selected.delete(skill);
-    } else {
-      selected.add(skill);
+  /** Local picks before upload: { key, file, previewUrl } */
+  const [mediaDrafts, setMediaDrafts] = useState([]);
+
+  const handleAddMedia = (event) => {
+    const list = Array.from(event.target.files || []);
+    if (mediaInputRef.current) mediaInputRef.current.value = '';
+    if (!list.length) return;
+    setError(null);
+    try {
+      list.forEach((file) => assertIssueMediaFile(file));
+    } catch (err) {
+      setError(err.message || 'Could not add that file.');
+      return;
     }
-    setForm((prev) => ({ ...prev, requiredSkills: Array.from(selected) }));
+    setMediaDrafts((prev) => {
+      const added = list.map((file) => ({
+        key: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        file,
+        previewUrl: URL.createObjectURL(file),
+      }));
+      return [...prev, ...added];
+    });
   };
 
-  const handleSubmit = (event) => {
-    event.preventDefault();
-    alert('Service request submitted. The system will start matching workers and notify you when matches are found.');
+  const handleRemoveDraft = (key) => {
+    setMediaDrafts((prev) => {
+      const found = prev.find((d) => d.key === key);
+      if (found?.previewUrl) URL.revokeObjectURL(found.previewUrl);
+      return prev.filter((d) => d.key !== key);
+    });
   };
+
+  const handleClearAllMedia = () => {
+    mediaDrafts.forEach((d) => {
+      if (d.previewUrl) URL.revokeObjectURL(d.previewUrl);
+    });
+    setMediaDrafts([]);
+    if (mediaInputRef.current) mediaInputRef.current.value = '';
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (!ownerUid) {
+      setError('You need to be signed in to post a job.');
+      return;
+    }
+    const requiredSkills = CATEGORY_REQUIRED_SKILLS[form.category];
+    if (!requiredSkills?.length) {
+      setError('Pick a category so we can match the right workers.');
+      return;
+    }
+    if (!form.locationPin) {
+      setError('Drop a pin on the map at your exact address — workers need to know where to go.');
+      return;
+    }
+    if (!form.addressDetails.trim()) {
+      setError('Add address details (street, unit, gate code, landmark) so the worker can find your home.');
+      return;
+    }
+    if (mediaDrafts.length === 0) {
+      setError('Add at least one photo or video of the issue so applicants can quote accurately.');
+      return;
+    }
+
+    setSubmitting(true);
+    setError(null);
+    const jobId = newJobId();
+    const files = mediaDrafts.map((d) => d.file);
+    try {
+      const media = await uploadJobIssueFiles(storage, jobId, files);
+      await createJob({
+        id: jobId,
+        title: form.title,
+        category: form.category,
+        description: form.description,
+        requiredSkills,
+        budget: form.budget,
+        schedule: form.schedule,
+        type: form.type,
+        urgency: form.type === 'Rush' ? 'Urgent' : 'Normal',
+        location: {
+          lat: form.locationPin.lat,
+          lng: form.locationPin.lng,
+          barangay: form.locationPin.barangay,
+          label: form.addressDetails.trim(),
+        },
+        photo: null,
+        media,
+        postedBy: ownerUid,
+        postedByName: ownerName,
+      });
+      handleClearAllMedia();
+      navigate(`/employer/candidates/${jobId}`);
+    } catch (err) {
+      setError(err.message || 'Could not submit your request. Please try again.');
+      setSubmitting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div>
+        <PageHeader title="Request a Service" subtitle="Loading…" />
+      </div>
+    );
+  }
 
   if (activeJob) {
     return <BlockedByActiveJob activeJob={activeJob} />;
   }
+
+  const mbLimit = MAX_ISSUE_MEDIA_BYTES / (1024 * 1024);
 
   return (
     <div>
@@ -53,12 +168,18 @@ function EmployerPostJobPage() {
       />
 
       <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4 text-sm text-[#1F4E79]">
-        <p className="font-medium">You don't need to search for workers</p>
+        <p className="font-semibold">You don't need to search for workers</p>
         <p className="mt-1 text-gray-600">
           Fill in the details below. The matching engine evaluates worker skills, availability, location, and
           reliability — then pushes your request to the best-fit workers. You'll see ranked matches once workers respond.
         </p>
       </div>
+
+      {error ? (
+        <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+          {error}
+        </div>
+      ) : null}
 
       <form onSubmit={handleSubmit} className="mt-5 space-y-5 rounded-xl bg-white p-4 shadow-sm sm:p-5">
         <section>
@@ -121,28 +242,6 @@ function EmployerPostJobPage() {
         </section>
 
         <section>
-          <h2 className="mb-3 text-sm font-semibold text-[#1F4E79]">Required Skills</h2>
-          <p className="mb-3 text-xs text-gray-500">Select all that apply. This powers the matching engine.</p>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-            {skills.map((skill) => {
-              const selected = form.requiredSkills.includes(skill);
-              return (
-                <button
-                  key={skill}
-                  type="button"
-                  onClick={() => toggleSkill(skill)}
-                  className={`rounded-lg px-2 py-2 text-xs font-medium transition ${
-                    selected ? 'bg-[#1F4E79] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  {skill}
-                </button>
-              );
-            })}
-          </div>
-        </section>
-
-        <section>
           <h2 className="mb-3 text-sm font-semibold text-[#1F4E79]">Schedule &amp; Budget</h2>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
@@ -163,17 +262,13 @@ function EmployerPostJobPage() {
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-600">
-                {form.type === 'Rush'
-                  ? 'Dispatch window'
-                  : 'Scheduled start date & time'}
+                {form.type === 'Rush' ? '' : 'Scheduled start date & time'}
               </label>
               {form.type === 'Rush' ? (
                 <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
                   <span className="mt-0.5 inline-block h-2 w-2 shrink-0 animate-pulse rounded-full bg-amber-500" />
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-amber-900">
-                      Dispatch now — taxi-style
-                    </p>
+                    <p className="text-sm font-semibold text-amber-900">Dispatch now</p>
                     <p className="mt-0.5 text-xs text-amber-800/90">
                       The system will push this to the nearest available,
                       qualified workers immediately. Please be on-site and
@@ -199,31 +294,144 @@ function EmployerPostJobPage() {
                 </>
               )}
             </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">Job location / address</label>
-              <input
-                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
-                placeholder="e.g. 123 Main St, Quezon City"
-                value={form.location}
-                onChange={(e) => setForm((prev) => ({ ...prev, location: e.target.value }))}
-                required
-              />
-            </div>
           </div>
         </section>
 
         <section>
-          <h2 className="mb-3 text-sm font-semibold text-[#1F4E79]">Photo of Issue (optional)</h2>
-          <input
-            type="file"
-            accept="image/*"
-            className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
-            onChange={(e) => setForm((prev) => ({ ...prev, proof: e.target.files?.[0]?.name || '' }))}
+          <h2 className="mb-1 text-sm font-semibold text-[#1F4E79]">
+            Job Location <span className="text-red-500">*</span>
+          </h2>
+          <p className="mb-3 text-xs text-gray-500">
+            Drop a pin on your exact address so the worker can navigate
+            directly to your home. Tap the map, or use your current location.
+          </p>
+
+          <LocationPicker
+            value={form.locationPin}
+            onChange={(locationPin) =>
+              setForm((prev) => ({ ...prev, locationPin }))
+            }
           />
+
+          <div className="mt-3">
+            <label className="mb-1 block text-xs font-medium text-gray-600">
+              Address details <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              rows={2}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
+              placeholder="Street, house/unit no., gate code, landmark, or directions a worker would need."
+              value={form.addressDetails}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, addressDetails: e.target.value }))
+              }
+              required
+            />
+            <p className="mt-1 text-[11px] text-gray-500">
+              Only shared with workers you accept; combined with the pin so the
+              worker arrives at the right house, not just the right barangay.
+            </p>
+          </div>
         </section>
 
-        <button type="submit" className="rounded-lg bg-[#1F4E79] px-5 py-2.5 text-sm font-semibold text-white">
-          Submit Request
+        <section>
+          <h2 className="mb-1 text-sm font-semibold text-[#1F4E79]">
+            Photos / videos of the issue <span className="text-red-500">*</span>
+          </h2>
+          <p className="mb-3 text-xs text-gray-500">
+            Add one or more clips or pictures so applicants can assess scope and quote fairly. Each file can be up to{' '}
+            {mbLimit} MB.
+          </p>
+
+          {mediaDrafts.length > 0 ? (
+            <div className="space-y-3">
+              <div className="grid gap-3 sm:grid-cols-2">
+                {mediaDrafts.map((draft) => (
+                  <div
+                    key={draft.key}
+                    className="overflow-hidden rounded-xl border border-gray-200 bg-gray-50"
+                  >
+                    <div className="relative bg-black/5">
+                      {isVideoMediaEntry({
+                        contentType: draft.file.type,
+                      }) ? (
+                        <video
+                          src={draft.previewUrl}
+                          controls
+                          playsInline
+                          className="max-h-56 w-full object-contain"
+                        />
+                      ) : (
+                        <img
+                          src={draft.previewUrl}
+                          alt=""
+                          className="max-h-56 w-full object-contain"
+                        />
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between gap-2 border-t border-gray-200 bg-white px-3 py-2">
+                      <p className="min-w-0 truncate text-xs text-gray-500">
+                        {draft.file.name} · {(draft.file.size / 1024).toFixed(0)} KB
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveDraft(draft.key)}
+                        className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                      >
+                        <HiOutlineTrash className="h-4 w-4" aria-hidden="true" />
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-[#1F4E79] bg-[#1F4E79]/5 px-3 py-2 text-sm font-medium text-[#1F4E79] hover:bg-[#1F4E79]/10">
+                  Add more
+                  <input
+                    ref={mediaInputRef}
+                    type="file"
+                    accept="image/*,video/*"
+                    multiple
+                    className="hidden"
+                    onChange={handleAddMedia}
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={handleClearAllMedia}
+                  className="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  <HiOutlineXMark className="h-4 w-4" aria-hidden="true" />
+                  Clear all
+                </button>
+              </div>
+            </div>
+          ) : (
+            <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-center transition hover:border-[#1F4E79] hover:bg-blue-50/40">
+              <HiOutlinePhoto className="h-8 w-8 text-gray-400" aria-hidden="true" />
+              <p className="text-sm font-semibold text-gray-700">Add photos or videos</p>
+              <p className="text-[11px] text-gray-500">
+                Images or videos, multiple files OK — up to {mbLimit} MB each.
+              </p>
+              <input
+                ref={mediaInputRef}
+                type="file"
+                accept="image/*,video/*"
+                multiple
+                className="hidden"
+                onChange={handleAddMedia}
+              />
+            </label>
+          )}
+        </section>
+
+        <button
+          type="submit"
+          disabled={submitting}
+          className="rounded-lg bg-[#1F4E79] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+        >
+          {submitting ? 'Submitting…' : 'Submit Request'}
         </button>
       </form>
     </div>
@@ -259,7 +467,7 @@ function BlockedByActiveJob({ activeJob }) {
                 />
                 <span>
                   You can't be in two places at once — stay focused on{' '}
-                  <strong>{activeJob.location}</strong> until this job is done.
+                  <strong>{activeJob.location?.label || activeJob.location?.barangay || 'your job site'}</strong> until this job is done.
                 </span>
               </li>
               <li className="flex items-start gap-2">

@@ -29,7 +29,7 @@ function AuthLayout({
         <BrandMark to="/" variant="dark" />
         <Link
           to="/"
-          className="inline-flex items-center gap-1 text-xs font-semibold text-[#1F4E79] hover:text-[#2E75B6]"
+          className="inline-flex items-center gap-1 text-xs font-semibold text-[#2E75B6] hover:text-[#2E75B6]"
         >
           <HiOutlineArrowLeft className="h-4 w-4" aria-hidden="true" />
           Home
@@ -38,7 +38,7 @@ function AuthLayout({
 
       <div className="lg:grid lg:min-h-dvh lg:grid-cols-[1.05fr_0.95fr]">
         {/* Left: illustration + brand + pitch (desktop only) */}
-        <aside className="relative hidden overflow-hidden bg-gradient-to-br from-[#2E75B6] to-[#1F4E79] text-white lg:flex lg:flex-col">
+        <aside className="relative hidden overflow-hidden bg-[#2E75B6] text-white lg:flex lg:flex-col">
           <div className="relative z-10 flex items-center justify-between px-10 pt-10 xl:px-14">
             <BrandMark to="/" variant="light" />
             <Link
@@ -93,7 +93,7 @@ function AuthLayout({
         <main className="flex flex-col items-center justify-center bg-gray-50 px-4 py-10 sm:px-6 lg:bg-white lg:px-10 lg:py-16 xl:px-16">
           <div className="w-full max-w-md">
             <div className="mb-6">
-              <h1 className="text-2xl font-bold text-[#1F4E79] sm:text-3xl">
+              <h1 className="text-2xl font-bold text-[#2E75B6] sm:text-3xl">
                 {title}
               </h1>
               {subtitle ? (

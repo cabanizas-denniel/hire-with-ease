@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import AuthLayout from '../../components/auth/AuthLayout.jsx';
 import PasswordInput from '../../components/PasswordInput.jsx';
@@ -10,29 +10,62 @@ const LOGIN_BENEFITS = [
   'One active job at a time keeps every booking accountable.',
 ];
 
+function translateAuthError(err) {
+  const code = err?.code || '';
+  if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') {
+    return 'Email or password is incorrect.';
+  }
+  if (code === 'auth/invalid-email') return 'That email address looks invalid.';
+  if (code === 'auth/too-many-requests') return 'Too many attempts. Try again in a moment.';
+  if (code === 'auth/network-request-failed') return 'Network error. Check your connection.';
+  return err?.message || 'Sign in failed. Please try again.';
+}
+
 function LoginPage() {
-  const [form, setForm] = useState({
-    email: '',
-    password: '',
-    role: 'applicant',
-  });
+  const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
-  const { login, getDefaultRoute } = useAuth();
+  const [submitting, setSubmitting] = useState(false);
+  const { login, getDefaultRoute, isAuthenticated, role } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const handleSubmit = (event) => {
-    event.preventDefault();
+  // Navigate AFTER AuthContext has actually committed the authenticated
+  // state. If we navigated immediately from handleSubmit, ProtectedRoute
+  // would still see isAuthenticated=false (Firebase's onAuthStateChanged
+  // callback hadn't run yet) and bounce us back here, remounting the form
+  // and wiping the inputs.
+  useEffect(() => {
+    if (!isAuthenticated || !role) return;
+    const fromPath = location.state?.from?.pathname;
+    navigate(fromPath || getDefaultRoute(role), { replace: true });
+  }, [isAuthenticated, role, location.state, navigate, getDefaultRoute]);
 
-    if (!form.email || !form.password || !form.role) {
-      setError('Please complete all fields.');
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setError('');
+
+    if (!form.email || !form.password) {
+      setError('Please enter your email and password.');
       return;
     }
 
-    login({ role: form.role, email: form.email });
-
-    const fromPath = location.state?.from?.pathname;
-    navigate(fromPath || getDefaultRoute(form.role), { replace: true });
+    setSubmitting(true);
+    try {
+      const signedInRole = await login({
+        email: form.email,
+        password: form.password,
+      });
+      if (!signedInRole) {
+        setError('No role assigned to this account. Please contact an administrator.');
+        setSubmitting(false);
+        return;
+      }
+      // Keep the button disabled and inputs intact while we wait for the
+      // AuthProvider effect above to navigate us to the dashboard.
+    } catch (err) {
+      setError(translateAuthError(err));
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -89,27 +122,6 @@ function LoginPage() {
           />
         </div>
 
-        <div>
-          <label
-            htmlFor="login-role"
-            className="mb-1.5 block text-xs font-semibold text-gray-700"
-          >
-            Sign in as
-          </label>
-          <select
-            id="login-role"
-            value={form.role}
-            onChange={(e) =>
-              setForm((prev) => ({ ...prev, role: e.target.value }))
-            }
-            className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base focus:border-[#1F4E79] focus:outline-none focus:ring-2 focus:ring-[#1F4E79]/20"
-          >
-            <option value="applicant">Worker (Service Provider)</option>
-            <option value="employer">Client (Homeowner)</option>
-            <option value="admin">Admin / LGU-PESO Officer</option>
-          </select>
-        </div>
-
         {error ? (
           <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
             {error}
@@ -118,9 +130,10 @@ function LoginPage() {
 
         <button
           type="submit"
-          className="mt-2 w-full rounded-lg bg-[#1F4E79] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-110 cursor-pointer"
+          disabled={submitting}
+          className="mt-2 w-full rounded-lg bg-[#2E75B6] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-110 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
         >
-          Sign in
+          {submitting ? 'Signing in…' : 'Sign in'}
         </button>
       </form>
     </AuthLayout>

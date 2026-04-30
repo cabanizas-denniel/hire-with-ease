@@ -5,15 +5,28 @@ import ActiveJobCard from '../../components/employer/ActiveJobCard.jsx';
 import PageHeader from '../../components/PageHeader.jsx';
 import StatusBadge from '../../components/StatusBadge.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { getActiveJob, getCompletedJobs } from '../../utils/clientJobs.js';
-import { getCurrentUserId } from '../../utils/currentUser.js';
+import {
+  useApplicationsForJob,
+  useJobsByOwner,
+} from '../../lib/matching/hooks.js';
+import { findActiveJob } from '../../lib/matching/jobs.js';
+import { ACTIVE_JOB_STATUSES } from '../../lib/matching/statuses.js';
+import { locationLabel } from '../../utils/clientJobs.js';
 
 function EmployerJobsPage() {
   const auth = useAuth();
-  const clientId = getCurrentUserId(auth);
+  const ownerUid = auth?.user?.uid || null;
 
-  const activeJob = useMemo(() => getActiveJob(clientId), [clientId]);
-  const completed = useMemo(() => getCompletedJobs(clientId), [clientId]);
+  const { data: jobs, loading } = useJobsByOwner(ownerUid);
+  const activeJob = useMemo(() => findActiveJob(jobs), [jobs]);
+  const completed = useMemo(
+    () => jobs.filter((j) => !ACTIVE_JOB_STATUSES.has(j.status)),
+    [jobs]
+  );
+
+  const { data: applicants } = useApplicationsForJob(
+    activeJob?.docId || activeJob?.id || null
+  );
 
   return (
     <div>
@@ -30,8 +43,12 @@ function EmployerJobsPage() {
         <h2 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
           Ongoing
         </h2>
-        {activeJob ? (
-          <ActiveJobCard job={activeJob} />
+        {loading ? (
+          <p className="rounded-xl bg-white p-6 text-center text-sm text-gray-500 shadow-sm">
+            Loading…
+          </p>
+        ) : activeJob ? (
+          <ActiveJobCard job={activeJob} applicantsCount={applicants?.length || 0} />
         ) : (
           <div className="rounded-xl border border-dashed border-gray-200 bg-white p-5 text-center shadow-sm sm:p-6">
             <p className="text-sm font-semibold text-gray-800">
@@ -79,7 +96,7 @@ function EmployerJobsPage() {
         ) : (
           <ul className="space-y-2.5">
             {completed.map((job) => (
-              <li key={job.id}>
+              <li key={job.docId || job.id}>
                 <HistoryRow job={job} />
               </li>
             ))}
@@ -99,10 +116,10 @@ function HistoryRow({ job }) {
             {job.title}
           </h3>
           <p className="mt-0.5 text-xs text-gray-600 sm:text-sm">
-            {job.location} · {job.budget}
+            {locationLabel(job)}{job.budget ? ` · ${job.budget}` : ''}
           </p>
           <p className="mt-0.5 text-[11px] text-gray-400">
-            Posted {job.postedAt} · {job.type}
+            Posted {job.postedAt || '—'} · {job.type || 'Scheduled'}
           </p>
         </div>
         <StatusBadge status={job.status} />

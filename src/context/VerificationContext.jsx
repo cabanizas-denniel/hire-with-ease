@@ -1,5 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { useAuth } from './AuthContext.jsx';
+import { buildDemoVerificationRecord } from '../data/demoVerification.js';
 import seedRecords from '../data/verification.js';
 import { safeGetItem, safeSetItem } from '../lib/safeStorage.js';
 import { getStageProgress, getTrustTier, isFullyVerified } from '../utils/trust.js';
@@ -39,6 +41,27 @@ function persistRecords(records) {
 
 export function VerificationProvider({ children }) {
   const [records, setRecords] = useState(loadRecords);
+  const { user } = useAuth();
+
+  // Demo-only: when one of our 6 seed accounts logs in for the first
+  // time on this device, drop the matching verification record under
+  // their auth uid (full / partial / none). This lets the team see
+  // each tier behave end-to-end without manually walking the wizard.
+  // Once a record exists for the uid we leave it alone, so verifying
+  // / submitting docs works normally afterwards.
+  useEffect(() => {
+    const uid = user?.uid;
+    const email = user?.email;
+    if (!uid || !email) return;
+    const seed = buildDemoVerificationRecord(email);
+    if (!seed) return;
+    setRecords((prev) => {
+      if (prev[uid]) return prev;
+      const next = { ...prev, [uid]: seed };
+      persistRecords(next);
+      return next;
+    });
+  }, [user?.uid, user?.email]);
 
   const update = useCallback((userId, updater) => {
     setRecords((prev) => {

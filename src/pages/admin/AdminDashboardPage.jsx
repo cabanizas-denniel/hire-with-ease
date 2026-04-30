@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import {
   Bar,
   BarChart,
@@ -12,8 +13,41 @@ import {
 import PageHeader from '../../components/PageHeader.jsx';
 import StatCard from '../../components/StatCard.jsx';
 import analytics from '../../data/analytics.js';
+import OlongapoMap from '../../components/maps/OlongapoMap.jsx';
+import DemandHeatmap from '../../components/maps/DemandHeatmap.jsx';
+import { useJobs, useWorkerProfiles } from '../../lib/useFirestoreData.js';
+
+const OPEN_JOB_STATUSES = new Set(['Matching', 'Matched', 'In Progress']);
 
 function AdminDashboardPage() {
+  const { data: jobs, loading: jobsLoading, error: jobsError } = useJobs();
+  const { data: workers, loading: workersLoading, error: workersError } = useWorkerProfiles();
+
+  // Aggregate density only — no individual locations or identifying data are
+  // surfaced. The heatmap consumes (lat, lng) points server-side and renders
+  // a smoothed gradient, so reviewers can see regional demand vs supply
+  // without identifying any specific worker or homeowner.
+  const jobPoints = useMemo(
+    () =>
+      jobs
+        .filter((j) => OPEN_JOB_STATUSES.has(j.status))
+        .filter((j) => j?.location?.lat && j?.location?.lng)
+        .map((j) => ({ lat: j.location.lat, lng: j.location.lng, weight: 1 })),
+    [jobs]
+  );
+
+  const workerPoints = useMemo(
+    () =>
+      workers
+        .filter((w) => (w.moderationStatus || 'active') !== 'banned')
+        .filter((w) => w?.location?.lat && w?.location?.lng)
+        .map((w) => ({ lat: w.location.lat, lng: w.location.lng, weight: 1 })),
+    [workers]
+  );
+
+  const loading = jobsLoading || workersLoading;
+  const error = jobsError || workersError;
+
   return (
     <div>
       <PageHeader
@@ -81,10 +115,58 @@ function AdminDashboardPage() {
         </div>
 
         <div className="rounded-xl bg-white p-4 shadow-sm">
-          <h2 className="text-base font-semibold text-[#1F4E79]">Regional Demand Heatmap</h2>
-          <div className="mt-3 flex h-48 items-center justify-center rounded-lg bg-gradient-to-r from-blue-100 via-blue-300 to-blue-500 text-sm font-medium text-[#1F4E79]">
-            Regional Demand Overview
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-base font-semibold text-[#1F4E79]">Regional Demand Heatmap</h2>
+            <span className="text-[11px] text-gray-500">Olongapo City · density only</span>
           </div>
+          <p className="mt-1 text-xs text-gray-500">
+            Aggregate demand and supply density. No individual worker or job
+            locations are shown.
+          </p>
+
+          <div className="mt-3">
+            <OlongapoMap height={280}>
+              <DemandHeatmap
+                points={jobPoints}
+                gradient={{
+                  0.2: '#bfdbfe',
+                  0.5: '#60a5fa',
+                  0.8: '#1d4ed8',
+                  1.0: '#1e3a8a',
+                }}
+              />
+              <DemandHeatmap
+                points={workerPoints}
+                radius={28}
+                gradient={{
+                  0.2: '#fde68a',
+                  0.5: '#f59e0b',
+                  0.8: '#d97706',
+                  1.0: '#b45309',
+                }}
+              />
+            </OlongapoMap>
+          </div>
+
+          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-gray-600">
+            <span className="inline-flex items-center gap-1.5">
+              <span className="inline-block h-3 w-3 rounded-full" style={{ background: '#1d4ed8' }} />
+              Job density (demand)
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="inline-block h-3 w-3 rounded-full" style={{ background: '#d97706' }} />
+              Worker density (supply)
+            </span>
+          </div>
+
+          {error ? (
+            <p className="mt-2 text-xs text-red-600">
+              Could not load heatmap data: {error.message || String(error)}
+            </p>
+          ) : null}
+          {loading ? (
+            <p className="mt-2 text-xs text-gray-500">Loading from Firestore…</p>
+          ) : null}
         </div>
       </section>
     </div>

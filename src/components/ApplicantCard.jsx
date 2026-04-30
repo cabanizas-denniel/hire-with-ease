@@ -1,6 +1,9 @@
 import SkillBadge from './SkillBadge.jsx';
 
 function WorkerCard({ applicant, onViewProfile, onSelect, matchedSkills = [] }) {
+  const certifications = Array.isArray(applicant.certifications) ? applicant.certifications : [];
+  const certificationCount = certifications.length;
+
   return (
     <article className="rounded-xl bg-white p-4 shadow-sm">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -45,18 +48,18 @@ function WorkerCard({ applicant, onViewProfile, onSelect, matchedSkills = [] }) 
         ))}
       </div>
 
-      {applicant.certifications.length > 0 ? (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {applicant.certifications.map((cert) => (
-            <SkillBadge key={cert} skill={cert} />
-          ))}
-        </div>
-      ) : null}
-
       {applicant.completionRate != null ? (
         <div className="mt-3 flex items-center gap-4 text-xs text-gray-500">
           <span>{applicant.completionRate}% completion rate</span>
-          <span>{applicant.experienceLevel} · {applicant.yearsExperience} yrs</span>
+          <span>{applicant.yearsExperience} yrs</span>
+        </div>
+      ) : null}
+
+      {certificationCount > 0 ? (
+        <div className="mt-3">
+          <span className="inline-flex rounded-full bg-[#2E75B6]/10 px-3 py-1 text-xs font-medium text-[#1F4E79]">
+            {certificationCount} certification{certificationCount === 1 ? '' : 's'} uploaded
+          </span>
         </div>
       ) : null}
 

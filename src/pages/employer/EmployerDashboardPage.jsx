@@ -5,17 +5,30 @@ import ActiveJobCard from '../../components/employer/ActiveJobCard.jsx';
 import PageHeader from '../../components/PageHeader.jsx';
 import StatCard from '../../components/StatCard.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { getActiveJob, getCompletedJobs } from '../../utils/clientJobs.js';
-import { getCurrentUserId } from '../../utils/currentUser.js';
+import {
+  useApplicationsForJob,
+  useJobsByOwner,
+} from '../../lib/matching/hooks.js';
+import { findActiveJob } from '../../lib/matching/jobs.js';
+import { JOB_STATUS } from '../../lib/matching/statuses.js';
 
 function EmployerDashboardPage() {
   const auth = useAuth();
-  const clientId = getCurrentUserId(auth);
+  const ownerUid = auth?.user?.uid || null;
 
-  const activeJob = useMemo(() => getActiveJob(clientId), [clientId]);
-  const completed = useMemo(() => getCompletedJobs(clientId), [clientId]);
+  const { data: jobs, loading } = useJobsByOwner(ownerUid);
 
+  const activeJob = useMemo(() => findActiveJob(jobs), [jobs]);
+  const completed = useMemo(
+    () => jobs.filter((j) => j.status === JOB_STATUS.COMPLETED),
+    [jobs]
+  );
   const lastCompleted = completed[0];
+
+  const { data: applicants } = useApplicationsForJob(
+    activeJob?.docId || activeJob?.id || null
+  );
+  const applicantsCount = applicants?.length || 0;
 
   return (
     <div>
@@ -23,13 +36,17 @@ function EmployerDashboardPage() {
         title="Client Dashboard"
         subtitle={
           activeJob
-            ? 'Stay focused on your current job until it\'s done. You\'ll be able to request another service after.'
-            : 'You don\'t have any ongoing requests. Post a job and the system will find the right worker for you.'
+            ? "Stay focused on your current job until it's done. You'll be able to request another service after."
+            : "You don't have any ongoing requests. Post a job and the system will find the right worker for you."
         }
       />
 
-      {activeJob ? (
-        <ActiveJobCard job={activeJob} />
+      {loading ? (
+        <p className="rounded-xl bg-white p-6 text-center text-sm text-gray-500 shadow-sm">
+          Loading your requests…
+        </p>
+      ) : activeJob ? (
+        <ActiveJobCard job={activeJob} applicantsCount={applicantsCount} />
       ) : (
         <NoActiveJobCard />
       )}
@@ -51,7 +68,7 @@ function EmployerDashboardPage() {
         <section className="mt-5 rounded-xl bg-white p-4 shadow-sm sm:p-5">
           <h2 className="text-lg font-semibold text-[#1F4E79]">Quick Actions</h2>
           <p className="mt-1 text-sm text-gray-600">
-            Describe what you need — the system handles finding available,
+            Describe what you need and the system will find available,
             qualified workers.
           </p>
           <div className="mt-3 flex flex-col gap-2 sm:flex-row">

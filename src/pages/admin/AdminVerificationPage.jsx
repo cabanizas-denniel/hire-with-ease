@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   HiOutlineCheckCircle,
   HiOutlineDocumentText,
@@ -16,6 +16,7 @@ import workersSeed from '../../data/applicants.js';
 import { getTrustTier } from '../../utils/trust.js';
 
 const REVIEWER = 'Maria Cruz (PESO)';
+const PAGE_SIZE = 10;
 
 /* -------------------------------------------------------------------------- */
 /*  Lookup helpers                                                             */
@@ -63,6 +64,71 @@ function formatDate(iso) {
   }
 }
 
+function safeTime(iso) {
+  const t = new Date(iso || 0).getTime();
+  return Number.isFinite(t) ? t : 0;
+}
+
+function queueSortValue(tabKey, item, sortKey) {
+  const profile = getProfile(item.id);
+  if (sortKey === 'name') return profile.name || '';
+
+  if (tabKey === 'identity') {
+    if (sortKey === 'submittedAt') return safeTime(item.record?.stage2?.idSubmittedAt);
+    if (sortKey === 'mobile') return item.record?.stage1?.mobile || '';
+  }
+
+  if (tabKey === 'documents') {
+    if (sortKey === 'submittedAt') return safeTime(item.document?.submittedAt);
+    if (sortKey === 'type') return item.document?.type || '';
+  }
+
+  if (tabKey === 'activation') {
+    if (sortKey === 'approvedAt') return safeTime(item.record?.stage2?.reviewedAt);
+    if (sortKey === 'docsCount') return (item.record?.stage3?.documents || []).length;
+  }
+
+  return '';
+}
+
+function PaginationBar({ page, totalPages, totalItems, onPrev, onNext }) {
+  const from = totalItems === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const to = Math.min(page * PAGE_SIZE, totalItems);
+  return (
+    <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-gray-100 bg-white px-4 py-3 text-sm shadow-sm">
+      <p className="text-xs font-medium text-gray-600">
+        Showing{' '}
+        <span className="font-semibold text-gray-900">{from}</span>
+        {' '}–{' '}
+        <span className="font-semibold text-gray-900">{to}</span>
+        {' '}of{' '}
+        <span className="font-semibold text-gray-900">{totalItems}</span>
+      </p>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={onPrev}
+          disabled={page <= 1}
+          className="inline-flex min-h-[36px] items-center justify-center rounded-lg border border-gray-200 bg-white px-3 text-xs font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Prev
+        </button>
+        <span className="text-xs text-gray-600">
+          Page <span className="font-semibold text-gray-900">{page}</span> / {totalPages}
+        </span>
+        <button
+          type="button"
+          onClick={onNext}
+          disabled={page >= totalPages}
+          className="inline-flex min-h-[36px] items-center justify-center rounded-lg border border-gray-200 bg-white px-3 text-xs font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Next
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /* -------------------------------------------------------------------------- */
 /*  Page                                                                       */
 /* -------------------------------------------------------------------------- */
@@ -84,6 +150,8 @@ function AdminVerificationPage() {
   } = useVerification();
 
   const [tab, setTab] = useState('identity');
+  const [sort, setSort] = useState({ key: 'submittedAt', dir: 'desc' });
+  const [pageByTab, setPageByTab] = useState({ identity: 1, documents: 1, activation: 1 });
 
   const counts = useMemo(
     () => ({
@@ -93,6 +161,44 @@ function AdminVerificationPage() {
     }),
     [pendingIdentityReviews, pendingDocumentReviews, pendingActivations]
   );
+
+  const sortOptions = useMemo(() => {
+    if (tab === 'identity') {
+      return [
+        { value: 'submittedAt', label: 'ID submitted' },
+        { value: 'name', label: 'Name' },
+        { value: 'mobile', label: 'Mobile' },
+      ];
+    }
+    if (tab === 'documents') {
+      return [
+        { value: 'submittedAt', label: 'Submitted' },
+        { value: 'name', label: 'Name' },
+        { value: 'type', label: 'Document type' },
+      ];
+    }
+    return [
+      { value: 'approvedAt', label: 'Identity approved' },
+      { value: 'name', label: 'Name' },
+      { value: 'docsCount', label: 'Documents on file' },
+    ];
+  }, [tab]);
+
+  useEffect(() => {
+    const defaultKey =
+      tab === 'identity'
+        ? 'submittedAt'
+        : tab === 'documents'
+          ? 'submittedAt'
+          : 'approvedAt';
+    setSort((prev) =>
+      prev.key === defaultKey ? prev : { key: defaultKey, dir: 'desc' }
+    );
+  }, [tab]);
+
+  useEffect(() => {
+    setPageByTab((prev) => ({ ...prev, [tab]: 1 }));
+  }, [tab, sort.key, sort.dir]);
 
   return (
     <div>
@@ -135,9 +241,41 @@ function AdminVerificationPage() {
         })}
       </div>
 
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-gray-100 bg-white p-3 shadow-sm">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+            Sort by
+          </span>
+          <select
+            value={sort.key}
+            onChange={(e) => setSort((prev) => ({ ...prev, key: e.target.value }))}
+            className="min-h-[36px] rounded-lg border border-gray-200 bg-white px-3 text-xs font-semibold text-gray-700"
+          >
+            {sortOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={() => setSort((prev) => ({ ...prev, dir: prev.dir === 'asc' ? 'desc' : 'asc' }))}
+            className="inline-flex min-h-[36px] items-center justify-center rounded-lg border border-gray-200 bg-white px-3 text-xs font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50"
+          >
+            {sort.dir === 'asc' ? 'Asc' : 'Desc'}
+          </button>
+        </div>
+        <p className="text-xs text-gray-500">
+          Limit: <span className="font-semibold text-gray-700">{PAGE_SIZE}</span> per page
+        </p>
+      </div>
+
       {tab === 'identity' ? (
         <IdentityQueue
           items={pendingIdentityReviews}
+          sort={sort}
+          page={pageByTab.identity}
+          setPage={(p) => setPageByTab((prev) => ({ ...prev, identity: p }))}
           onApprove={(id, note) =>
             reviewIdentity(id, { approve: true, reviewer: REVIEWER, note })
           }
@@ -150,6 +288,9 @@ function AdminVerificationPage() {
       {tab === 'documents' ? (
         <DocumentQueue
           items={pendingDocumentReviews}
+          sort={sort}
+          page={pageByTab.documents}
+          setPage={(p) => setPageByTab((prev) => ({ ...prev, documents: p }))}
           onApprove={(id, docIndex, note) =>
             reviewDocument(id, { docIndex, approve: true, note })
           }
@@ -162,6 +303,9 @@ function AdminVerificationPage() {
       {tab === 'activation' ? (
         <ActivationQueue
           items={pendingActivations}
+          sort={sort}
+          page={pageByTab.activation}
+          setPage={(p) => setPageByTab((prev) => ({ ...prev, activation: p }))}
           onActivate={(id) => setActivation(id, { active: true, by: REVIEWER })}
         />
       ) : null}
@@ -262,8 +406,28 @@ function ApproveRejectActions({ onApprove, onReject }) {
 
 /* --------------------------- Identity queue ------------------------------- */
 
-function IdentityQueue({ items, onApprove, onReject }) {
-  if (!items.length) {
+function IdentityQueue({ items, sort, page, setPage, onApprove, onReject }) {
+  const sorted = useMemo(() => {
+    const dir = sort.dir === 'asc' ? 1 : -1;
+    return [...items].sort((a, b) => {
+      const av = queueSortValue('identity', a, sort.key);
+      const bv = queueSortValue('identity', b, sort.key);
+      if (typeof av === 'number' && typeof bv === 'number') return dir * (av - bv);
+      return dir * String(av).localeCompare(String(bv), undefined, { sensitivity: 'base' });
+    });
+  }, [items, sort.key, sort.dir]);
+
+  const totalItems = sorted.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages, setPage]);
+  const paged = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return sorted.slice(start, start + PAGE_SIZE);
+  }, [sorted, page]);
+
+  if (!totalItems) {
     return (
       <EmptyState
         title="Identity queue is clear"
@@ -271,9 +435,18 @@ function IdentityQueue({ items, onApprove, onReject }) {
       />
     );
   }
+
   return (
-    <div className="grid gap-3 md:grid-cols-2">
-      {items.map(({ id, record }) => {
+    <>
+      <PaginationBar
+        page={page}
+        totalPages={totalPages}
+        totalItems={totalItems}
+        onPrev={() => setPage(Math.max(1, page - 1))}
+        onNext={() => setPage(Math.min(totalPages, page + 1))}
+      />
+      <div className="grid gap-3 md:grid-cols-2">
+        {paged.map(({ id, record }) => {
         const profile = getProfile(id);
         return (
           <ReviewCard
@@ -327,15 +500,36 @@ function IdentityQueue({ items, onApprove, onReject }) {
             />
           </ReviewCard>
         );
-      })}
-    </div>
+        })}
+      </div>
+    </>
   );
 }
 
 /* --------------------------- Document queue ------------------------------- */
 
-function DocumentQueue({ items, onApprove, onReject }) {
-  if (!items.length) {
+function DocumentQueue({ items, sort, page, setPage, onApprove, onReject }) {
+  const sorted = useMemo(() => {
+    const dir = sort.dir === 'asc' ? 1 : -1;
+    return [...items].sort((a, b) => {
+      const av = queueSortValue('documents', a, sort.key);
+      const bv = queueSortValue('documents', b, sort.key);
+      if (typeof av === 'number' && typeof bv === 'number') return dir * (av - bv);
+      return dir * String(av).localeCompare(String(bv), undefined, { sensitivity: 'base' });
+    });
+  }, [items, sort.key, sort.dir]);
+
+  const totalItems = sorted.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages, setPage]);
+  const paged = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return sorted.slice(start, start + PAGE_SIZE);
+  }, [sorted, page]);
+
+  if (!totalItems) {
     return (
       <EmptyState
         title="No supporting documents waiting"
@@ -343,9 +537,18 @@ function DocumentQueue({ items, onApprove, onReject }) {
       />
     );
   }
+
   return (
-    <div className="grid gap-3 md:grid-cols-2">
-      {items.map(({ id, record, document, docIndex }) => {
+    <>
+      <PaginationBar
+        page={page}
+        totalPages={totalPages}
+        totalItems={totalItems}
+        onPrev={() => setPage(Math.max(1, page - 1))}
+        onNext={() => setPage(Math.min(totalPages, page + 1))}
+      />
+      <div className="grid gap-3 md:grid-cols-2">
+        {paged.map(({ id, record, document, docIndex }) => {
         const profile = getProfile(id);
         return (
           <ReviewCard
@@ -396,15 +599,36 @@ function DocumentQueue({ items, onApprove, onReject }) {
             />
           </ReviewCard>
         );
-      })}
-    </div>
+        })}
+      </div>
+    </>
   );
 }
 
 /* --------------------------- Activation queue ----------------------------- */
 
-function ActivationQueue({ items, onActivate }) {
-  if (!items.length) {
+function ActivationQueue({ items, sort, page, setPage, onActivate }) {
+  const sorted = useMemo(() => {
+    const dir = sort.dir === 'asc' ? 1 : -1;
+    return [...items].sort((a, b) => {
+      const av = queueSortValue('activation', a, sort.key);
+      const bv = queueSortValue('activation', b, sort.key);
+      if (typeof av === 'number' && typeof bv === 'number') return dir * (av - bv);
+      return dir * String(av).localeCompare(String(bv), undefined, { sensitivity: 'base' });
+    });
+  }, [items, sort.key, sort.dir]);
+
+  const totalItems = sorted.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages, setPage]);
+  const paged = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return sorted.slice(start, start + PAGE_SIZE);
+  }, [sorted, page]);
+
+  if (!totalItems) {
     return (
       <EmptyState
         title="No-one waiting for activation"
@@ -412,9 +636,18 @@ function ActivationQueue({ items, onActivate }) {
       />
     );
   }
+
   return (
-    <div className="grid gap-3 md:grid-cols-2">
-      {items.map(({ id, record }) => {
+    <>
+      <PaginationBar
+        page={page}
+        totalPages={totalPages}
+        totalItems={totalItems}
+        onPrev={() => setPage(Math.max(1, page - 1))}
+        onNext={() => setPage(Math.min(totalPages, page + 1))}
+      />
+      <div className="grid gap-3 md:grid-cols-2">
+        {paged.map(({ id, record }) => {
         const profile = getProfile(id);
         return (
           <ReviewCard
@@ -475,8 +708,9 @@ function ActivationQueue({ items, onActivate }) {
             </div>
           </ReviewCard>
         );
-      })}
-    </div>
+        })}
+      </div>
+    </>
   );
 }
 

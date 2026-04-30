@@ -1,16 +1,14 @@
 /**
- * Prototype mapping: auth state -> verification record id.
+ * Resolves the id used by client-side prototype features (e.g. the
+ * Verification Center, which persists submissions to localStorage
+ * keyed by user id).
  *
- * In a real backend the logged-in user would already carry their own id.
- * For the demo we pin each role to a representative seed profile so the
- * Verification Center has something meaningful to render out of the box.
- * TODO: replace with real user ids once accounts are backend-backed.
+ * Production-shaped data uses Firebase auth UIDs, so we prefer those.
+ * Anonymous / not-yet-authenticated callers get null.
  */
 export function getCurrentUserId(auth) {
   if (!auth?.isAuthenticated) return null;
-  if (auth.role === 'applicant') return 'wrk-201';
-  if (auth.role === 'employer') return 'clt-001';
-  return null;
+  return auth?.user?.uid || null;
 }
 
 export function getCurrentUserRole(auth) {

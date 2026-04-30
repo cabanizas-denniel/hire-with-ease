@@ -1,39 +1,20 @@
+import { useMemo } from 'react';
 import PageHeader from '../../components/PageHeader.jsx';
-
-const jobHistory = [
-  {
-    id: 1,
-    title: 'Residential Plumbing Repair',
-    worker: 'Rafael Santos',
-    location: 'Quezon City',
-    completedAt: '2026-02-14',
-    budget: 'PHP 2,200',
-    rating: 5,
-    feedback: 'Arrived on time, fixed everything in one visit. Very professional.',
-  },
-  {
-    id: 2,
-    title: 'Office Repainting',
-    worker: 'Alyssa Reyes',
-    location: 'Taguig',
-    completedAt: '2026-02-22',
-    budget: 'PHP 1,800',
-    rating: 4,
-    feedback: 'Good finish quality, but took an extra day.',
-  },
-  {
-    id: 3,
-    title: 'Condo Tile Finishing',
-    worker: 'Noel Garcia',
-    location: 'Manila',
-    completedAt: '2026-03-06',
-    budget: 'PHP 2,400',
-    rating: 5,
-    feedback: 'Excellent craftsmanship. Highly recommended.',
-  },
-];
+import { useAuth } from '../../context/AuthContext.jsx';
+import { useJobsByOwner } from '../../lib/matching/hooks.js';
+import { JOB_STATUS } from '../../lib/matching/statuses.js';
+import { locationLabel } from '../../utils/clientJobs.js';
 
 function EmployerHiredPage() {
+  const auth = useAuth();
+  const ownerUid = auth?.user?.uid || null;
+  const { data: jobs, loading } = useJobsByOwner(ownerUid);
+
+  const completed = useMemo(
+    () => jobs.filter((j) => j.status === JOB_STATUS.COMPLETED),
+    [jobs]
+  );
+
   return (
     <div>
       <PageHeader
@@ -41,24 +22,42 @@ function EmployerHiredPage() {
         subtitle="Completed service requests, worker performance, and your feedback."
       />
 
+      {loading ? (
+        <p className="rounded-xl bg-white p-6 text-center text-sm text-gray-500 shadow-sm">
+          Loading…
+        </p>
+      ) : null}
+
+      {!loading && completed.length === 0 ? (
+        <p className="rounded-xl bg-white p-6 text-center text-sm text-gray-500 shadow-sm">
+          You haven't completed any jobs yet. Once you mark a confirmed job as
+          complete, it will land here.
+        </p>
+      ) : null}
+
       <div className="space-y-3">
-        {jobHistory.map((item) => (
-          <article key={item.id} className="rounded-xl bg-white p-4 shadow-sm">
+        {completed.map((item) => (
+          <article key={item.docId || item.id} className="rounded-xl bg-white p-4 shadow-sm">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <h3 className="text-base font-semibold text-[#1F4E79]">{item.title}</h3>
-                <p className="text-sm text-gray-600">Worker: {item.worker} · {item.location}</p>
+                <p className="text-sm text-gray-600">
+                  Worker: {item.confirmedWorkerName || '—'} · {locationLabel(item)}
+                </p>
                 <p className="mt-1 text-xs text-gray-500">
-                  Completed {item.completedAt} · {item.budget}
+                  {item.completedAt
+                    ? `Completed ${new Date(item.completedAt).toLocaleDateString()}`
+                    : `Posted ${item.postedAt || '—'}`}
+                  {item.budget ? ` · ${item.budget}` : ''}
                 </p>
               </div>
-              <span className="shrink-0 rounded-full bg-amber-50 px-3 py-1 text-sm font-semibold text-amber-700">
-                {'★'.repeat(item.rating)}{'☆'.repeat(5 - item.rating)}
+              <span className="shrink-0 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                {item.status}
               </span>
             </div>
-            {item.feedback ? (
+            {item.agreement?.scope ? (
               <p className="mt-3 rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-600 italic">
-                "{item.feedback}"
+                "{item.agreement.scope}"
               </p>
             ) : null}
           </article>

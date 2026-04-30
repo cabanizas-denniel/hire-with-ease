@@ -54,7 +54,7 @@ const howItWorks = [
   {
     step: '2',
     title: 'Clients describe what they need',
-    description: 'A structured service request: job type, required skills, budget, schedule, and location. No vague postings.',
+    description: 'A structured service request: category, title, budget, schedule, location, and photos or video of the issue. No vague postings.',
   },
   {
     step: '3',
@@ -323,14 +323,14 @@ function LandingPage() {
             <Link
               to="/register"
               state={{ defaultRole: 'employer' }}
-              className="inline-flex items-center justify-center rounded-lg bg-[#1F4E79] px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#163a5f]"
+              className="inline-flex items-center justify-center rounded-lg bg-[#2E75B6] px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#1F4E79]"
             >
               I need work done
             </Link>
             <Link
               to="/register"
               state={{ defaultRole: 'applicant' }}
-              className="inline-flex items-center justify-center rounded-lg border-2 border-[#1F4E79] bg-white px-6 py-3 text-sm font-semibold text-[#1F4E79] transition hover:bg-[#1F4E79]/5"
+              className="inline-flex items-center justify-center rounded-lg border-2 border-[#2E75B6] bg-white px-6 py-3 text-sm font-semibold text-[#1F4E79] transition hover:bg-[#1F4E79]/5"
             >
               I'm a skilled worker
             </Link>
@@ -391,7 +391,7 @@ function LandingPage() {
           </div>
           <div className="relative mx-auto mt-12 max-w-4xl lg:max-w-5xl">
             <div
-              className="absolute left-[1.125rem] top-3 bottom-3 w-px bg-gradient-to-b from-[#2E75B6] via-[#1F4E79]/35 to-transparent sm:left-[1.25rem]"
+              className="absolute left-[1.125rem] top-3 bottom-3 w-px bg-[#2E75B6]/50 sm:left-[1.25rem]"
               aria-hidden
             />
             <ul className="relative space-y-5 sm:space-y-6">

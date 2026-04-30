@@ -1,9 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { HiOutlineArrowUturnLeft, HiOutlineFlag, HiOutlineNoSymbol } from 'react-icons/hi2';
 import AvailabilityGrid from '../../components/AvailabilityGrid.jsx';
 import PageHeader from '../../components/PageHeader.jsx';
 import SkillBadge from '../../components/SkillBadge.jsx';
 import { useWorkerModeration } from '../../context/WorkerModerationContext.jsx';
+
+const PAGE_SIZE = 10;
 
 const STATUS_STYLES = {
   active: 'bg-green-100 text-green-800',
@@ -79,6 +81,7 @@ function ModerationActions({ worker, onFlag, onBan, onRestore }) {
 function AdminWorkersPage() {
   const { workers, setModerationStatus } = useWorkerModeration();
   const [filters, setFilters] = useState({ skill: '', location: '', availability: '', status: '' });
+  const [page, setPage] = useState(1);
 
   const filteredWorkers = useMemo(
     () =>
@@ -97,6 +100,22 @@ function AdminWorkersPage() {
       }),
     [workers, filters]
   );
+
+  const totalWorkers = filteredWorkers.length;
+  const totalPages = Math.max(1, Math.ceil(totalWorkers / PAGE_SIZE));
+
+  useEffect(() => {
+    setPage(1);
+  }, [filters.skill, filters.location, filters.availability, filters.status]);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
+
+  const pagedWorkers = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return filteredWorkers.slice(start, start + PAGE_SIZE);
+  }, [filteredWorkers, page]);
 
   const handleFlag = (id) => setModerationStatus(id, 'flagged');
   const handleBan = (id) => setModerationStatus(id, 'banned');
@@ -140,8 +159,45 @@ function AdminWorkersPage() {
         </select>
       </div>
 
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-gray-100 bg-white px-4 py-3 text-sm shadow-sm">
+        <p className="text-xs font-medium text-gray-600">
+          Showing{' '}
+          <span className="font-semibold text-gray-900">
+            {totalWorkers === 0 ? 0 : (page - 1) * PAGE_SIZE + 1}
+          </span>
+          {' '}–{' '}
+          <span className="font-semibold text-gray-900">
+            {Math.min(page * PAGE_SIZE, totalWorkers)}
+          </span>
+          {' '}of{' '}
+          <span className="font-semibold text-gray-900">{totalWorkers}</span>
+        </p>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page <= 1}
+            className="inline-flex min-h-[36px] items-center justify-center rounded-lg border border-gray-200 bg-white px-3 text-xs font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Prev
+          </button>
+          <span className="text-xs text-gray-600">
+            Page <span className="font-semibold text-gray-900">{page}</span> / {totalPages}
+          </span>
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page >= totalPages}
+            className="inline-flex min-h-[36px] items-center justify-center rounded-lg border border-gray-200 bg-white px-3 text-xs font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Next
+          </button>
+        </div>
+      </div>
+
       <div className="space-y-3 md:hidden">
-        {filteredWorkers.map((worker) => (
+        {pagedWorkers.map((worker) => (
           <article key={worker.id} className="rounded-xl bg-white p-4 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
@@ -185,7 +241,7 @@ function AdminWorkersPage() {
             </tr>
           </thead>
           <tbody>
-            {filteredWorkers.map((worker) => (
+            {pagedWorkers.map((worker) => (
               <tr key={worker.id} className="border-t border-gray-100 align-top">
                 <td className="px-4 py-3 font-medium text-[#1F4E79]">{worker.name}</td>
                 <td className="px-4 py-3">

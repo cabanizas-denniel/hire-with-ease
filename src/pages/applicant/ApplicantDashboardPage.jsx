@@ -4,60 +4,75 @@ import PageHeader from '../../components/PageHeader.jsx';
 import StatCard from '../../components/StatCard.jsx';
 import JobCard from '../../components/JobCard.jsx';
 import StatusBadge from '../../components/StatusBadge.jsx';
-import jobs from '../../data/jobs.js';
-
-const workerSkills = ['Plumbing', 'Pipe Fitting', 'Safety Compliance'];
+import { useAuth } from '../../context/AuthContext.jsx';
+import {
+  useApplicationsByWorker,
+  useOpenJobs,
+  useWorkerProfile,
+} from '../../lib/matching/hooks.js';
+import { scoreMatch } from '../../lib/matching/index.js';
+import {
+  ACTIVE_APPLICATION_STATUSES,
+  APPLICATION_STATUS,
+} from '../../lib/matching/statuses.js';
+import { locationLabel } from '../../utils/clientJobs.js';
 
 function ApplicantDashboardPage() {
-  const newMatches = useMemo(
+  const auth = useAuth();
+  const workerUid = auth?.user?.uid || null;
+
+  const { data: profile } = useWorkerProfile(workerUid);
+  const { data: openJobs } = useOpenJobs();
+  const { data: myApps } = useApplicationsByWorker(workerUid);
+
+  const myActiveJobIds = useMemo(
     () =>
-      jobs
-        .filter((j) => j.status === 'Matching' || j.status === 'Matched')
-        .filter((j) => j.requiredSkills.some((s) => workerSkills.includes(s)))
-        .slice(0, 3),
-    [],
+      new Set(
+        (myApps || [])
+          .filter((a) => ACTIVE_APPLICATION_STATUSES.has(a.status))
+          .map((a) => a.jobId)
+      ),
+    [myApps]
   );
 
-  const activeJobs = [
-    { id: 1, title: 'Office Repainting', client: 'Northlight Interiors', status: 'In Progress' },
-    { id: 2, title: 'Emergency Pipe Leak', client: 'Café Amore', status: 'Accepted' },
-  ];
+  const newMatches = useMemo(() => {
+    if (!profile) return [];
+    return openJobs
+      .map((job) => ({ job, ...scoreMatch(job, profile) }))
+      .filter((entry) => entry.matchedSkills?.length > 0)
+      .filter((entry) => !myActiveJobIds.has(entry.job.docId || entry.job.id))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3);
+  }, [profile, openJobs, myActiveJobIds]);
+
+  const completedCount = (myApps || []).filter(
+    (a) => a.status === APPLICATION_STATUS.COMPLETED
+  ).length;
 
   return (
     <div>
       <PageHeader
         title="Worker Dashboard"
-        subtitle="Jobs matched to your skills and availability are pushed here automatically."
+        subtitle="Jobs matched to your skills are pushed here automatically. Apply, chat with the homeowner, and only commit once both sides agree."
       />
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="New Matches" value={newMatches.length} helperText="Waiting for your response" />
-        <StatCard label="Active Jobs" value={activeJobs.length} helperText="Currently in progress" />
-        <StatCard label="Jobs Completed" value="47" helperText="All time" />
-        <StatCard label="Your Rating" value="4.8" helperText="Based on client feedback" />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <StatCard
+          label="New Matches"
+          value={newMatches.length}
+          helperText="Waiting for your response"
+        />
+        <StatCard
+          label="Jobs Completed"
+          value={profile?.jobsCompleted ?? completedCount}
+          helperText="All time"
+        />
+        <StatCard
+          label="Your Rating"
+          value={profile?.rating != null ? profile.rating : '—'}
+          helperText="Based on client feedback"
+        />
       </div>
-
-      {activeJobs.length > 0 ? (
-        <section className="mt-6">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-[#1F4E79]">Active Jobs</h2>
-            <Link to="/applicant/applications" className="text-sm font-medium text-[#2E75B6]">
-              View all
-            </Link>
-          </div>
-          <div className="space-y-3">
-            {activeJobs.map((job) => (
-              <div key={job.id} className="flex items-center justify-between rounded-xl bg-white p-4 shadow-sm">
-                <div>
-                  <p className="text-base font-semibold text-[#1F4E79]">{job.title}</p>
-                  <p className="text-sm text-gray-600">{job.client}</p>
-                </div>
-                <StatusBadge status={job.status} />
-              </div>
-            ))}
-          </div>
-        </section>
-      ) : null}
 
       <section className="mt-6">
         <div className="mb-3 flex items-center justify-between">
@@ -67,11 +82,20 @@ function ApplicantDashboardPage() {
           </Link>
         </div>
         <p className="mb-3 text-sm text-gray-500">
-          The system matched these based on your skills, availability, and location. Accept or decline — no browsing needed.
+          The system matched these based on your skills, availability, and location.
         </p>
         <div className="grid gap-3">
-          {newMatches.map((job) => (
-            <JobCard key={job.id} job={job} compact />
+          {newMatches.map(({ job }) => (
+            <JobCard
+              key={job.docId || job.id}
+              job={{
+                ...job,
+                location: locationLabel(job),
+                clientName: job.postedByName || job.clientName,
+                schedule: job.schedule || (job.type === 'Rush' ? 'ASAP · Dispatch now' : ''),
+              }}
+              compact
+            />
           ))}
           {newMatches.length === 0 ? (
             <p className="rounded-xl bg-white p-6 text-center text-sm text-gray-500 shadow-sm">

@@ -1,13 +1,23 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import AuthLayout from '../../components/auth/AuthLayout.jsx';
 import PasswordInput from '../../components/PasswordInput.jsx';
+import { useAuth } from '../../context/AuthContext.jsx';
 
 const REGISTER_BENEFITS = [
   'Free to sign up — set your role and start in under a minute.',
   'Workers: availability-first profile means no wasted applications.',
   'Clients: one focused request at a time, workers come to you.',
 ];
+
+function translateAuthError(err) {
+  const code = err?.code || '';
+  if (code === 'auth/email-already-in-use') return 'An account with that email already exists.';
+  if (code === 'auth/invalid-email') return 'That email address looks invalid.';
+  if (code === 'auth/weak-password') return 'Password is too weak. Use at least 6 characters.';
+  if (code === 'auth/network-request-failed') return 'Network error. Check your connection.';
+  return err?.message || 'Could not create your account. Please try again.';
+}
 
 function RegisterPage() {
   const location = useLocation();
@@ -22,17 +32,45 @@ function RegisterPage() {
     role: defaultRole,
   });
   const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
+  const { register, getDefaultRoute, isAuthenticated, role: authRole } = useAuth();
 
-  const handleSubmit = (event) => {
+  // Same reason as LoginPage: wait until the AuthProvider has committed
+  // the authenticated state before navigating, otherwise ProtectedRoute
+  // bounces us back and the form remounts with empty fields.
+  useEffect(() => {
+    if (!isAuthenticated || !authRole) return;
+    navigate(getDefaultRoute(authRole), { replace: true });
+  }, [isAuthenticated, authRole, navigate, getDefaultRoute]);
+
+  const handleSubmit = async (event) => {
     event.preventDefault();
+    setError('');
 
     if (form.password !== form.confirmPassword) {
       setError('Passwords do not match.');
       return;
     }
+    if (form.password.length < 6) {
+      setError('Password must be at least 6 characters.');
+      return;
+    }
 
-    navigate('/login');
+    setSubmitting(true);
+    try {
+      await register({
+        email: form.email,
+        password: form.password,
+        fullName: form.fullName,
+        role: form.role,
+      });
+      // Navigation happens via the effect above once AuthContext flips to
+      // isAuthenticated=true with a role.
+    } catch (err) {
+      setError(translateAuthError(err));
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -107,7 +145,7 @@ function RegisterPage() {
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, password: e.target.value }))
               }
-              placeholder="At least 8 characters"
+              placeholder="At least 6 characters"
               autoComplete="new-password"
               required
             />
@@ -167,9 +205,10 @@ function RegisterPage() {
 
         <button
           type="submit"
-          className="mt-2 w-full rounded-lg bg-[#1F4E79] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-110 cursor-pointer"
+          disabled={submitting}
+          className="mt-2 w-full rounded-lg bg-[#2E75B6] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-110 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
         >
-          Create account
+          {submitting ? 'Creating account…' : 'Create account'}
         </button>
       </form>
     </AuthLayout>
@@ -184,8 +223,8 @@ function RoleOption({ active, onClick, title, subtitle }) {
       aria-pressed={active}
       className={`flex flex-col items-start rounded-lg border px-3.5 py-2.5 text-left transition cursor-pointer ${
         active
-          ? 'border-[#1F4E79] bg-[#1F4E79] text-white shadow-sm'
-          : 'border-gray-200 bg-white text-gray-700 hover:border-[#1F4E79]/40 hover:bg-[#1F4E79]/5'
+          ? 'border-[#2E75B6] bg-[#2E75B6] text-white shadow-sm'
+          : 'border-gray-200 bg-white text-gray-700 hover:border-[#2E75B6]/40 hover:bg-[#2E75B6]/5'
       }`}
     >
       <span className="text-sm font-semibold">{title}</span>
