@@ -12,15 +12,25 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-if (!firebaseConfig.apiKey) {
-  // Surface a clear error early in dev rather than a confusing runtime crash later.
-   
+/** True when Vite had a full Firebase web config at build time (local .env or CI/Vercel env). */
+export const isFirebaseConfigured = Boolean(
+  firebaseConfig.apiKey &&
+    firebaseConfig.authDomain &&
+    firebaseConfig.projectId &&
+    firebaseConfig.storageBucket &&
+    firebaseConfig.messagingSenderId &&
+    firebaseConfig.appId
+);
+
+if (!isFirebaseConfigured) {
   console.error(
-    'Firebase config is missing. Create a .env file at the project root using .env.example as a template.'
+    'Firebase config is missing. For local dev, copy .env.example to .env. On Vercel, add the same VITE_FIREBASE_* variables under Project → Settings → Environment Variables, then redeploy.'
   );
 }
 
-export const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
-export const db = getFirestore(app);
-export const storage = getStorage(app);
+const app = isFirebaseConfigured ? initializeApp(firebaseConfig) : null;
+
+export { app };
+export const auth = app ? getAuth(app) : null;
+export const db = app ? getFirestore(app) : null;
+export const storage = app ? getStorage(app) : null;

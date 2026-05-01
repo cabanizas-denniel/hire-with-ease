@@ -8,7 +8,7 @@ import {
   updateProfile,
 } from 'firebase/auth';
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
-import { auth, db } from '../lib/firebase.js';
+import { auth, db, isFirebaseConfigured } from '../lib/firebase.js';
 import { ensureWorkerProfile } from '../lib/matching/workerProfile.js';
 import {
   FIRESTORE_ROLES,
@@ -34,6 +34,9 @@ const INITIAL_STATE = {
 };
 
 async function loadUserProfile(firebaseUser) {
+  if (!db) {
+    return { firestoreRole: null, fullName: firebaseUser.displayName || '', profile: null };
+  }
   const ref = doc(db, 'users', firebaseUser.uid);
   const snap = await getDoc(ref);
   if (!snap.exists()) {
@@ -51,6 +54,10 @@ export function AuthProvider({ children }) {
   const [authState, setAuthState] = useState(INITIAL_STATE);
 
   useEffect(() => {
+    if (!auth) {
+      setAuthState({ ...INITIAL_STATE, loading: false });
+      return undefined;
+    }
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (!firebaseUser) {
         setAuthState({ ...INITIAL_STATE, loading: false });
@@ -113,12 +120,18 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = useCallback(async ({ email, password }) => {
+    if (!auth) {
+      throw new Error('Firebase is not configured; auth is unavailable.');
+    }
     const cred = await signInWithEmailAndPassword(auth, email, password);
     const { firestoreRole } = await loadUserProfile(cred.user);
     return toAppRole(firestoreRole);
   }, []);
 
   const register = useCallback(async ({ email, password, fullName, role }) => {
+    if (!auth || !db) {
+      throw new Error('Firebase is not configured; registration is unavailable.');
+    }
     const firestoreRole = toFirestoreRole(role);
     if (!isValidFirestoreRole(firestoreRole) || firestoreRole === 'admin') {
       // Admin role can never be self-assigned. Frontend guard mirrors Firestore Rules.
@@ -139,12 +152,14 @@ export function AuthProvider({ children }) {
   }, []);
 
   const logout = useCallback(async () => {
+    if (!auth) return;
     await signOut(auth);
   }, []);
 
   const value = useMemo(
     () => ({
       ...authState,
+      isFirebaseConfigured,
       login,
       register,
       logout,

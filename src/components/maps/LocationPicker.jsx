@@ -67,6 +67,9 @@ function LocationPicker({ value, onChange, height = 260 }) {
   const [geoState, setGeoState] = useState({ status: 'idle', error: null });
   const [pendingFly, setPendingFly] = useState(null);
 
+  const isWithinBounds = (lat, lng) =>
+    lat >= SW.lat && lat <= NE.lat && lng >= SW.lng && lng <= NE.lng;
+
   const setPin = (lat, lng) => {
     const nearest = nearestBarangay(lat, lng);
     onChange({
@@ -89,7 +92,33 @@ function LocationPicker({ value, onChange, height = 260 }) {
     setGeoState({ status: 'loading', error: null });
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        const { latitude, longitude } = pos.coords;
+        const { latitude, longitude, accuracy } = pos.coords;
+
+        // Desktop browsers often return an IP/Wi‑Fi based fix that can be far off.
+        // Only overwrite the pin when the reading is reasonably accurate.
+        if (!isWithinBounds(latitude, longitude)) {
+          setGeoState({
+            status: 'error',
+            error:
+              'Your current location appears outside Olongapo City. Please drop the pin manually on the map.',
+          });
+          return;
+        }
+
+        const maxAcceptableAccuracyMeters = 250;
+        if (Number.isFinite(accuracy) && accuracy > maxAcceptableAccuracyMeters) {
+          setGeoState({
+            status: 'error',
+            error: `Location isn’t accurate enough yet (±${Math.round(
+              accuracy
+            )}m). Try again, or place the pin manually.`,
+          });
+          // Still pan the map to roughly where the device thinks it is,
+          // but don't overwrite a user's chosen pin with a low-confidence fix.
+          setPendingFly({ lat: latitude, lng: longitude });
+          return;
+        }
+
         setPin(latitude, longitude);
         setPendingFly({ lat: latitude, lng: longitude });
         setGeoState({ status: 'idle', error: null });
@@ -102,7 +131,11 @@ function LocationPicker({ value, onChange, height = 260 }) {
             'Could not get your current location. Please pick on the map instead.',
         });
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0, // avoid cached (possibly far away) readings
+      }
     );
   };
 
