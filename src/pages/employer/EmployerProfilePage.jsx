@@ -20,7 +20,7 @@ function EmployerProfilePage() {
     email: seed?.email || '',
     location: seed?.location || 'Mabayuan',
     locationDetails: '',
-    preferredContact: seed?.email ? 'email' : 'mobile',
+    preferredContact: 'email',
     bio:
       'I own a small two-story residence in Mabayuan. I book vetted workers through PESO for routine maintenance and occasional renovations.',
     typicalBudget: 'PHP 1,000 - 3,000',
@@ -76,7 +76,26 @@ function EmployerProfilePage() {
 
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-600">
-                Mobile number
+                Email
+              </label>
+              <input
+                type="email"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
+                value={profile.email || ''}
+                onChange={(e) => handleChange('email', e.target.value)}
+              />
+              {auth?.user?.email ? (
+                <p className="mt-1 text-[11px] text-gray-500">
+                  Account email (sign-in):{' '}
+                  <span className="font-medium text-gray-700">{auth.user.email}</span>
+                  {' — '}
+                  use this in Verification (above) unless you intentionally use another address here.
+                </p>
+              ) : null}
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">
+                Phone <span className="font-normal text-gray-400">(optional)</span>
               </label>
               <input
                 type="tel"
@@ -84,17 +103,7 @@ function EmployerProfilePage() {
                 className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
                 value={profile.mobile}
                 onChange={(e) => handleChange('mobile', e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">
-                Email <span className="text-gray-400">(optional)</span>
-              </label>
-              <input
-                type="email"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
-                value={profile.email || ''}
-                onChange={(e) => handleChange('email', e.target.value)}
+                placeholder="For urgent job-day contact only — not used for verification"
               />
             </div>
 
@@ -137,9 +146,9 @@ function EmployerProfilePage() {
                 value={profile.preferredContact}
                 onChange={(e) => handleChange('preferredContact', e.target.value)}
               >
-                <option value="mobile">SMS / Call</option>
                 <option value="email">Email</option>
                 <option value="in-app">In-app notifications</option>
+                <option value="phone">Phone call / text (your optional number)</option>
               </select>
             </div>
 

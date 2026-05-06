@@ -1,63 +1,106 @@
-import { useState } from 'react';
-import { HiOutlineDevicePhoneMobile, HiOutlineEnvelope, HiOutlineLockClosed } from 'react-icons/hi2';
+import { useEffect, useMemo, useState } from 'react';
+import { sendEmailVerification } from 'firebase/auth';
+import { HiOutlineEnvelope } from 'react-icons/hi2';
 import { useVerification } from '../../context/VerificationContext.jsx';
 import ModalShell from './ModalShell.jsx';
+import { auth } from '../../lib/firebase.js';
 
 /**
- * Simulated OTP flow for the prototype.
+ * Email verification using Firebase Auth.
  *
- * Step 1 — "details": user enters mobile + (optional) email
- * Step 2 — "code": we generate a 6-digit code locally and show it on screen
- *                 so reviewers can "receive" it in the demo. Matching the
- *                 code confirms OTP and advances the verification record.
- *
- * TODO: replace local code generation with a real SMS provider once the
- * backend is wired.
+ * Flow:
+ * - Send Firebase "Verify email address" message to the currently signed-in user.
+ * - User clicks the link, then returns and taps "I've verified" to refresh.
  */
-function generateOtp() {
-  return String(Math.floor(100000 + Math.random() * 900000));
-}
 
-function OtpVerifyModal({ isOpen, userId, existingMobile, existingEmail, onClose, onSuccess }) {
+function OtpVerifyModal({
+  isOpen,
+  userId,
+  accountEmail = '',
+  existingEmail,
+  onClose,
+  onSuccess,
+}) {
   const { confirmOtp } = useVerification();
   const [step, setStep] = useState('details');
-  const [mobile, setMobile] = useState(existingMobile || '');
-  const [email, setEmail] = useState(existingEmail || '');
-  const [otp, setOtp] = useState('');
-  const [input, setInput] = useState('');
   const [error, setError] = useState('');
   const [sentAt, setSentAt] = useState(null);
+  const [busy, setBusy] = useState(false);
 
-  const mobileValid = /^\+?[\d\s-]{10,}$/.test(mobile.trim());
+  const firebaseUser = auth?.currentUser || null;
+  const effectiveEmail = useMemo(() => {
+    return (
+      (firebaseUser?.email || '').trim() ||
+      (existingEmail || '').trim() ||
+      (accountEmail || '').trim()
+    );
+  }, [firebaseUser?.email, existingEmail, accountEmail]);
 
-  const handleSend = () => {
-    if (!mobileValid) {
-      setError('Enter a valid mobile number (at least 10 digits).');
+  useEffect(() => {
+    if (!isOpen) return;
+    setStep('details');
+    setError('');
+    setSentAt(null);
+    setBusy(false);
+  }, [isOpen, existingEmail, accountEmail]);
+
+  const handleSend = async () => {
+    if (!auth) {
+      setError('Firebase is not configured. Email verification is unavailable.');
       return;
     }
-    setError('');
-    const code = generateOtp();
-    setOtp(code);
-    setSentAt(Date.now());
-    setStep('code');
-  };
-
-  const handleResend = () => {
-    const code = generateOtp();
-    setOtp(code);
-    setSentAt(Date.now());
-    setInput('');
-    setError('');
-  };
-
-  const handleVerify = () => {
-    if (input.trim() !== otp) {
-      setError("That code doesn't match. Double-check and try again.");
+    if (!firebaseUser) {
+      setError('You need to be signed in to send a verification email.');
       return;
     }
-    confirmOtp(userId, { mobile: mobile.trim(), email: email.trim() || null });
-    if (onSuccess) onSuccess();
-    onClose();
+    if (!firebaseUser.email) {
+      setError('No email is set on this account.');
+      return;
+    }
+    if (firebaseUser.emailVerified) {
+      // Already verified; complete Stage 1 immediately.
+      confirmOtp(userId, { email: firebaseUser.email });
+      if (onSuccess) onSuccess();
+      onClose();
+      return;
+    }
+    setBusy(true);
+    setError('');
+    try {
+      await sendEmailVerification(firebaseUser, {
+        url: window.location.origin,
+        handleCodeInApp: false,
+      });
+      setSentAt(Date.now());
+      setStep('code');
+    } catch (err) {
+      setError(err?.message || 'Could not send verification email. Please try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleIveVerified = async () => {
+    if (!firebaseUser) {
+      setError('You need to be signed in to complete verification.');
+      return;
+    }
+    setBusy(true);
+    setError('');
+    try {
+      await firebaseUser.reload();
+      if (!firebaseUser.emailVerified) {
+        setError("Still not verified yet. Check your inbox (and spam), click the link, then try again.");
+        return;
+      }
+      confirmOtp(userId, { email: firebaseUser.email });
+      if (onSuccess) onSuccess();
+      onClose();
+    } catch (err) {
+      setError(err?.message || 'Could not refresh verification state. Please try again.');
+    } finally {
+      setBusy(false);
+    }
   };
 
   const footer =
@@ -73,9 +116,10 @@ function OtpVerifyModal({ isOpen, userId, existingMobile, existingEmail, onClose
         <button
           type="button"
           onClick={handleSend}
-          className="w-full cursor-pointer rounded-lg bg-[#1F4E79] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:brightness-110"
+          disabled={busy}
+          className="w-full cursor-pointer rounded-lg bg-[#1F4E79] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          Send OTP
+          {busy ? 'Sending…' : 'Send verification email'}
         </button>
       </div>
     ) : (
@@ -89,11 +133,11 @@ function OtpVerifyModal({ isOpen, userId, existingMobile, existingEmail, onClose
         </button>
         <button
           type="button"
-          onClick={handleVerify}
-          disabled={input.length !== 6}
+          onClick={handleIveVerified}
+          disabled={busy}
           className="w-full cursor-pointer rounded-lg bg-[#1F4E79] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          Verify
+          {busy ? 'Checking…' : "I've verified"}
         </button>
       </div>
     );
@@ -102,11 +146,11 @@ function OtpVerifyModal({ isOpen, userId, existingMobile, existingEmail, onClose
     <ModalShell
       isOpen={isOpen}
       onClose={onClose}
-      title="Phone Verification"
+      title="Email verification"
       subtitle={
         step === 'details'
-          ? 'Stage 1 of 4 — confirm your number to start receiving job alerts.'
-          : 'Stage 1 of 4 — enter the 6-digit code we sent.'
+          ? 'Stage 1 of 4 — send a verification email to your account.'
+          : 'Stage 1 of 4 — click the link, then come back and confirm.'
       }
       footer={footer}
     >
@@ -114,35 +158,19 @@ function OtpVerifyModal({ isOpen, userId, existingMobile, existingEmail, onClose
         <div className="space-y-4">
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-600">
-              Mobile number
+              Account email
             </label>
-            <div className="flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 focus-within:border-[#1F4E79] focus-within:ring-1 focus-within:ring-[#1F4E79]">
-              <HiOutlineDevicePhoneMobile className="h-4 w-4 text-gray-400" aria-hidden="true" />
-              <input
-                type="tel"
-                inputMode="tel"
-                value={mobile}
-                onChange={(e) => setMobile(e.target.value)}
-                placeholder="+63 9XX XXX XXXX"
-                className="w-full bg-transparent text-sm text-gray-800 outline-none"
-              />
+            <div className="flex items-center gap-2 rounded-lg border border-gray-300 bg-gray-50 px-3 py-2">
+              <HiOutlineEnvelope className="h-4 w-4 shrink-0 text-gray-400" aria-hidden="true" />
+              <p className="w-full min-w-0 break-all text-sm text-gray-800">
+                {effectiveEmail || '—'}
+              </p>
             </div>
-          </div>
-
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">
-              Email <span className="text-gray-400">(optional)</span>
-            </label>
-            <div className="flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 focus-within:border-[#1F4E79] focus-within:ring-1 focus-within:ring-[#1F4E79]">
-              <HiOutlineEnvelope className="h-4 w-4 text-gray-400" aria-hidden="true" />
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                className="w-full bg-transparent text-sm text-gray-800 outline-none"
-              />
-            </div>
+            {!effectiveEmail ? (
+              <p className="mt-1 text-[11px] text-amber-700">
+                No account email found. Please sign in with an email/password account.
+              </p>
+            ) : null}
           </div>
 
           {error ? (
@@ -152,43 +180,19 @@ function OtpVerifyModal({ isOpen, userId, existingMobile, existingEmail, onClose
           ) : null}
 
           <p className="rounded-md bg-blue-50 px-3 py-2 text-xs text-blue-800">
-            We'll send a 6-digit code to this number. For the prototype, the
-            code will appear on the next screen instead of an actual SMS.
+            We’ll send a verification email via Firebase. Open it, click the link, then return here and tap “I’ve verified”.
           </p>
         </div>
       ) : (
         <div className="space-y-4">
           <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-center">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">
-              Demo OTP (this screen only)
+              Verification email sent
             </p>
-            <p className="mt-1 text-3xl font-bold tracking-[0.35em] text-emerald-800">
-              {otp}
-            </p>
-            <p className="mt-1 text-[11px] text-emerald-700/80">
-              Sent to {mobile || 'your number'}
+            <p className="mt-1 break-all text-[11px] text-emerald-700/80">
+              To {effectiveEmail || 'your email'}
               {sentAt ? ` · ${new Date(sentAt).toLocaleTimeString()}` : ''}
             </p>
-          </div>
-
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">
-              Enter the 6-digit code
-            </label>
-            <div className="flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 focus-within:border-[#1F4E79] focus-within:ring-1 focus-within:ring-[#1F4E79]">
-              <HiOutlineLockClosed className="h-4 w-4 text-gray-400" aria-hidden="true" />
-              <input
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                maxLength={6}
-                value={input}
-                onChange={(e) => setInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                placeholder="------"
-                className="w-full bg-transparent text-center text-lg font-semibold tracking-[0.35em] text-gray-800 outline-none"
-                autoFocus
-              />
-            </div>
           </div>
 
           {error ? (
@@ -198,13 +202,14 @@ function OtpVerifyModal({ isOpen, userId, existingMobile, existingEmail, onClose
           ) : null}
 
           <div className="flex items-center justify-between text-xs text-gray-500">
-            <span>Didn't get it?</span>
+            <span>{`Didn't receive it?`}</span>
             <button
               type="button"
-              onClick={handleResend}
+              onClick={handleSend}
+              disabled={busy}
               className="cursor-pointer font-semibold text-[#1F4E79] hover:underline"
             >
-              Resend code
+              Resend email
             </button>
           </div>
         </div>

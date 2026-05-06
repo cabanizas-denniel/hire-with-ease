@@ -214,6 +214,15 @@ function ApplicantProfilePage() {
         <section>
           <h2 className="mb-3 text-sm font-semibold text-[#1F4E79]">Personal Details</h2>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <label className="mb-1 block text-xs font-medium text-gray-600">Account email</label>
+              <p className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-800">
+                {auth?.user?.email || '—'}
+              </p>
+              <p className="mt-1 text-[11px] text-gray-500">
+                Use <strong>Verification</strong> above to confirm this email. It is the address you signed up with.
+              </p>
+            </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-600">Full Name</label>
               <input

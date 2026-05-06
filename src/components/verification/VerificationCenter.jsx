@@ -2,14 +2,14 @@ import { useMemo, useState } from 'react';
 import {
   HiOutlineCheckCircle,
   HiOutlineClock,
-  HiOutlineDevicePhoneMobile,
-  HiOutlineDocumentPlus,
+  HiOutlineEnvelope,
   HiOutlineDocumentText,
   HiOutlineExclamationTriangle,
   HiOutlineIdentification,
   HiOutlineShieldCheck,
   HiOutlineSparkles,
 } from 'react-icons/hi2';
+import { useAuth } from '../../context/AuthContext.jsx';
 import { useVerification } from '../../context/VerificationContext.jsx';
 import { TIER_DESCRIPTIONS } from '../../utils/trust.js';
 import TrustBadge from '../TrustBadge.jsx';
@@ -24,6 +24,7 @@ import OtpVerifyModal from './OtpVerifyModal.jsx';
  * this component simply surfaces its status.
  */
 function VerificationCenter({ userId, role = 'service-provider', className = '' }) {
+  const { user } = useAuth();
   const { records, getProgress, getTier } = useVerification();
   const record = records[userId] || null;
 
@@ -42,15 +43,15 @@ function VerificationCenter({ userId, role = 'service-provider', className = '' 
   const stages = [
     {
       key: 'stage1',
-      icon: HiOutlineDevicePhoneMobile,
-      title: 'Phone Verification',
+      icon: HiOutlineEnvelope,
+      title: 'Email verification',
       body: stage1Done
-        ? `Confirmed ${record?.stage1?.mobile || 'on file'} · ${formatDate(record?.stage1?.otpVerifiedAt)}`
-        : 'Confirm your mobile number with a 6-digit code.',
+        ? `Confirmed ${record?.stage1?.email || record?.stage1?.mobile || 'on file'} · ${formatDate(record?.stage1?.otpVerifiedAt)}`
+        : 'Confirm your email address with a 6-digit code.',
       state: stage1Done ? 'complete' : 'pending',
       action: stage1Done
-        ? { label: 'Update number', onClick: () => setOtpOpen(true), variant: 'secondary' }
-        : { label: 'Verify phone', onClick: () => setOtpOpen(true), variant: 'primary' },
+        ? { label: 'Update email', onClick: () => setOtpOpen(true), variant: 'secondary' }
+        : { label: 'Verify email', onClick: () => setOtpOpen(true), variant: 'primary' },
     },
     {
       key: 'stage2',
@@ -137,7 +138,7 @@ function VerificationCenter({ userId, role = 'service-provider', className = '' 
         <OtpVerifyModal
           isOpen
           userId={userId}
-          existingMobile={record?.stage1?.mobile}
+          accountEmail={user?.email || ''}
           existingEmail={record?.stage1?.email}
           onClose={() => setOtpOpen(false)}
         />
@@ -261,13 +262,13 @@ function identityBody(s, record) {
   return 'Upload a government-issued ID and a selfie holding it.';
 }
 
-function identityAction(s, phoneDone, openFn) {
+function identityAction(s, stage1Done, openFn) {
   if (s === 'pending') return null;
   return {
     label: s === 'rejected' ? 'Resubmit' : s === 'reviewed' ? 'Update' : 'Start verification',
     onClick: openFn,
     variant: s === 'reviewed' ? 'secondary' : 'primary',
-    disabled: !phoneDone,
+    disabled: !stage1Done,
   };
 }
 

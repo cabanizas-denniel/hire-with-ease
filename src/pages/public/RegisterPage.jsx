@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import AuthLayout from '../../components/auth/AuthLayout.jsx';
+import Turnstile from '../../components/auth/Turnstile.jsx';
 import PasswordInput from '../../components/PasswordInput.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 
@@ -33,6 +34,7 @@ function RegisterPage() {
   });
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState('');
   const navigate = useNavigate();
   const { register, getDefaultRoute, isAuthenticated, role: authRole } = useAuth();
 
@@ -57,6 +59,11 @@ function RegisterPage() {
       return;
     }
 
+    if (!captchaToken) {
+      setError('Please complete the captcha first.');
+      return;
+    }
+
     setSubmitting(true);
     try {
       await register({
@@ -64,12 +71,14 @@ function RegisterPage() {
         password: form.password,
         fullName: form.fullName,
         role: form.role,
+        captchaToken,
       });
       // Navigation happens via the effect above once AuthContext flips to
       // isAuthenticated=true with a role.
     } catch (err) {
       setError(translateAuthError(err));
       setSubmitting(false);
+      setCaptchaToken('');
     }
   };
 
@@ -203,9 +212,15 @@ function RegisterPage() {
           </p>
         ) : null}
 
+        <Turnstile
+          className="pt-1"
+          onToken={(t) => setCaptchaToken(t || '')}
+          onError={(msg) => setError(msg || 'Captcha failed. Please try again.')}
+        />
+
         <button
           type="submit"
-          disabled={submitting}
+          disabled={submitting || !captchaToken}
           className="mt-2 w-full rounded-lg bg-[#2E75B6] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-110 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
         >
           {submitting ? 'Creating account…' : 'Create account'}

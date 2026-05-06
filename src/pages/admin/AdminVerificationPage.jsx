@@ -75,7 +75,7 @@ function queueSortValue(tabKey, item, sortKey) {
 
   if (tabKey === 'identity') {
     if (sortKey === 'submittedAt') return safeTime(item.record?.stage2?.idSubmittedAt);
-    if (sortKey === 'mobile') return item.record?.stage1?.mobile || '';
+    if (sortKey === 'email') return item.record?.stage1?.email || item.record?.stage1?.mobile || '';
   }
 
   if (tabKey === 'documents') {
@@ -167,7 +167,7 @@ function AdminVerificationPage() {
       return [
         { value: 'submittedAt', label: 'ID submitted' },
         { value: 'name', label: 'Name' },
-        { value: 'mobile', label: 'Mobile' },
+        { value: 'email', label: 'Email' },
       ];
     }
     if (tab === 'documents') {
@@ -474,9 +474,9 @@ function IdentityQueue({ items, sort, page, setPage, onApprove, onReject }) {
                 </dd>
               </div>
               <div className="flex justify-between">
-                <dt>Mobile confirmed</dt>
-                <dd className="font-medium text-gray-800">
-                  {record.stage1?.mobile || '—'}
+                <dt>Email verified</dt>
+                <dd className="max-w-[55%] break-all font-medium text-gray-800">
+                  {record.stage1?.email || record.stage1?.mobile || '—'}
                 </dd>
               </div>
             </dl>
@@ -669,7 +669,7 @@ function ActivationQueue({ items, sort, page, setPage, onActivate }) {
           >
             <dl className="mt-3 space-y-1 text-xs text-gray-600">
               <div className="flex justify-between">
-                <dt>Phone confirmed</dt>
+                <dt>Email verified</dt>
                 <dd className="font-medium text-gray-800">
                   {formatDate(record.stage1?.otpVerifiedAt)}
                 </dd>

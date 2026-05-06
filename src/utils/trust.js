@@ -3,7 +3,7 @@
  *
  * Tier definition (prototype rules, matches the PESO onboarding flow):
  *   Tier 0 — Unverified (nothing completed yet)
- *   Tier 1 — Phone Verified (Stage 1 OTP done)
+ *   Tier 1 — Email verified (Stage 1 OTP done)
  *   Tier 2 — Identity Reviewed (Stage 1 + Stage 2 reviewed by admin)
  *   Tier 3 — Document-Backed (Tier 2 + Stage 3 has >=1 admin-reviewed doc)
  *   Tier 4 — Fully Verified (Tier 2 + Stage 4 admin activation; Stage 3 optional but strong)
@@ -22,7 +22,7 @@ export const TIERS = {
 
 export const TIER_LABELS = {
   0: 'Unverified',
-  1: 'Phone Verified',
+  1: 'Email verified',
   2: 'Identity Reviewed',
   3: 'Document-Backed',
   4: 'Fully Verified',
@@ -30,7 +30,7 @@ export const TIER_LABELS = {
 
 export const TIER_DESCRIPTIONS = {
   0: 'Not yet registered for verification.',
-  1: 'Mobile number confirmed via OTP.',
+  1: 'Email address confirmed via verification code.',
   2: 'Government ID and selfie reviewed by a PESO officer.',
   3: 'Identity + supporting documents (Barangay clearance, TESDA, etc.) on file.',
   4: 'Activated by PESO. Cleared to accept or post jobs on the platform.',
@@ -48,12 +48,12 @@ export function getTrustTier(record, role = 'service-provider') {
   if (!record) return TIERS.UNVERIFIED;
   const { stage1, stage2, stage3, stage4 } = record;
 
-  const phoneDone = Boolean(stage1?.otpVerifiedAt);
+  const stage1OtpDone = Boolean(stage1?.otpVerifiedAt);
   const identityReviewed = stage2?.reviewStatus === 'reviewed';
   const documentBacked = Boolean(stage3?.documentBacked);
   const activated = Boolean(stage4?.activatedAt);
 
-  if (!phoneDone) return TIERS.UNVERIFIED;
+  if (!stage1OtpDone) return TIERS.UNVERIFIED;
 
   if (role === 'service-provider') {
     if (activated && identityReviewed) return TIERS.FULL;

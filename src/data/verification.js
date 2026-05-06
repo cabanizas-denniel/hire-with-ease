@@ -5,8 +5,8 @@
  * Record shape:
  * {
  *   role: 'service-provider' | 'client',
- *   stage1: {                       // Account creation + OTP
- *     mobile, email, otpVerifiedAt,
+ *   stage1: {                       // Account creation + email OTP
+ *     mobile (legacy), email, otpVerifiedAt,
  *   },
  *   stage2: {                       // Identity submission + admin review
  *     idSubmittedAt, selfieSubmittedAt,
@@ -592,7 +592,7 @@ const clientVerification = {
     stage4: s4Pending(),
   },
 
-  // ---- Tier 1 (phone only) -----------------------------------------------
+  // ---- Tier 1 (email / legacy phone OTP) -------------------------------
   'clt-001': {
     role: 'client',
     stage1: s1('+63 917 812 4412', null, '2025-10-12T11:00:00.000Z'),

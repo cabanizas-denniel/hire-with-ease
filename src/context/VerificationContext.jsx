@@ -86,13 +86,15 @@ export function VerificationProvider({ children }) {
   }, []);
 
   const confirmOtp = useCallback(
-    (userId, { mobile, email } = {}) => {
+    (userId, { email } = {}) => {
+      const trimmed = typeof email === 'string' ? email.trim() : '';
       update(userId, (rec) => ({
         ...rec,
         stage1: {
           ...rec.stage1,
-          mobile: mobile ?? rec.stage1.mobile,
-          email: email ?? rec.stage1.email,
+          // Email OTP replaces phone-based Stage 1; keep mobile unset for newly verified rows.
+          mobile: null,
+          email: trimmed || rec.stage1?.email || null,
           otpVerifiedAt: new Date().toISOString(),
         },
       }));

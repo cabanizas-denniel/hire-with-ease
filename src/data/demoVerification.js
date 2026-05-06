@@ -10,9 +10,9 @@
  * the user's record (Admin > Verification, or `localStorage.clear()`).
  *
  * Levels:
- *   full     - Tier 4 / Fully Verified. Phone + ID reviewed + 1 doc reviewed
+ *   full     - Tier 4 / Fully Verified. Email OTP + ID reviewed + 1 doc reviewed
  *              + admin activation. The "Verified" badge appears.
- *   partial  - Phone OTP done + ID submitted, awaiting admin review.
+ *   partial  - Email OTP done + ID submitted, awaiting admin review.
  *              Useful for testing the admin pending-review queue.
  *   none     - Tier 0 / Unverified. Empty record, exactly like a brand-new
  *              account that hasn't started the flow yet.
@@ -20,8 +20,8 @@
 
 const PESO_REVIEWER = 'Maria Cruz (PESO)';
 
-function s1Done(mobile, email, otpAt) {
-  return { mobile, email: email || null, otpVerifiedAt: otpAt };
+function s1Done(email, otpAt) {
+  return { mobile: null, email: email || null, otpVerifiedAt: otpAt };
 }
 
 function s1Empty() {
@@ -101,7 +101,7 @@ function buildFullRecord(role, { email, fullName }) {
   return {
     role,
     fullName: fullName || null,
-    stage1: s1Done('+63 917 555 1010', email, '2025-09-01T08:00:00.000Z'),
+    stage1: s1Done(email, '2025-09-01T08:00:00.000Z'),
     stage2: s2Reviewed(
       '2025-09-01T09:00:00.000Z',
       '2025-09-01T09:01:00.000Z',
@@ -114,7 +114,7 @@ function buildFullRecord(role, { email, fullName }) {
 }
 
 /**
- * Builds a "partially verified" record. Phone is verified and the ID +
+ * Builds a "partially verified" record. Email is verified and the ID +
  * selfie have been submitted but are still PENDING admin review. This
  * deliberately surfaces in the admin pending-review queue so the demo
  * can walk through the moderation flow end-to-end.
@@ -123,7 +123,7 @@ function buildPartialRecord(role, { email, fullName }) {
   return {
     role,
     fullName: fullName || null,
-    stage1: s1Done('+63 917 555 2020', email, '2026-04-15T10:00:00.000Z'),
+    stage1: s1Done(email, '2026-04-15T10:00:00.000Z'),
     stage2: s2Pending('2026-04-15T11:00:00.000Z', '2026-04-15T11:01:00.000Z'),
     stage3: s3Empty(),
     stage4: s4Empty(),

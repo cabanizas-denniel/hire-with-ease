@@ -3,6 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
+  sendEmailVerification,
   signInWithEmailAndPassword,
   signOut,
   updateProfile,
@@ -70,7 +71,8 @@ export function AuthProvider({ children }) {
         // surface jobs to them. Bootstrap a minimal one if missing.
         if (firestoreRole === FIRESTORE_ROLES.INFORMAL_WORKER) {
           try {
-            await ensureWorkerProfile({
+            // Don't block login/registration UI on this; it's best-effort.
+            void ensureWorkerProfile({
               uid: firebaseUser.uid,
               name: fullName || firebaseUser.email,
               email: firebaseUser.email,
@@ -82,6 +84,8 @@ export function AuthProvider({ children }) {
                     label: profile.location || null,
                   }
                 : null,
+            }).catch((err) => {
+              console.warn('Worker profile bootstrap failed', err);
             });
           } catch (err) {
              
@@ -141,6 +145,18 @@ export function AuthProvider({ children }) {
     if (fullName) {
       await updateProfile(cred.user, { displayName: fullName });
     }
+    // Email verification is required for Stage 1 of the verification flow.
+    // If this fails (network/blocked), the user can resend from their Profile.
+    try {
+      void sendEmailVerification(cred.user, {
+        url: window.location.origin,
+        handleCodeInApp: false,
+      }).catch((err) => {
+        console.warn('Could not send email verification', err);
+      });
+    } catch (err) {
+      console.warn('Could not send email verification', err);
+    }
     await setDoc(doc(db, 'users', cred.user.uid), {
       uid: cred.user.uid,
       email,
@@ -148,6 +164,21 @@ export function AuthProvider({ children }) {
       role: firestoreRole,
       createdAt: serverTimestamp(),
     });
+
+    // Make registration feel instant: we already know the role we just wrote.
+    // onAuthStateChanged will still reconcile with Firestore after this.
+    setAuthState((prev) => ({
+      ...prev,
+      isAuthenticated: true,
+      role: toAppRole(firestoreRole),
+      user: {
+        uid: cred.user.uid,
+        email: cred.user.email,
+        fullName: fullName || cred.user.displayName || 'User',
+      },
+      profile: null,
+      loading: false,
+    }));
     return toAppRole(firestoreRole);
   }, []);
 
