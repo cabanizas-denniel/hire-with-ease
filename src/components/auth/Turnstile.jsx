@@ -48,6 +48,7 @@ export default function Turnstile({
 
   useEffect(() => {
     let cancelled = false;
+    let widgetId = null;
 
     async function mount() {
       if (!SITE_KEY) {
@@ -56,26 +57,17 @@ export default function Turnstile({
       }
 
       const ok = await loadTurnstileScript();
-      if (cancelled) return;
-      if (!ok || !window.turnstile) {
-        onError?.('Could not load captcha. Please check your connection and try again.');
+      if (cancelled || !window.turnstile) {
+        if (!ok) {
+          onError?.('Could not load captcha. Please check your connection and try again.');
+        }
         return;
       }
 
       const container = document.getElementById(containerId);
       if (!container) return;
 
-      // If we already rendered one, reset it.
-      if (widgetIdRef.current != null) {
-        try {
-          window.turnstile.remove(widgetIdRef.current);
-        } catch {
-          /* noop */
-        }
-        widgetIdRef.current = null;
-      }
-
-      widgetIdRef.current = window.turnstile.render(container, {
+      widgetId = window.turnstile.render(container, {
         sitekey: SITE_KEY,
         action,
         theme: 'light',
@@ -88,18 +80,15 @@ export default function Turnstile({
     }
 
     mount();
+
     return () => {
       cancelled = true;
-      if (widgetIdRef.current != null && window.turnstile) {
-        try {
-          window.turnstile.remove(widgetIdRef.current);
-        } catch {
-          /* noop */
-        }
+      if (widgetId != null && window.turnstile) {
+        window.turnstile.remove(widgetId);
       }
-      widgetIdRef.current = null;
     };
-  }, [containerId, onToken, onError, action]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className={className}>
