@@ -3,6 +3,7 @@ import JobCard from '../../components/JobCard.jsx';
 import Modal from '../../components/Modal.jsx';
 import PageHeader from '../../components/PageHeader.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
+import WorkerAccessGate, { useWorkerAccessGate } from '../../components/verification/WorkerAccessGate.jsx';
 import { applyToJob } from '../../lib/matching/applications.js';
 import {
   useApplicationsByWorker,
@@ -14,12 +15,14 @@ import { ACTIVE_APPLICATION_STATUSES } from '../../lib/matching/statuses.js';
 import { locationLabel } from '../../utils/clientJobs.js';
 
 function ApplicantJobsPage() {
+  const gate = useWorkerAccessGate();
   const auth = useAuth();
   const workerUid = auth?.user?.uid || null;
+  const shouldLoadData = !gate.blocked;
 
-  const { data: profile, loading: profileLoading } = useWorkerProfile(workerUid);
+  const { data: profile, loading: profileLoading } = useWorkerProfile(shouldLoadData ? workerUid : null);
   const { data: openJobs, loading: jobsLoading } = useOpenJobs();
-  const { data: myApps } = useApplicationsByWorker(workerUid);
+  const { data: myApps } = useApplicationsByWorker(shouldLoadData ? workerUid : null);
 
   const myActiveJobIds = useMemo(
     () =>
@@ -85,6 +88,9 @@ function ApplicantJobsPage() {
         subtitle="These jobs were matched to your profile by the system. Apply to express interest, then chat with the homeowner to negotiate."
       />
 
+      <WorkerAccessGate />
+
+      {gate.blocked ? null : (
       <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4 text-sm text-[#1F4E79]">
         <p className="font-medium font-semibold">How matching works</p>
         <p className="mt-1 text-gray-600">
@@ -94,8 +100,9 @@ function ApplicantJobsPage() {
           schedule, and scope before committing.
         </p>
       </div>
+      )}
 
-      {!loading && (!profile || (profile.skills || []).length === 0) ? (
+      {!gate.blocked && !loading && (!profile || (profile.skills || []).length === 0) ? (
         <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
           <p className="font-semibold">Add your skills to start receiving matches.</p>
           <p className="mt-1">
@@ -105,6 +112,7 @@ function ApplicantJobsPage() {
         </div>
       ) : null}
 
+      {gate.blocked ? null : (
       <div className="mt-5 grid gap-3">
         {loading ? (
           <p className="rounded-xl bg-white p-6 text-center text-sm text-gray-500 shadow-sm">
@@ -150,6 +158,7 @@ function ApplicantJobsPage() {
           );
         })}
       </div>
+      )}
 
       <Modal
         isOpen={Boolean(actionEntry)}

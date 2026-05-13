@@ -15,6 +15,7 @@ dist-ssr
 # Environment files
 .env
 .env.local
+.env.example
 .env.*.local
 
 # Editor directories and files
@@ -27,3 +28,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+tutorialForDeni.txt
+firestore.rules

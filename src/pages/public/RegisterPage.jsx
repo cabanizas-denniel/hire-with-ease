@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import AuthLayout from '../../components/auth/AuthLayout.jsx';
 import Turnstile from '../../components/auth/Turnstile.jsx';
@@ -17,6 +17,7 @@ function translateAuthError(err) {
   if (code === 'auth/invalid-email') return 'That email address looks invalid.';
   if (code === 'auth/weak-password') return 'Password is too weak. Use at least 6 characters.';
   if (code === 'auth/network-request-failed') return 'Network error. Check your connection.';
+  if (code === 'auth/email-verification-required') return '';
   return err?.message || 'Could not create your account. Please try again.';
 }
 
@@ -33,22 +34,16 @@ function RegisterPage() {
     role: defaultRole,
   });
   const [error, setError] = useState('');
+  const [successEmail, setSuccessEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [captchaToken, setCaptchaToken] = useState('');
   const navigate = useNavigate();
-  const { register, getDefaultRoute, isAuthenticated, role: authRole } = useAuth();
-
-  // Same reason as LoginPage: wait until the AuthProvider has committed
-  // the authenticated state before navigating, otherwise ProtectedRoute
-  // bounces us back and the form remounts with empty fields.
-  useEffect(() => {
-    if (!isAuthenticated || !authRole) return;
-    navigate(getDefaultRoute(authRole), { replace: true });
-  }, [isAuthenticated, authRole, navigate, getDefaultRoute]);
+  const { register } = useAuth();
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
+    setSuccessEmail('');
 
     if (form.password !== form.confirmPassword) {
       setError('Passwords do not match.');
@@ -73,9 +68,13 @@ function RegisterPage() {
         role: form.role,
         captchaToken,
       });
-      // Navigation happens via the effect above once AuthContext flips to
-      // isAuthenticated=true with a role.
     } catch (err) {
+      if (err?.code === 'auth/email-verification-required') {
+        setSuccessEmail(form.email);
+        setSubmitting(false);
+        setCaptchaToken('');
+        return;
+      }
       setError(translateAuthError(err));
       setSubmitting(false);
       setCaptchaToken('');
@@ -98,6 +97,31 @@ function RegisterPage() {
       }
     >
       <form onSubmit={handleSubmit} className="space-y-3.5">
+        {successEmail ? (
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+            <p className="font-semibold">Verify your email to activate your account</p>
+            <p className="mt-1 text-emerald-900/90">
+              We sent a verification link to{' '}
+              <span className="font-semibold">{successEmail}</span>. Click it, then come back and sign in. If you don’t see it, check your spam/junk folder too.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => navigate('/login')}
+                className="cursor-pointer rounded-lg bg-emerald-700 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:brightness-110"
+              >
+                Go to login
+              </button>
+              <Link
+                to="/"
+                className="rounded-lg border border-emerald-200 bg-white px-3 py-2 text-xs font-semibold text-emerald-900 hover:bg-emerald-50"
+              >
+                Back to home
+              </Link>
+            </div>
+          </div>
+        ) : null}
+
         <div>
           <label
             htmlFor="reg-name"

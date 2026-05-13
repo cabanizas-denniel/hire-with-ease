@@ -1,33 +1,81 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import PageHeader from '../../components/PageHeader.jsx';
 import VerificationCenter from '../../components/verification/VerificationCenter.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
-import clientsSeed from '../../data/clients.js';
-import { getCurrentUserId } from '../../utils/currentUser.js';
+import { ALL_BARANGAY_NAMES, resolveLocation } from '../../lib/olongapoBarangays.js';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '../../lib/firebase.js';
 
 function EmployerProfilePage() {
   const auth = useAuth();
-  const verificationUserId = getCurrentUserId(auth);
+  const userId = auth.user?.uid;
 
-  const seed = useMemo(() => {
-    if (!verificationUserId) return null;
-    return clientsSeed.find((c) => c.id === verificationUserId) || null;
-  }, [verificationUserId]);
-
-  const [profile, setProfile] = useState(() => ({
-    name: seed?.name || 'Maria Santos',
-    mobile: seed?.mobile || '',
-    email: seed?.email || '',
-    location: seed?.location || 'Mabayuan',
+  const [profile, setProfile] = useState({
+    name: '',
+    mobile: '',
+    location: '',
     locationDetails: '',
     preferredContact: 'email',
-    bio:
-      'I own a small two-story residence in Mabayuan. I book vetted workers through PESO for routine maintenance and occasional renovations.',
+    bio: '',
     typicalBudget: 'PHP 1,000 - 3,000',
-  }));
+  });
+  const [status, setStatus] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    // Avoid an extra Firestore read here — AuthContext already loaded the user doc at login.
+    const data = auth.profile || null;
+    if (data) {
+      setProfile({
+        name: data.fullName || auth.user?.fullName || '',
+        mobile: data.mobile || '',
+        location: data.location?.barangay || data.location?.label || '',
+        locationDetails: data.locationDetails || '',
+        preferredContact: data.preferredContact || 'email',
+        bio: data.bio || '',
+        typicalBudget: data.typicalBudget || 'PHP 1,000 - 3,000',
+      });
+    } else {
+      setProfile((p) => ({ ...p, name: auth.user?.fullName || '' }));
+    }
+  }, [auth.profile, auth.user?.fullName]);
 
   const handleChange = (key, value) => {
     setProfile((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleSave = async (event) => {
+    event.preventDefault();
+    if (!userId) return;
+    setBusy(true);
+    setStatus(null);
+    try {
+      const point = resolveLocation(profile.location) || null;
+      await setDoc(
+        doc(db, 'users', userId),
+        {
+          fullName: profile.name,
+          mobile: profile.mobile,
+          location: {
+            lat: point?.lat ?? null,
+            lng: point?.lng ?? null,
+            barangay: point?.barangay ?? null,
+            label: profile.location || null,
+          },
+          locationDetails: profile.locationDetails,
+          preferredContact: profile.preferredContact,
+          bio: profile.bio,
+          typicalBudget: profile.typicalBudget,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+      setStatus({ kind: 'ok', text: 'Profile saved.' });
+    } catch (err) {
+      setStatus({ kind: 'error', text: err.message || 'Could not save profile.' });
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -46,16 +94,16 @@ function EmployerProfilePage() {
         </p>
       </div>
 
-      {verificationUserId ? (
+      {auth.user?.uid ? (
         <VerificationCenter
-          userId={verificationUserId}
+          userId={auth.user.uid}
           role="client"
           className="mt-5"
         />
       ) : null}
 
       <form
-        onSubmit={(e) => e.preventDefault()}
+        onSubmit={handleSave}
         className="mt-5 space-y-5 rounded-xl bg-white p-4 shadow-sm sm:p-5"
       >
         <section>
@@ -67,29 +115,21 @@ function EmployerProfilePage() {
               <label className="mb-1 block text-xs font-medium text-gray-600">
                 Full name
               </label>
-              <input
-                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
-                value={profile.name}
-                onChange={(e) => handleChange('name', e.target.value)}
-              />
+              <p className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-800">
+                {profile.name || '—'}
+              </p>
             </div>
 
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-600">
                 Email
               </label>
-              <input
-                type="email"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
-                value={profile.email || ''}
-                onChange={(e) => handleChange('email', e.target.value)}
-              />
+              <p className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-800">
+                {auth.user?.email || '—'}
+              </p>
               {auth?.user?.email ? (
                 <p className="mt-1 text-[11px] text-gray-500">
-                  Account email (sign-in):{' '}
-                  <span className="font-medium text-gray-700">{auth.user.email}</span>
-                  {' — '}
-                  use this in Verification (above) unless you intentionally use another address here.
+                  This is your account email. Use this in Verification (above).
                 </p>
               ) : null}
             </div>
@@ -111,12 +151,18 @@ function EmployerProfilePage() {
               <label className="mb-1 block text-xs font-medium text-gray-600">
                 Address / service location
               </label>
-              <input
-                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
-                placeholder="e.g. Mabayuan, Olongapo City"
+              <select
+                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base cursor-pointer"
                 value={profile.location}
                 onChange={(e) => handleChange('location', e.target.value)}
-              />
+              >
+                <option value="">Select a barangay</option>
+                {ALL_BARANGAY_NAMES.map((name) => (
+                  <option key={name} value={name}>
+                    {name}, Olongapo
+                  </option>
+                ))}
+              </select>
               <div className="mt-2 border-l-2 border-gray-200 pl-3">
                 <label className="mb-1 block text-xs font-medium text-gray-600">
                   Additional location details{' '}
@@ -188,25 +234,24 @@ function EmployerProfilePage() {
           </p>
         </section>
 
-        {seed ? (
-          <section className="rounded-lg border border-gray-100 bg-gray-50 px-4 py-3 text-xs text-gray-600">
-            <p>
-              <span className="font-semibold text-gray-700">Member since:</span>{' '}
-              {formatDate(seed.memberSince)}
-              <span className="mx-2 text-gray-300">·</span>
-              <span className="font-semibold text-gray-700">
-                Jobs posted:
-              </span>{' '}
-              {seed.totalJobsPosted ?? 0}
-            </p>
-          </section>
+        {status ? (
+          <p
+            className={`rounded-lg px-3 py-2 text-sm ${
+              status.kind === 'error'
+                ? 'border border-red-200 bg-red-50 text-red-700'
+                : 'border border-emerald-200 bg-emerald-50 text-emerald-700'
+            }`}
+          >
+            {status.text}
+          </p>
         ) : null}
 
         <button
           type="submit"
-          className="cursor-pointer rounded-lg bg-[#1F4E79] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:brightness-110"
+          disabled={busy}
+          className="cursor-pointer rounded-lg bg-[#1F4E79] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:brightness-110 disabled:opacity-60"
         >
-          Save Profile
+          {busy ? 'Saving...' : 'Save Profile'}
         </button>
       </form>
     </div>

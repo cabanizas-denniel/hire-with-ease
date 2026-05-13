@@ -3,6 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
+  sendPasswordResetEmail,
   sendEmailVerification,
   signInWithEmailAndPassword,
   signOut,
@@ -62,6 +63,18 @@ export function AuthProvider({ children }) {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (!firebaseUser) {
         setAuthState({ ...INITIAL_STATE, loading: false });
+        return;
+      }
+      // Treat unverified accounts as "not signed in" in the app. This prevents
+      // a brief authenticated render between sign-in and the forced sign-out
+      // we do for unverified users.
+      if (!firebaseUser.emailVerified) {
+        setAuthState({ ...INITIAL_STATE, loading: false });
+        try {
+          void signOut(auth);
+        } catch {
+          /* ignore */
+        }
         return;
       }
       try {
@@ -128,8 +141,59 @@ export function AuthProvider({ children }) {
       throw new Error('Firebase is not configured; auth is unavailable.');
     }
     const cred = await signInWithEmailAndPassword(auth, email, password);
+    if (cred?.user && !cred.user.emailVerified) {
+      await signOut(auth);
+      const err = new Error('Email address not verified.');
+      err.code = 'auth/email-not-verified';
+      throw err;
+    }
     const { firestoreRole } = await loadUserProfile(cred.user);
     return toAppRole(firestoreRole);
+  }, []);
+
+  const resendVerificationEmail = useCallback(async ({ email, password }) => {
+    if (!auth) {
+      throw new Error('Firebase is not configured; auth is unavailable.');
+    }
+    const cred = await signInWithEmailAndPassword(auth, email, password);
+    if (!cred?.user) {
+      const err = new Error('Could not sign in to resend verification email.');
+      err.code = 'auth/resend-failed';
+      throw err;
+    }
+
+    if (cred.user.emailVerified) {
+      await signOut(auth);
+      const err = new Error('Email is already verified. You can sign in now.');
+      err.code = 'auth/already-verified';
+      throw err;
+    }
+
+    try {
+      await sendEmailVerification(cred.user);
+    } catch (e) {
+      const err = new Error(e?.message || 'Could not resend verification email. Please try again.');
+      err.code = e?.code || 'auth/resend-failed';
+      throw err;
+    } finally {
+      await signOut(auth);
+    }
+
+    return true;
+  }, []);
+
+  const sendPasswordReset = useCallback(async ({ email } = {}) => {
+    if (!auth) {
+      throw new Error('Firebase is not configured; auth is unavailable.');
+    }
+    const trimmed = typeof email === 'string' ? email.trim() : '';
+    if (!trimmed) {
+      const err = new Error('Please enter your email address.');
+      err.code = 'auth/missing-email';
+      throw err;
+    }
+    await sendPasswordResetEmail(auth, trimmed);
+    return true;
   }, []);
 
   const register = useCallback(async ({ email, password, fullName, role }) => {
@@ -142,44 +206,46 @@ export function AuthProvider({ children }) {
       throw new Error('Invalid role for self-registration.');
     }
     const cred = await createUserWithEmailAndPassword(auth, email, password);
-    if (fullName) {
-      await updateProfile(cred.user, { displayName: fullName });
-    }
-    // Email verification is required for Stage 1 of the verification flow.
-    // If this fails (network/blocked), the user can resend from their Profile.
-    try {
-      void sendEmailVerification(cred.user, {
-        url: window.location.origin,
-        handleCodeInApp: false,
-      }).catch((err) => {
-        console.warn('Could not send email verification', err);
-      });
-    } catch (err) {
-      console.warn('Could not send email verification', err);
-    }
-    await setDoc(doc(db, 'users', cred.user.uid), {
+
+    // Don't block the registration flow on these writes. The user will be
+    // logged in and the onAuthStateChanged handler will eventually reconcile
+    // the profile information. This makes the UI feel much faster.
+    const profilePromise = fullName ? updateProfile(cred.user, { displayName: fullName }) : Promise.resolve();
+    const verifyPromise = sendEmailVerification(cred.user).catch(() => null);
+    const firestorePromise = setDoc(doc(db, 'users', cred.user.uid), {
       uid: cred.user.uid,
       email,
       fullName: fullName || '',
       role: firestoreRole,
+      verification: {
+        // Keep a stable shape so rules + UI can rely on it.
+        role: firestoreRole === FIRESTORE_ROLES.HOMEOWNER ? 'client' : 'service-provider',
+        stage1: { mobile: null, email: email || null, otpVerifiedAt: null },
+        stage2: {
+          idSubmittedAt: null,
+          selfieSubmittedAt: null,
+          reviewStatus: 'not-started',
+          reviewedBy: null,
+          reviewedAt: null,
+          reviewNote: '',
+          idImage: null,
+          idBackImage: null,
+          selfieImage: null,
+        },
+        stage3: { documents: [], documentBacked: false },
+        stage4: { activatedAt: null, activatedBy: null },
+      },
       createdAt: serverTimestamp(),
     });
 
-    // Make registration feel instant: we already know the role we just wrote.
-    // onAuthStateChanged will still reconcile with Firestore after this.
-    setAuthState((prev) => ({
-      ...prev,
-      isAuthenticated: true,
-      role: toAppRole(firestoreRole),
-      user: {
-        uid: cred.user.uid,
-        email: cred.user.email,
-        fullName: fullName || cred.user.displayName || 'User',
-      },
-      profile: null,
-      loading: false,
-    }));
-    return toAppRole(firestoreRole);
+    void verifyPromise;
+
+    // Option A: account is not usable until email is verified.
+    // Create the profile, send the verification email, then sign out.
+    await signOut(auth);
+    const err = new Error('Please verify your email to activate your account.');
+    err.code = 'auth/email-verification-required';
+    throw err;
   }, []);
 
   const logout = useCallback(async () => {
@@ -192,11 +258,13 @@ export function AuthProvider({ children }) {
       ...authState,
       isFirebaseConfigured,
       login,
+      resendVerificationEmail,
+      sendPasswordReset,
       register,
       logout,
       getDefaultRoute: (role = authState.role) => DASHBOARD_BY_ROLE[role] || '/login',
     }),
-    [authState, login, register, logout]
+    [authState, login, resendVerificationEmail, sendPasswordReset, register, logout]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

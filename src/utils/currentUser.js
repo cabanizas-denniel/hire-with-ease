@@ -38,10 +38,11 @@ export function readFileAsDataUrl(file) {
 /** Soft cap so base64 payloads don't blow up localStorage. */
 export const MAX_UPLOAD_BYTES = 2 * 1024 * 1024; // 2 MB
 
-export function validateUpload(file, { accept = [] } = {}) {
+export function validateUpload(file, { accept = [], maxBytes = MAX_UPLOAD_BYTES } = {}) {
   if (!file) return 'Please choose a file.';
-  if (file.size > MAX_UPLOAD_BYTES) {
-    return 'File is too large. Keep it under 2 MB for the prototype.';
+  if (typeof maxBytes === 'number' && maxBytes > 0 && file.size > maxBytes) {
+    const mb = Math.max(0.1, Math.round((maxBytes / 1024 / 1024) * 10) / 10);
+    return `File is too large. Keep it under ${mb} MB.`;
   }
   if (accept.length) {
     const okType = accept.some((a) =>

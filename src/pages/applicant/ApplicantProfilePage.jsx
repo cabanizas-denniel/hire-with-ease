@@ -6,7 +6,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import skills from '../../data/skills.js';
 import { useWorkerProfile } from '../../lib/matching/hooks.js';
 import { saveWorkerProfile } from '../../lib/matching/workerProfile.js';
-import { resolveLocation } from '../../lib/olongapoBarangays.js';
+import { ALL_BARANGAY_NAMES, resolveLocation } from '../../lib/olongapoBarangays.js';
 
 const SERVICE_RADIUS_OPTIONS = [
   'Within 5 km',
@@ -225,20 +225,24 @@ function ApplicantProfilePage() {
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-600">Full Name</label>
-              <input
-                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
-                value={form.fullName}
-                onChange={(e) => setForm((prev) => ({ ...prev, fullName: e.target.value }))}
-              />
+              <p className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-800">
+                {auth?.user?.fullName || '—'}
+              </p>
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-600">Location / barangay</label>
-              <input
+              <select
                 className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
                 value={form.locationLabel}
-                placeholder="e.g. Mabayuan"
                 onChange={(e) => setForm((prev) => ({ ...prev, locationLabel: e.target.value }))}
-              />
+              >
+                <option value="">Select a barangay</option>
+                {ALL_BARANGAY_NAMES.map((name) => (
+                  <option key={name} value={name}>
+                    {name}, Olongapo
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-600">Service Radius</label>
@@ -368,7 +372,7 @@ function ApplicantProfilePage() {
         <button
           type="submit"
           disabled={busy}
-          className="rounded-lg bg-[#1F4E79] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+          className="rounded-lg bg-[#1F4E79] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60 cursor-pointer"
         >
           {busy ? 'Saving…' : 'Save Profile'}
         </button>

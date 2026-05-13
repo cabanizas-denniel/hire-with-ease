@@ -1,10 +1,10 @@
 import { HiOutlineCheckBadge, HiOutlineShieldCheck } from 'react-icons/hi2';
-import { TIER_COLORS, TIER_LABELS, TIERS } from '../utils/trust.js';
+import { getTierLabelForRole, TIER_COLORS, TIERS } from '../utils/trust.js';
 
-function TrustBadge({ tier = 0, size = 'sm', className = '' }) {
+function TrustBadge({ tier = 0, role = 'service-provider', size = 'sm', className = '' }) {
   const safeTier = Math.max(0, Math.min(4, Number(tier) || 0));
   const colors = TIER_COLORS[safeTier];
-  const label = TIER_LABELS[safeTier];
+  const label = getTierLabelForRole(safeTier, role);
 
   const sizing =
     size === 'lg'

@@ -1,0 +1,7 @@
+{
+  "projects": {
+    "staging": "thesis-production-db"
+  },
+  "targets": {},
+  "etags": {}
+}

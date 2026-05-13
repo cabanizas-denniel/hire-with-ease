@@ -36,6 +36,28 @@ export const TIER_DESCRIPTIONS = {
   4: 'Activated by PESO. Cleared to accept or post jobs on the platform.',
 };
 
+export function getTierLabelForRole(tier, role = 'service-provider') {
+  const safe = Math.max(0, Math.min(4, Number(tier) || 0));
+  if (role === 'client') {
+    if (safe === TIERS.IDENTITY) return 'Trusted';
+    if (safe === TIERS.FULL) return 'Fully Trusted';
+  }
+  return TIER_LABELS[safe] ?? TIER_LABELS[0];
+}
+
+export function getTierDescriptionForRole(tier, role = 'service-provider') {
+  const safe = Math.max(0, Math.min(4, Number(tier) || 0));
+  if (role === 'client') {
+    if (safe === TIERS.IDENTITY) {
+      return 'Identity verified by PESO. Higher trust is granted once supporting documents are reviewed.';
+    }
+    if (safe === TIERS.FULL) {
+      return 'Identity + supporting documents reviewed. This account is fully trusted.';
+    }
+  }
+  return TIER_DESCRIPTIONS[safe] ?? TIER_DESCRIPTIONS[0];
+}
+
 export const TIER_COLORS = {
   0: { bg: 'bg-gray-100', text: 'text-gray-700', border: 'border-gray-200' },
   1: { bg: 'bg-sky-50', text: 'text-sky-800', border: 'border-sky-200' },
@@ -44,21 +66,32 @@ export const TIER_COLORS = {
   4: { bg: 'bg-emerald-50', text: 'text-emerald-800', border: 'border-emerald-200' },
 };
 
+/** Normalize Firestore / legacy values for stage-2 review (case-insensitive). */
+export function normalizeStage2ReviewStatus(status) {
+  if (status == null || status === '') return 'not-started';
+  const s = String(status).trim().toLowerCase();
+  if (s === 'reviewed' || s === 'approved') return 'reviewed';
+  if (s === 'rejected' || s === 'declined' || s === 'denied') return 'rejected';
+  if (s === 'pending') return 'pending';
+  if (s === 'not-started' || s === 'not_started') return 'not-started';
+  return 'not-started';
+}
+
 export function getTrustTier(record, role = 'service-provider') {
   if (!record) return TIERS.UNVERIFIED;
   const { stage1, stage2, stage3, stage4 } = record;
 
-  const stage1OtpDone = Boolean(stage1?.otpVerifiedAt);
-  const identityReviewed = stage2?.reviewStatus === 'reviewed';
+  const stage2Status = normalizeStage2ReviewStatus(stage2?.reviewStatus);
+  const identityReviewed = stage2Status === 'reviewed';
   const documentBacked = Boolean(stage3?.documentBacked);
   const activated = Boolean(stage4?.activatedAt);
-
-  if (!stage1OtpDone) return TIERS.UNVERIFIED;
 
   if (role === 'service-provider') {
     if (activated && identityReviewed) return TIERS.FULL;
     if (documentBacked && identityReviewed) return TIERS.DOCUMENT;
     if (identityReviewed) return TIERS.IDENTITY;
+    // Email verification is now enforced by Firebase Auth (`email_verified`)
+    // and Firestore rules, so Tier 1 is implicit.
     return TIERS.PHONE;
   }
 
@@ -84,11 +117,11 @@ export function getStageProgress(record, role = 'service-provider') {
     tier,
     stages: {
       stage1: {
-        state: stage1?.otpVerifiedAt ? 'complete' : 'pending',
+        state: 'complete',
         completedAt: stage1?.otpVerifiedAt ?? null,
       },
       stage2: {
-        state: stage2?.reviewStatus ?? 'not-started',
+        state: normalizeStage2ReviewStatus(stage2?.reviewStatus),
         submittedAt: stage2?.idSubmittedAt ?? null,
         reviewedAt: stage2?.reviewedAt ?? null,
         reviewNote: stage2?.reviewNote ?? '',

@@ -26,14 +26,15 @@ function DocumentUploadModal({ isOpen, userId, onClose, onSuccess }) {
   const [customLabel, setCustomLabel] = useState('');
   const [file, setFile] = useState(null);
   const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
 
   const typeMeta = DOC_TYPES.find((d) => d.type === docType) || DOC_TYPES[0];
   const resolvedLabel =
     docType === 'other' ? customLabel.trim() || 'Supporting Document' : typeMeta.label;
 
-  const canSubmit = Boolean(file?.dataUrl) && (docType !== 'other' || customLabel.trim().length > 0);
+  const canSubmit = Boolean(file?.file) && (docType !== 'other' || customLabel.trim().length > 0);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!canSubmit) {
       setError(
         docType === 'other'
@@ -42,13 +43,25 @@ function DocumentUploadModal({ isOpen, userId, onClose, onSuccess }) {
       );
       return;
     }
-    addDocument(userId, {
-      type: docType,
-      label: resolvedLabel,
-      fileData: file.dataUrl,
-    });
-    if (onSuccess) onSuccess();
-    onClose();
+    if (!userId) {
+      setError('You must be signed in to upload documents.');
+      return;
+    }
+    setBusy(true);
+    setError('');
+    try {
+      await addDocument(userId, {
+        type: docType,
+        label: resolvedLabel,
+        file: file.file || null,
+      });
+      if (onSuccess) onSuccess();
+      onClose();
+    } catch (err) {
+      setError(err?.message || 'Could not upload that document. Please try again.');
+    } finally {
+      setBusy(false);
+    }
   };
 
   const footer = (
@@ -63,10 +76,10 @@ function DocumentUploadModal({ isOpen, userId, onClose, onSuccess }) {
       <button
         type="button"
         onClick={handleSubmit}
-        disabled={!canSubmit}
+        disabled={!canSubmit || busy}
         className="w-full cursor-pointer rounded-lg bg-[#1F4E79] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        Upload document
+        {busy ? 'Uploading…' : 'Upload document'}
       </button>
     </div>
   );
@@ -106,7 +119,7 @@ function DocumentUploadModal({ isOpen, userId, onClose, onSuccess }) {
               type="text"
               value={customLabel}
               onChange={(e) => setCustomLabel(e.target.value)}
-              placeholder="e.g. Certificate of Employment"
+              placeholder="e.g. Proof of Work"
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-[#1F4E79] focus:outline-none focus:ring-1 focus:ring-[#1F4E79]"
             />
           </div>
@@ -116,8 +129,9 @@ function DocumentUploadModal({ isOpen, userId, onClose, onSuccess }) {
           label="File"
           value={file}
           onChange={setFile}
-          accept={['image/*', '.pdf']}
-          hint="JPG, PNG, or PDF · up to 2 MB"
+          accept={['image/*']}
+          maxBytes={2 * 1024 * 1024}
+          hint="JPG or PNG · up to 2 MB"
           icon={HiOutlineDocumentText}
         />
 

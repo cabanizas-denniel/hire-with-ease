@@ -1,89 +1,197 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { collection, doc, onSnapshot, query, setDoc, updateDoc } from 'firebase/firestore';
 import { useAuth } from './AuthContext.jsx';
-import { buildDemoVerificationRecord } from '../data/demoVerification.js';
-import seedRecords from '../data/verification.js';
-import { safeGetItem, safeSetItem } from '../lib/safeStorage.js';
+import { db } from '../lib/firebase.js';
 import { getStageProgress, getTrustTier, isFullyVerified } from '../utils/trust.js';
-
-const STORAGE_KEY = 'hwe-verification';
-
-/**
- * PROTOTYPE NOTE — uploads are not yet implemented in M1. Once the upload
- * UI is wired (M4), ID / selfie / document files are expected to be stored
- * as base64 data URIs on the per-user record (e.g. stage2.idImage).
- * TODO: migrate base64 payloads to real backend file storage before prod.
- */
+import { compressImageForUpload } from '../lib/imageUtils.js';
 
 const VerificationContext = createContext(null);
 
-function loadRecords() {
-  try {
-    const raw = safeGetItem(STORAGE_KEY);
-    if (!raw) return { ...seedRecords };
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== 'object') return { ...seedRecords };
-    // Merge: seed is the baseline; stored overrides win. Ensures new seed
-    // entries (e.g. freshly-added demo workers) appear even if storage is stale.
-    return { ...seedRecords, ...parsed };
-  } catch {
-    return { ...seedRecords };
-  }
+const MAX_VERIFICATION_IMAGE_BYTES = 300 * 1024; // 300 KB per image after compression
+
+function withTimeout(promise, ms, message) {
+  if (!ms || ms <= 0) return promise;
+  let timeoutId = null;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(message)), ms);
+  });
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    if (timeoutId) clearTimeout(timeoutId);
+  });
 }
 
-function persistRecords(records) {
-  try {
-    safeSetItem(STORAGE_KEY, JSON.stringify(records));
-  } catch {
-    /* noop — safeSetItem already falls back to memory */
+function approxBytesFromDataUrl(dataUrl) {
+  const comma = dataUrl.indexOf(',');
+  const base64 = comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl;
+  return Math.ceil((base64.length * 3) / 4);
+}
+
+async function fileToDataUrl(file) {
+  if (!file) return null;
+  const blob = file instanceof Blob ? file : null;
+  if (!blob) return null;
+
+  // Firestore-only mode: PDFs are not viable inside a 1 MiB document limit.
+  // Enforce images only (compressed) for verification artifacts.
+  const type = (file.type || '').toLowerCase();
+  if (type.includes('pdf') || (file.name || '').toLowerCase().endsWith('.pdf')) {
+    throw new Error('PDF uploads are not supported without Firebase Storage. Use a photo instead.');
   }
+
+  if (type.startsWith('image/')) {
+    const compressed = await compressImageForUpload(file, {
+      maxWidth: 900,
+      maxHeight: 900,
+      quality: 0.72,
+    });
+    if (!compressed?.dataUrl) throw new Error('Could not process that image.');
+    if ((compressed.bytes ?? approxBytesFromDataUrl(compressed.dataUrl)) > MAX_VERIFICATION_IMAGE_BYTES) {
+      throw new Error('That image is still too large. Please take a lower-resolution photo and try again.');
+    }
+    return compressed.dataUrl;
+  }
+
+  throw new Error('Unsupported file type. Please upload a JPG or PNG image.');
+}
+
+function sanitizeForFirestore(value, path = 'verification') {
+  if (value === null) return null;
+  if (value === undefined) return null;
+  const t = typeof value;
+  if (t === 'string' || t === 'boolean') return value;
+  if (t === 'number') {
+    if (!Number.isFinite(value)) {
+      throw new Error(`Invalid number at ${path}.`);
+    }
+    return value;
+  }
+  if (value instanceof Date) return value.toISOString();
+  if (typeof Blob !== 'undefined' && value instanceof Blob) {
+    throw new Error(`Invalid file/blob value at ${path}.`);
+  }
+  if (Array.isArray(value)) {
+    return value.map((v, i) => sanitizeForFirestore(v, `${path}[${i}]`));
+  }
+  if (t === 'object') {
+    const out = {};
+    for (const [k, v] of Object.entries(value)) {
+      out[k] = sanitizeForFirestore(v, `${path}.${k}`);
+    }
+    return out;
+  }
+  throw new Error(`Invalid value at ${path}.`);
+}
+
+function isDocumentPendingForReview(doc) {
+  if (!doc) return false;
+  if (doc.reviewStatus) return doc.reviewStatus === 'pending';
+  if (typeof doc.reviewed === 'boolean') return doc.reviewed === false;
+  return false;
+}
+
+function defaultRecordForRole(role) {
+  return {
+    role: role === 'client' ? 'client' : 'service-provider',
+    stage1: { mobile: null, email: null, otpVerifiedAt: null },
+    stage2: {
+      idSubmittedAt: null,
+      selfieSubmittedAt: null,
+      reviewStatus: 'not-started',
+      reviewedBy: null,
+      reviewedAt: null,
+      reviewNote: '',
+      idImage: null,
+      idBackImage: null,
+      selfieImage: null,
+    },
+    stage3: { documents: [], documentBacked: false },
+    stage4: { activatedAt: null, activatedBy: null },
+  };
 }
 
 export function VerificationProvider({ children }) {
-  const [records, setRecords] = useState(loadRecords);
-  const { user } = useAuth();
+  const [records, setRecords] = useState({});
+  const { user, role: appRole } = useAuth();
 
-  // Demo-only: when one of our 6 seed accounts logs in for the first
-  // time on this device, drop the matching verification record under
-  // their auth uid (full / partial / none). This lets the team see
-  // each tier behave end-to-end without manually walking the wizard.
-  // Once a record exists for the uid we leave it alone, so verifying
-  // / submitting docs works normally afterwards.
+  // Subscribe to Firestore-backed verification state.
   useEffect(() => {
-    const uid = user?.uid;
-    const email = user?.email;
-    if (!uid || !email) return;
-    const seed = buildDemoVerificationRecord(email);
-    if (!seed) return;
-    setRecords((prev) => {
-      if (prev[uid]) return prev;
-      const next = { ...prev, [uid]: seed };
-      persistRecords(next);
-      return next;
-    });
-  }, [user?.uid, user?.email]);
+    if (!db) {
+      setRecords({});
+      return () => {};
+    }
 
-  const update = useCallback((userId, updater) => {
-    setRecords((prev) => {
-      const current = prev[userId] ?? {
-        role: userId.startsWith('clt-') ? 'client' : 'service-provider',
-        stage1: { mobile: null, email: null, otpVerifiedAt: null },
-        stage2: {
-          idSubmittedAt: null,
-          selfieSubmittedAt: null,
-          reviewStatus: 'not-started',
-          reviewedBy: null,
-          reviewedAt: null,
-          reviewNote: '',
+    // Admin needs queues across users; others only need their own record.
+    if (appRole === 'admin') {
+      const q = query(collection(db, 'users'));
+      return onSnapshot(
+        q,
+        (snap) => {
+          const next = {};
+          snap.docs.forEach((d) => {
+            const data = d.data() || {};
+            const rec = data.verification || null;
+            const firestoreRole = data.role || null;
+            const inferredRole = firestoreRole === 'homeowner' ? 'client' : 'service-provider';
+            next[d.id] = rec || defaultRecordForRole(inferredRole);
+          });
+          setRecords(next);
         },
-        stage3: { documents: [], documentBacked: false },
-        stage4: { activatedAt: null, activatedBy: null },
-      };
-      const next = { ...prev, [userId]: updater(current) };
-      persistRecords(next);
-      return next;
-    });
+        () => setRecords({})
+      );
+    }
+
+    const uid = user?.uid || null;
+    if (!uid) {
+      setRecords({});
+      return () => {};
+    }
+    const ref = doc(db, 'users', uid);
+    return onSnapshot(
+      ref,
+      (snap) => {
+        const data = snap.exists() ? snap.data() : null;
+        const rec = data?.verification || null;
+        const inferredRole = appRole === 'employer' ? 'client' : 'service-provider';
+        setRecords({ [uid]: rec || defaultRecordForRole(inferredRole) });
+      },
+      () => setRecords({})
+    );
+  }, [user?.uid, appRole]);
+
+  const persistToFirestore = useCallback(async (userId, nextRecord) => {
+    if (!db || !userId) return;
+    const ref = doc(db, 'users', userId);
+    const sanitized = sanitizeForFirestore(nextRecord);
+    // merge=true keeps existing profile fields intact.
+    await withTimeout(
+      setDoc(ref, { verification: sanitized }, { merge: true }),
+      20_000,
+      'Saving verification data timed out. Check your connection and try again.'
+    );
   }, []);
+
+  const update = useCallback(
+    (userId, updater, { awaitPersist = false } = {}) => {
+      let nextRecord = null;
+      setRecords((prev) => {
+        const inferredRole =
+          userId === user?.uid
+            ? appRole === 'employer'
+              ? 'client'
+              : 'service-provider'
+            : prev[userId]?.role || 'service-provider';
+        const current = prev[userId] ?? defaultRecordForRole(inferredRole);
+        const updated = updater(current);
+        nextRecord = updated;
+        return { ...prev, [userId]: updated };
+      });
+      if (!nextRecord) return Promise.resolve();
+      const p = persistToFirestore(userId, nextRecord);
+      return awaitPersist ? p : (void p, Promise.resolve());
+    },
+    [persistToFirestore, user?.uid, appRole]
+  );
 
   const confirmOtp = useCallback(
     (userId, { email } = {}) => {
@@ -103,110 +211,285 @@ export function VerificationProvider({ children }) {
   );
 
   const submitIdentity = useCallback(
-    (userId, { idImage = null, selfieImage = null } = {}) => {
+    async (
+      userId,
+      {
+        idImage = null,
+        idBackImage = null,
+        selfieImage = null,
+        idFile = null,
+        idBackFile = null,
+        selfieFile = null,
+        onProgress,
+      } = {}
+    ) => {
       const nowIso = new Date().toISOString();
-      update(userId, (rec) => ({
-        ...rec,
-        stage2: {
-          ...rec.stage2,
-          idSubmittedAt: nowIso,
-          selfieSubmittedAt: nowIso,
-          idImage: idImage ?? rec.stage2.idImage ?? null,
-          selfieImage: selfieImage ?? rec.stage2.selfieImage ?? null,
-          reviewStatus: 'pending',
-          reviewedBy: null,
-          reviewedAt: null,
-          reviewNote: '',
-        },
-      }));
+      if (typeof onProgress === 'function') {
+        try {
+          onProgress({ bytesTransferred: 0, totalBytes: 0, percent: 0 });
+        } catch {
+          // ignore
+        }
+      }
+
+      const [idDataUrl, idBackDataUrl, selfieDataUrl] = await Promise.all([
+        idFile ? fileToDataUrl(idFile) : Promise.resolve(null),
+        idBackFile ? fileToDataUrl(idBackFile) : Promise.resolve(null),
+        selfieFile ? fileToDataUrl(selfieFile) : Promise.resolve(null),
+      ]);
+
+      if (!idDataUrl && !idImage) {
+        throw new Error('Please upload a readable photo/PDF of your government ID.');
+      }
+      if (!idBackDataUrl && !idBackImage) {
+        throw new Error('Please upload a readable photo of the BACK of your government ID.');
+      }
+      if (!selfieDataUrl && !selfieImage) {
+        throw new Error('Please upload a clear selfie holding your ID.');
+      }
+
+      await update(
+        userId,
+        (rec) => ({
+          ...rec,
+          stage2: {
+            ...rec.stage2,
+            idSubmittedAt: nowIso,
+            selfieSubmittedAt: nowIso,
+            idImage: idDataUrl || idImage || rec.stage2.idImage || null,
+            idBackImage: idBackDataUrl || idBackImage || rec.stage2.idBackImage || null,
+            selfieImage: selfieDataUrl || selfieImage || rec.stage2.selfieImage || null,
+            reviewStatus: 'pending',
+            reviewedBy: null,
+            reviewedAt: null,
+            reviewNote: '',
+          },
+        }),
+        { awaitPersist: true }
+      );
+
+      if (typeof onProgress === 'function') {
+        try {
+          onProgress({ bytesTransferred: 1, totalBytes: 1, percent: 100 });
+        } catch {
+          // ignore
+        }
+      }
     },
     [update]
   );
 
   const reviewIdentity = useCallback(
-    (userId, { approve, reviewer, note = '' }) => {
-      update(userId, (rec) => ({
-        ...rec,
-        stage2: {
-          ...rec.stage2,
-          reviewStatus: approve ? 'reviewed' : 'rejected',
-          reviewedBy: reviewer,
-          reviewedAt: new Date().toISOString(),
-          reviewNote: note,
-        },
-      }));
+    async (userId, { approve, reviewer, note = '' }) => {
+      await update(
+        userId,
+        (rec) => ({
+          ...rec,
+          stage2: {
+            ...rec.stage2,
+            reviewStatus: approve ? 'reviewed' : 'rejected',
+            reviewedBy: reviewer,
+            reviewedAt: new Date().toISOString(),
+            reviewNote: note,
+          },
+        }),
+        { awaitPersist: true }
+      );
     },
     [update]
   );
 
   const addDocument = useCallback(
-    (userId, { type, label, fileData = null }) => {
-      update(userId, (rec) => ({
-        ...rec,
-        stage3: {
-          ...rec.stage3,
-          documents: [
-            ...(rec.stage3.documents || []),
-            {
-              type,
-              label,
-              submittedAt: new Date().toISOString(),
-              reviewed: false,
-              note: '',
-              fileData, // base64 data URI when M4 upload is wired
-            },
-          ],
-        },
-      }));
+    async (userId, { type, label, fileData = null, file = null, onProgress } = {}) => {
+      const nowIso = new Date().toISOString();
+      if (typeof onProgress === 'function') {
+        try {
+          onProgress({ bytesTransferred: 0, totalBytes: 0, percent: 0 });
+        } catch {
+          // ignore
+        }
+      }
+
+      const docDataUrl = file ? await fileToDataUrl(file) : null;
+
+      if (!docDataUrl && !fileData) {
+        throw new Error('Please upload a JPG or PNG image for your document.');
+      }
+      const payload = {
+        type,
+        label,
+        submittedAt: nowIso,
+        reviewStatus: 'pending',
+        reviewedBy: null,
+        reviewedAt: null,
+        reviewNote: '',
+        // Backwards-compatible field used by existing UI renderers.
+        fileData: docDataUrl || fileData,
+        fileMeta: file
+          ? {
+              contentType: file.type || '',
+              originalName: file.name || '',
+              bytes: file.size ?? null,
+              uploadedAt: nowIso,
+            }
+          : null,
+      };
+
+      await update(
+        userId,
+        (rec) => ({
+          ...rec,
+          stage3: {
+            ...rec.stage3,
+            documents: [...(rec.stage3.documents || []), payload],
+          },
+        }),
+        { awaitPersist: true }
+      );
+
+      if (typeof onProgress === 'function') {
+        try {
+          onProgress({ bytesTransferred: 1, totalBytes: 1, percent: 100 });
+        } catch {
+          // ignore
+        }
+      }
     },
     [update]
   );
 
   const reviewDocument = useCallback(
-    (userId, { docIndex, approve, note = '' }) => {
-      update(userId, (rec) => {
-        const documents = (rec.stage3.documents || []).map((d, i) =>
-          i === docIndex ? { ...d, reviewed: approve, note } : d
-        );
-        const documentBacked = documents.some((d) => d.reviewed);
-        return {
-          ...rec,
-          stage3: { ...rec.stage3, documents, documentBacked },
-        };
-      });
+    async (userId, { docIndex, approve, note = '', reviewer = 'PESO' }) => {
+      await update(
+        userId,
+        (rec) => {
+          const documents = (rec.stage3.documents || []).map((d, i) =>
+            i === docIndex
+              ? {
+                  ...d,
+                  reviewed: approve,
+                  reviewStatus: approve ? 'reviewed' : 'rejected',
+                  reviewedBy: reviewer,
+                  reviewedAt: new Date().toISOString(),
+                  reviewNote: note,
+                }
+              : d
+          );
+          const documentBacked = documents.some(
+            (d) => d?.reviewStatus === 'reviewed' || d?.reviewed === true
+          );
+          return {
+            ...rec,
+            stage3: { ...rec.stage3, documents, documentBacked },
+          };
+        },
+        { awaitPersist: true }
+      );
+    },
+    [update]
+  );
+
+  /** One write: reject pending identity and every pending document with the same note (avoids lost updates from sequential reviewDocument calls). */
+  const rejectApplication = useCallback(
+    async (userId, { reviewer, note = '' }) => {
+      const rejectionNote = (typeof note === 'string' ? note.trim() : '') || 'Needs resubmission.';
+      const nowIso = new Date().toISOString();
+      await update(
+        userId,
+        (rec) => {
+          const hasPendingIdentity = rec.stage2?.reviewStatus === 'pending';
+          const hasPendingDoc = (rec.stage3?.documents || []).some(isDocumentPendingForReview);
+          if (!hasPendingIdentity && !hasPendingDoc) return rec;
+
+          const stage2 =
+            hasPendingIdentity
+              ? {
+                  ...rec.stage2,
+                  reviewStatus: 'rejected',
+                  reviewedBy: reviewer,
+                  reviewedAt: nowIso,
+                  reviewNote: rejectionNote,
+                }
+              : rec.stage2;
+
+          const documents = (rec.stage3?.documents || []).map((d) =>
+            isDocumentPendingForReview(d)
+              ? {
+                  ...d,
+                  reviewed: false,
+                  reviewStatus: 'rejected',
+                  reviewedBy: reviewer,
+                  reviewedAt: nowIso,
+                  reviewNote: rejectionNote,
+                }
+              : d
+          );
+          const documentBacked = documents.some(
+            (d) => d?.reviewStatus === 'reviewed' || d?.reviewed === true
+          );
+
+          return {
+            ...rec,
+            stage2,
+            stage3: { ...rec.stage3, documents, documentBacked },
+          };
+        },
+        { awaitPersist: true }
+      );
+    },
+    [update]
+  );
+
+  const removeDocument = useCallback(
+    (userId, { docIndex }) => {
+      update(
+        userId,
+        (rec) => {
+          const documents = (rec.stage3?.documents || []).filter((_, i) => i !== docIndex);
+          const documentBacked = documents.some(
+            (d) => d?.reviewStatus === 'reviewed' || d?.reviewed === true
+          );
+          return {
+            ...rec,
+            stage3: { ...rec.stage3, documents, documentBacked },
+          };
+        },
+        { awaitPersist: true }
+      );
     },
     [update]
   );
 
   const setActivation = useCallback(
-    (userId, { active, by }) => {
-      update(userId, (rec) => ({
-        ...rec,
-        stage4: {
-          activatedAt: active ? new Date().toISOString() : null,
-          activatedBy: active ? by : null,
-        },
-      }));
+    async (userId, { active, by }) => {
+      await update(
+        userId,
+        (rec) => ({
+          ...rec,
+          stage4: {
+            activatedAt: active ? new Date().toISOString() : null,
+            activatedBy: active ? by : null,
+          },
+        }),
+        { awaitPersist: true }
+      );
     },
     [update]
   );
 
   const resetUser = useCallback(
     (userId) => {
-      setRecords((prev) => {
-        if (!prev[userId]) return prev;
-        const { [userId]: _removed, ...rest } = prev;
-        void _removed;
-        persistRecords(rest);
-        return rest;
-      });
+      // For Firestore-backed state, "reset" means writing a blank record shape.
+      const inferredRole =
+        userId === user?.uid && appRole === 'employer' ? 'client' : 'service-provider';
+      const blank = defaultRecordForRole(inferredRole);
+      void persistToFirestore(userId, blank);
     },
-    []
+    [persistToFirestore, user?.uid, appRole]
   );
 
   const resetAll = useCallback(() => {
-    persistRecords(seedRecords);
-    setRecords({ ...seedRecords });
+    // No-op in Firestore mode; admin tooling can do bulk ops if needed.
   }, []);
 
   const getRecord = useCallback(
@@ -215,17 +498,19 @@ export function VerificationProvider({ children }) {
   );
 
   const getTier = useCallback(
-    (userId) => {
+    (userId, roleOverride = null) => {
       const rec = records[userId];
-      return getTrustTier(rec, rec?.role);
+      const role = roleOverride ?? rec?.role ?? 'service-provider';
+      return getTrustTier(rec, role);
     },
     [records]
   );
 
   const getProgress = useCallback(
-    (userId) => {
+    (userId, roleOverride = null) => {
       const rec = records[userId];
-      return getStageProgress(rec, rec?.role);
+      const role = roleOverride ?? rec?.role ?? 'service-provider';
+      return getStageProgress(rec, role);
     },
     [records]
   );
@@ -252,7 +537,9 @@ export function VerificationProvider({ children }) {
         .flatMap(([id, rec]) =>
           (rec.stage3?.documents || [])
             .map((d, index) =>
-              !d.reviewed ? { id, record: rec, document: d, docIndex: index } : null
+              d?.reviewStatus === 'pending' || (d?.reviewStatus == null && d?.reviewed === false)
+                ? { id, record: rec, document: d, docIndex: index }
+                : null
             )
             .filter(Boolean)
         ),
@@ -287,6 +574,8 @@ export function VerificationProvider({ children }) {
       reviewIdentity,
       addDocument,
       reviewDocument,
+      rejectApplication,
+      removeDocument,
       setActivation,
       resetUser,
       resetAll,
@@ -305,6 +594,8 @@ export function VerificationProvider({ children }) {
       reviewIdentity,
       addDocument,
       reviewDocument,
+      rejectApplication,
+      removeDocument,
       setActivation,
       resetUser,
       resetAll,

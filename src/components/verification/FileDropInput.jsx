@@ -1,17 +1,20 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { HiOutlineArrowUpTray, HiOutlineDocumentText, HiOutlinePhoto, HiOutlineXMark } from 'react-icons/hi2';
-import { MAX_UPLOAD_BYTES, readFileAsDataUrl, validateUpload } from '../../utils/currentUser.js';
+import { MAX_UPLOAD_BYTES, validateUpload } from '../../utils/currentUser.js';
 
 /**
- * Reusable file picker for verification uploads. Emits a base64 data URI
- * to the parent via onChange({ dataUrl, file }). Image previews render
- * inline; PDF / other file types show a filename chip.
+ * Reusable file picker for verification uploads.
+ *
+ * Important: base64 conversion is intentionally avoided by default because it
+ * makes uploads feel slow (read + upload). We emit the raw File and a local
+ * object URL for preview instead.
  */
 function FileDropInput({
   label,
   value,
   onChange,
   accept = ['image/*', '.pdf'],
+  maxBytes,
   hint,
   icon,
 }) {
@@ -19,28 +22,51 @@ function FileDropInput({
   const inputRef = useRef(null);
   const [error, setError] = useState('');
 
-  const handleFile = async (file) => {
-    const validationError = validateUpload(file, { accept });
+  useEffect(() => {
+    return () => {
+      if (value?.previewUrl) {
+        try {
+          URL.revokeObjectURL(value.previewUrl);
+        } catch {
+          // ignore
+        }
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleFile = (file) => {
+    const validationError = validateUpload(file, { accept, maxBytes });
     if (validationError) {
       setError(validationError);
       return;
     }
     setError('');
-    try {
-      const dataUrl = await readFileAsDataUrl(file);
-      onChange({ dataUrl, name: file.name, type: file.type, size: file.size });
-    } catch {
-      setError('Could not read that file.');
+    const previewUrl = URL.createObjectURL(file);
+    if (value?.previewUrl) {
+      try {
+        URL.revokeObjectURL(value.previewUrl);
+      } catch {
+        // ignore
+      }
     }
+    onChange({ file, previewUrl, name: file.name, type: file.type, size: file.size });
   };
 
   const handleClear = () => {
+    if (value?.previewUrl) {
+      try {
+        URL.revokeObjectURL(value.previewUrl);
+      } catch {
+        // ignore
+      }
+    }
     onChange(null);
     if (inputRef.current) inputRef.current.value = '';
   };
 
-  const preview = value?.dataUrl;
-  const isImage = preview && (value.type?.startsWith('image/') || preview.startsWith('data:image'));
+  const preview = value?.previewUrl || null;
+  const isImage = Boolean(preview && value?.type?.startsWith('image/'));
 
   return (
     <div>

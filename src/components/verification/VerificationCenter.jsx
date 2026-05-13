@@ -6,6 +6,7 @@ import {
   HiOutlineDocumentText,
   HiOutlineExclamationTriangle,
   HiOutlineIdentification,
+  HiOutlineTrash,
   HiOutlineShieldCheck,
   HiOutlineSparkles,
 } from 'react-icons/hi2';
@@ -25,33 +26,39 @@ import OtpVerifyModal from './OtpVerifyModal.jsx';
  */
 function VerificationCenter({ userId, role = 'service-provider', className = '' }) {
   const { user } = useAuth();
-  const { records, getProgress, getTier } = useVerification();
+  const { records, getProgress, getTier, removeDocument } = useVerification();
   const record = records[userId] || null;
+  /** Must match trust.js role (client = homeowner / employer UI). */
+  const trustRole = role === 'client' ? 'client' : 'service-provider';
 
   const [otpOpen, setOtpOpen] = useState(false);
   const [identityOpen, setIdentityOpen] = useState(false);
   const [docOpen, setDocOpen] = useState(false);
 
-  const progress = useMemo(() => getProgress(userId), [getProgress, userId, records]); // eslint-disable-line react-hooks/exhaustive-deps
-  const tier = useMemo(() => getTier(userId), [getTier, userId, records]); // eslint-disable-line react-hooks/exhaustive-deps
+  const progress = useMemo(
+    () => getProgress(userId, trustRole),
+    [getProgress, userId, trustRole, records] // eslint-disable-line react-hooks/exhaustive-deps
+  );
+  const tier = useMemo(
+    () => getTier(userId, trustRole),
+    [getTier, userId, trustRole, records] // eslint-disable-line react-hooks/exhaustive-deps
+  );
 
   const stage1Done = progress?.stages.stage1.state === 'complete';
   const stage2State = progress?.stages.stage2.state ?? 'not-started';
   const stage3State = progress?.stages.stage3.state ?? 'not-started';
   const stage4Done = progress?.stages.stage4.state === 'complete';
+  const showSupportingDocs = role === 'service-provider';
+  const docs = record?.stage3?.documents || [];
 
   const stages = [
     {
       key: 'stage1',
       icon: HiOutlineEnvelope,
       title: 'Email verification',
-      body: stage1Done
-        ? `Confirmed ${record?.stage1?.email || record?.stage1?.mobile || 'on file'} · ${formatDate(record?.stage1?.otpVerifiedAt)}`
-        : 'Confirm your email address with a 6-digit code.',
-      state: stage1Done ? 'complete' : 'pending',
-      action: stage1Done
-        ? { label: 'Update email', onClick: () => setOtpOpen(true), variant: 'secondary' }
-        : { label: 'Verify email', onClick: () => setOtpOpen(true), variant: 'primary' },
+      body: 'Email is verified through your login email. Email changes are disabled.',
+      state: 'complete',
+      action: null,
     },
     {
       key: 'stage2',
@@ -61,25 +68,96 @@ function VerificationCenter({ userId, role = 'service-provider', className = '' 
       state: identityUiState(stage2State),
       action: identityAction(stage2State, stage1Done, () => setIdentityOpen(true)),
     },
-    {
-      key: 'stage3',
-      icon: HiOutlineDocumentText,
-      title: 'Supporting Documents',
-      body: documentsBody(record),
-      state:
-        stage3State === 'complete'
-          ? 'complete'
-          : stage3State === 'in-review'
-            ? 'in-review'
-            : 'pending',
-      action: {
-        label:
-          (record?.stage3?.documents?.length || 0) > 0 ? 'Add another' : 'Upload document',
-        onClick: () => setDocOpen(true),
-        variant: 'secondary',
-        disabled: !stage1Done,
-      },
-    },
+    ...(showSupportingDocs
+      ? [
+          {
+            key: 'stage3',
+            icon: HiOutlineDocumentText,
+            title: 'Supporting Documents',
+            body: (
+              <div className="space-y-2">
+                <p className="text-xs text-gray-600">{documentsBody(record)}</p>
+                {docs.length ? (
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    {docs.map((d, idx) => {
+                      const status =
+                        d?.reviewStatus ||
+                        (d?.reviewed === true ? 'reviewed' : d?.reviewed === false ? 'pending' : 'pending');
+                      const pill =
+                        status === 'reviewed'
+                          ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                          : status === 'rejected'
+                            ? 'border-red-200 bg-red-50 text-red-700'
+                            : 'border-amber-200 bg-amber-50 text-amber-800';
+                      const label =
+                        status === 'reviewed' ? 'Approved' : status === 'rejected' ? 'Rejected' : 'In review';
+                      const canRemove = status === 'pending' || status === 'rejected';
+                      return (
+                        <div key={`doc-${idx}`} className="rounded-lg border border-gray-200 bg-gray-50 p-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="truncate text-xs font-semibold text-gray-800">
+                                {d?.label || 'Document'}
+                              </p>
+                              <p className="mt-0.5 text-[11px] text-gray-500">
+                                {d?.submittedAt ? `Submitted ${formatDate(d.submittedAt)}` : ''}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${pill}`}>
+                                {label}
+                              </span>
+                              {canRemove ? (
+                                <button
+                                  type="button"
+                                  onClick={() => removeDocument(userId, { docIndex: idx })}
+                                  className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-1 text-[11px] font-semibold text-gray-700 hover:bg-gray-50"
+                                >
+                                  <HiOutlineTrash className="h-3.5 w-3.5" aria-hidden="true" />
+                                  Remove
+                                </button>
+                              ) : null}
+                            </div>
+                          </div>
+                          {d?.fileData ? (
+                            <div className="mt-2 overflow-hidden rounded-md border border-gray-200 bg-white">
+                              <img
+                                src={d.fileData}
+                                alt={d?.label || 'Document'}
+                                className="max-h-40 w-full object-contain"
+                              />
+                            </div>
+                          ) : null}
+                          {status === 'rejected' && d?.reviewNote ? (
+                            <p className="mt-2 rounded-md bg-red-50 px-2 py-1 text-[11px] text-red-700">
+                              Rejected: {d.reviewNote}
+                            </p>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : null}
+              </div>
+            ),
+            state:
+              stage3State === 'complete'
+                ? 'complete'
+                : stage3State === 'in-review'
+                  ? 'in-review'
+                  : 'pending',
+            action: {
+              label:
+                (record?.stage3?.documents?.length || 0) > 0
+                  ? 'Add another'
+                  : 'Upload document',
+              onClick: () => setDocOpen(true),
+              variant: 'secondary',
+              disabled: !stage1Done,
+            },
+          },
+        ]
+      : []),
     {
       key: 'stage4',
       icon: HiOutlineShieldCheck,
@@ -97,6 +175,7 @@ function VerificationCenter({ userId, role = 'service-provider', className = '' 
   ];
 
   const completedStages = stages.filter((s) => s.state === 'complete').length;
+  const totalStages = stages.length;
 
   return (
     <section
@@ -108,7 +187,7 @@ function VerificationCenter({ userId, role = 'service-provider', className = '' 
             <h2 className="text-base font-semibold text-[#1F4E79]">
               Verification Center
             </h2>
-            <TrustBadge tier={tier} size="md" />
+            <TrustBadge tier={tier} role={role === 'service-provider' ? 'service-provider' : 'client'} size="md" />
           </div>
           <p className="mt-1 text-xs text-gray-500">
             {TIER_DESCRIPTIONS[tier] ||
@@ -117,12 +196,12 @@ function VerificationCenter({ userId, role = 'service-provider', className = '' 
         </div>
         <div className="text-right text-xs text-gray-500">
           <p className="font-semibold text-[#1F4E79]">
-            {completedStages} / 4 complete
+            {completedStages} / {totalStages} complete
           </p>
           <div className="mt-1 h-1.5 w-32 overflow-hidden rounded-full bg-gray-100">
             <div
               className="h-full bg-[#1F4E79] transition-all"
-              style={{ width: `${(completedStages / 4) * 100}%` }}
+              style={{ width: `${(completedStages / totalStages) * 100}%` }}
             />
           </div>
         </div>
@@ -148,9 +227,11 @@ function VerificationCenter({ userId, role = 'service-provider', className = '' 
           isOpen
           userId={userId}
           onClose={() => setIdentityOpen(false)}
+          previousSubmissionRejected={stage2State === 'rejected'}
+          rejectionNote={record?.stage2?.reviewNote || ''}
         />
       ) : null}
-      {docOpen ? (
+      {showSupportingDocs && docOpen ? (
         <DocumentUploadModal
           isOpen
           userId={userId}
@@ -183,7 +264,7 @@ function StageRow({ index, icon, title, body, state, action }) {
             </span>
           </div>
           <h3 className="mt-0.5 text-sm font-semibold text-gray-900">{title}</h3>
-          <p className="mt-0.5 text-xs text-gray-600">{body}</p>
+          <div className="mt-0.5 text-xs text-gray-600">{body}</div>
         </div>
       </div>
 
@@ -257,7 +338,10 @@ function identityBody(s, record) {
     return `Submitted ${formatDate(record?.stage2?.idSubmittedAt)} · waiting for PESO review.`;
   }
   if (s === 'rejected') {
-    return `Rejected: ${record?.stage2?.reviewNote || 'Please resubmit with clearer images.'}`;
+    const when = formatDate(record?.stage2?.idSubmittedAt);
+    const note =
+      record?.stage2?.reviewNote?.trim() || 'Please upload clearer photos of your ID (front and back) and selfie holding it.';
+    return `Your submitted ID and selfie photos were rejected${when !== '—' ? ` (sent ${when})` : ''}. PESO note: ${note}`;
   }
   return 'Upload a government-issued ID and a selfie holding it.';
 }
@@ -265,10 +349,11 @@ function identityBody(s, record) {
 function identityAction(s, stage1Done, openFn) {
   if (s === 'pending') return null;
   return {
-    label: s === 'rejected' ? 'Resubmit' : s === 'reviewed' ? 'Update' : 'Start verification',
+    label: s === 'rejected' ? 'Resubmit photos' : s === 'reviewed' ? 'Update' : 'Start verification',
     onClick: openFn,
     variant: s === 'reviewed' ? 'secondary' : 'primary',
-    disabled: !stage1Done,
+    // After a rejection, always allow opening the modal (photos must be replaced).
+    disabled: s === 'rejected' ? false : !stage1Done,
   };
 }
 
@@ -277,8 +362,12 @@ function documentsBody(record) {
   if (!docs.length) {
     return 'Optional but recommended — Barangay Clearance, TESDA certificate, Police clearance, etc.';
   }
-  const reviewed = docs.filter((d) => d.reviewed).length;
-  return `${docs.length} submitted · ${reviewed} reviewed by PESO.`;
+  const reviewed = docs.filter((d) => d.reviewStatus === 'reviewed' || d.reviewed).length;
+  const rejected = docs.filter((d) => d.reviewStatus === 'rejected').length;
+  if (rejected) {
+    return `${docs.length} submitted · ${reviewed} approved · ${rejected} needs changes.`;
+  }
+  return `${docs.length} submitted · ${reviewed} approved by PESO.`;
 }
 
 function formatDate(iso) {

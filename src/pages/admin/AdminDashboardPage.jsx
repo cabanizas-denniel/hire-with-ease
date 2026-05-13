@@ -105,12 +105,23 @@ function AdminDashboardPage() {
         <div className="rounded-xl bg-white p-4 shadow-sm">
           <h2 className="text-base font-semibold text-[#1F4E79]">Skill Shortage Indicators</h2>
           <div className="mt-3 space-y-2">
-            {analytics.shortages.map((item) => (
-              <div key={item.skill} className="rounded-lg border border-red-100 bg-red-50 p-3">
-                <p className="text-sm font-semibold text-red-800">{item.skill} - {item.level}</p>
-                <p className="text-xs text-red-700">Region: {item.region}</p>
+            {analytics.shortages.length === 0 ? (
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                <p className="text-sm font-semibold text-gray-700">No data available</p>
+                <p className="text-xs text-gray-500">
+                  Skill shortage indicators will appear here once analytics data is provided.
+                </p>
               </div>
-            ))}
+            ) : (
+              analytics.shortages.map((item) => (
+                <div key={item.skill} className="rounded-lg border border-red-100 bg-red-50 p-3">
+                  <p className="text-sm font-semibold text-red-800">
+                    {item.skill} - {item.level}
+                  </p>
+                  <p className="text-xs text-red-700">Region: {item.region}</p>
+                </div>
+              ))
+            )}
           </div>
         </div>
 

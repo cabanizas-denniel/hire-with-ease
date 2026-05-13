@@ -21,18 +21,23 @@ import {
   signOut,
 } from 'firebase/auth';
 import {
+  initializeApp as initializeAdminApp,
+  applicationDefault,
+  cert,
+  getApps,
+} from 'firebase-admin/app';
+import { getAuth as getAdminAuth } from 'firebase-admin/auth';
+import fs from 'node:fs';
+import {
   collection,
   doc,
   getDoc,
-  getDocs,
   getFirestore,
   serverTimestamp,
   setDoc,
 } from 'firebase/firestore';
 
-import jobsSeed from '../src/data/jobs.js';
-import workersSeed from '../src/data/applicants.js';
-import { resolveLocation, OLONGAPO_CENTER } from '../src/lib/olongapoBarangays.js';
+import { resolveLocation } from '../src/lib/olongapoBarangays.js';
 
 const firebaseConfig = {
   apiKey: process.env.VITE_FIREBASE_API_KEY,
@@ -42,6 +47,92 @@ const firebaseConfig = {
   messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
   appId: process.env.VITE_FIREBASE_APP_ID,
 };
+
+let _adminAuth = null;
+function getAdminAuthIfAvailable() {
+  if (_adminAuth) return _adminAuth;
+
+  const serviceJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+  const servicePath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
+  try {
+    const existing = getApps();
+    const app =
+      existing.length > 0
+        ? existing[0]
+        : serviceJson && serviceJson.trim()
+          ? initializeAdminApp({ credential: cert(JSON.parse(serviceJson)) })
+          : servicePath && servicePath.trim()
+            ? initializeAdminApp({
+                credential: cert(JSON.parse(fs.readFileSync(servicePath, 'utf8'))),
+              })
+            : initializeAdminApp({ credential: applicationDefault() });
+    _adminAuth = getAdminAuth(app);
+    return _adminAuth;
+  } catch {
+    // If admin credentials are not available (or ADC cannot be resolved),
+    // seeding can still proceed; we just won't auto-mark Auth emails verified.
+    return null;
+  }
+}
+
+function buildVerification({ role, email, verificationLevel }) {
+  const base = {
+    role: role === 'homeowner' ? 'client' : 'service-provider',
+    stage1: { mobile: null, email: email || null, otpVerifiedAt: null },
+    stage2: {
+      idSubmittedAt: null,
+      selfieSubmittedAt: null,
+      reviewStatus: 'not-started',
+      reviewedBy: null,
+      reviewedAt: null,
+      reviewNote: '',
+      idImage: null,
+      selfieImage: null,
+    },
+    stage3: { documents: [], documentBacked: false },
+    stage4: { activatedAt: null, activatedBy: null },
+  };
+
+  const level = (verificationLevel || 'none').toLowerCase();
+
+  // Homeowner trust tiers:
+  // - partial: identity verified => "Trusted"
+  // - full: identity + supporting docs => "Fully Trusted"
+  if (role === 'homeowner') {
+    if (level === 'partial' || level === 'full') {
+      base.stage2.reviewStatus = 'reviewed';
+      base.stage2.reviewedAt = serverTimestamp();
+      base.stage2.reviewNote = 'Seeded verification';
+    }
+    if (level === 'full') {
+      base.stage3.documentBacked = true;
+      base.stage3.documents = [{ kind: 'seed', submittedAt: null, status: 'accepted' }];
+    }
+    return base;
+  }
+
+  // Worker access is enforced by Firestore rules (workerIsActivated()).
+  // Only "full" should be activated by default.
+  if (role === 'informal_worker') {
+    if (level === 'partial' || level === 'full') {
+      base.stage2.idSubmittedAt = serverTimestamp();
+      base.stage2.selfieSubmittedAt = serverTimestamp();
+      base.stage2.reviewStatus = level === 'full' ? 'reviewed' : 'pending';
+      if (level === 'full') {
+        base.stage2.reviewedAt = serverTimestamp();
+        base.stage2.reviewNote = 'Seeded verification';
+      }
+    }
+    if (level === 'full') {
+      base.stage3.documentBacked = true;
+      base.stage3.documents = [{ kind: 'seed', submittedAt: null, status: 'accepted' }];
+      base.stage4.activatedAt = serverTimestamp();
+      base.stage4.activatedBy = 'seed';
+    }
+  }
+
+  return base;
+}
 
 // `verificationLevel` controls the demo trust-tier behaviour for each
 // seed account. Mirrored client-side in src/data/demoVerification.js,
@@ -149,6 +240,25 @@ async function ensureAccount(auth, db, account) {
     }
   }
 
+  // Mark seeded accounts as email-verified so they pass Firestore Rules immediately.
+  const adminAuth = getAdminAuthIfAvailable();
+  if (adminAuth) {
+    try {
+      await adminAuth.updateUser(uid, { emailVerified: true });
+      console.log(`  + Email verified  -> ${email}`);
+    } catch (err) {
+      console.warn(
+        `  ! Could not set emailVerified for ${email}: ${err?.message || err}. ` +
+          `Check FIREBASE_SERVICE_ACCOUNT_JSON or GOOGLE_APPLICATION_CREDENTIALS.`
+      );
+    }
+  } else {
+    console.warn(
+      `  ! Could not set emailVerified for ${email}. ` +
+        `Provide Admin credentials (FIREBASE_SERVICE_ACCOUNT_JSON, FIREBASE_SERVICE_ACCOUNT_PATH, or GOOGLE_APPLICATION_CREDENTIALS).`
+    );
+  }
+
   const ref = doc(db, 'users', uid);
   const snap = await getDoc(ref);
   if (snap.exists()) {
@@ -164,6 +274,8 @@ async function ensureAccount(auth, db, account) {
       coords: point ? { lat: point.lat, lng: point.lng } : null,
       barangay: point ? point.barangay : null,
       verificationLevel: verificationLevel || 'none',
+      // Verification state now lives in /users.verification and is enforced by rules.
+      verification: buildVerification({ role, email, verificationLevel }),
       createdAt: serverTimestamp(),
       isSeed: true,
     });
@@ -177,110 +289,8 @@ async function ensureAccount(auth, db, account) {
 }
 
 /**
- * Map a /data/jobs.js record into a Firestore /jobs document.
- * Sets postedBy / postedByName so the homeowner UI can filter by uid.
+ * Minimal seed mode: accounts only (no jobs/worker_profiles/applications).
  */
-function buildJobDoc(seed, postedByUid, postedByName) {
-  const point = resolveLocation(seed.location) || {
-    ...OLONGAPO_CENTER,
-    barangay: null,
-  };
-  return {
-    id: seed.id,
-    title: seed.title,
-    category: seed.category,
-    description: seed.description,
-    requiredSkills: seed.requiredSkills || [],
-    status: seed.status,
-    urgency: seed.urgency || 'Normal',
-    type: seed.type || 'Scheduled',
-    budget: seed.budget || null,
-    schedule: seed.schedule || null,
-    clientName: seed.clientName || postedByName || null,
-    matchedWorkers: seed.matchedWorkers ?? 0,
-    postedAt: seed.postedAt || null,
-    location: {
-      lat: point.lat,
-      lng: point.lng,
-      barangay: point.barangay,
-      label: seed.location || null,
-    },
-    postedBy: postedByUid || null,
-    postedByName: postedByName || seed.clientName || null,
-    confirmedWorkerId: null,
-    confirmedWorkerName: null,
-    agreement: null,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-    isSeed: true,
-  };
-}
-
-/**
- * Map a /data/applicants.js record into a Firestore /worker_profiles document.
- * `docId` lets callers override the document id (we key the 3 logged-in
- * seed workers by their actual auth uid so the app can find their profile).
- */
-function buildWorkerProfileDoc(seed, { docId, uid, email, verificationLevel } = {}) {
-  const point = resolveLocation(seed.location) || {
-    ...OLONGAPO_CENTER,
-    barangay: null,
-  };
-  // For demo seed accounts, the level overrides the cold-start `verified`
-  // flag so the homeowner-side ApplicantCard mirrors the trust tier.
-  const verified =
-    verificationLevel != null ? verificationLevel === 'full' : !!seed.verified;
-  return {
-    docId: docId || seed.id,
-    payload: {
-      id: docId || seed.id,
-      uid: uid || null,
-      email: email || null,
-      name: seed.name,
-      experienceLevel: seed.experienceLevel,
-      yearsExperience: seed.yearsExperience,
-      skills: seed.skills || [],
-      certifications: seed.certifications || [],
-      availability: seed.availability || [],
-      preferredCategories: seed.preferredCategories || [],
-      rating: seed.rating ?? null,
-      jobsCompleted: seed.jobsCompleted ?? 0,
-      completionRate: seed.completionRate ?? 0,
-      verified,
-      verificationLevel: verificationLevel || (seed.verified ? 'full' : 'none'),
-      moderationStatus: seed.moderationStatus || 'active',
-      location: {
-        lat: point.lat,
-        lng: point.lng,
-        barangay: point.barangay,
-        label: seed.location || null,
-      },
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-      isSeed: true,
-    },
-  };
-}
-
-async function seedDocs(db, name, items) {
-  console.log(`\nSeeding /${name} (${items.length} documents)`);
-  const colRef = collection(db, name);
-  const existing = await getDocs(colRef);
-  const existingIds = new Set(existing.docs.map((d) => d.id));
-
-  let created = 0;
-  let skipped = 0;
-  for (const { docId, payload } of items) {
-    if (existingIds.has(docId)) {
-      skipped += 1;
-      continue;
-    }
-     
-    await setDoc(doc(db, name, docId), payload);
-    created += 1;
-  }
-  console.log(`  = existing: ${skipped}    + created: ${created}`);
-}
 
 async function main() {
   assertEnv();
@@ -300,149 +310,6 @@ async function main() {
     const uid = await ensureAccount(auth, db, account);
     if (uid) uidByEmail[account.email] = uid;
   }
-
-  // Sign in as admin once and seed all non-user collections.
-  // Admin is allowed to write to /jobs, /worker_profiles, and /applications
-  // by Firestore rules, which keeps seeding simple.
-  const adminCred = await signInWithEmailAndPassword(auth, 'admin@hwe.test', 'Admin123!');
-  const adminUid = adminCred.user.uid;
-
-  // Build clientName -> uid lookup so we can wire seed jobs to real
-  // homeowner accounts where their names match.
-  const homeownerUidByName = {};
-  for (const acc of ACCOUNTS) {
-    if (acc.role === 'homeowner' && uidByEmail[acc.email]) {
-      homeownerUidByName[acc.fullName] = uidByEmail[acc.email];
-    }
-  }
-
-  // 2. Jobs — assign each job to the matching homeowner uid when we can,
-  // fall back to admin so the cold-start pool stays browseable.
-  const jobItems = jobsSeed.map((j) => {
-    const ownerUid = homeownerUidByName[j.clientName] || adminUid;
-    const ownerName = j.clientName || (ownerUid === adminUid ? 'PESO Olongapo' : null);
-    return {
-      docId: j.id,
-      payload: buildJobDoc(j, ownerUid, ownerName),
-    };
-  });
-  await seedDocs(db, 'jobs', jobItems);
-
-  // 3. Worker profiles — three are keyed by real auth uids so the worker
-  // dashboard finds them; the rest live under their wrk-XXX seed ids
-  // purely so the admin heatmap / candidates pool stays populated.
-  const seedWorkerByEmail = {
-    'rafael.worker@hwe.test': 'wrk-201',
-    'jessa.worker@hwe.test': 'wrk-202',
-    'mark.worker@hwe.test': 'wrk-203',
-  };
-
-  const profileItems = [];
-  const usedSeedIds = new Set();
-  const accountByEmail = Object.fromEntries(ACCOUNTS.map((a) => [a.email, a]));
-  for (const [email, seedId] of Object.entries(seedWorkerByEmail)) {
-    const uid = uidByEmail[email];
-    const seed = workersSeed.find((w) => w.id === seedId);
-    if (!uid || !seed) continue;
-    const level = accountByEmail[email]?.verificationLevel || 'none';
-    profileItems.push(
-      buildWorkerProfileDoc(seed, {
-        docId: uid,
-        uid,
-        email,
-        verificationLevel: level,
-      })
-    );
-    usedSeedIds.add(seedId);
-  }
-  // Cold-start pool — extra mock workers visible to homeowners but not
-  // tied to a real auth account.
-  for (const seed of workersSeed) {
-    if (usedSeedIds.has(seed.id)) continue;
-    profileItems.push(buildWorkerProfileDoc(seed));
-  }
-  await seedDocs(db, 'worker_profiles', profileItems);
-
-  // Re-runnable demo-tier sync: even when /users and /worker_profiles
-  // already exist from a previous seed, force the demo accounts'
-  // verificationLevel / verified flags to match the latest ACCOUNTS
-  // table. Uses merge:true so unrelated fields the dev edited stay.
-  console.log('\nSyncing demo verification levels (merge):');
-  for (const account of ACCOUNTS) {
-    const uid = uidByEmail[account.email];
-    if (!uid) continue;
-    const level = account.verificationLevel || 'none';
-    await setDoc(
-      doc(db, 'users', uid),
-      { verificationLevel: level, updatedAt: serverTimestamp() },
-      { merge: true }
-    );
-    if (account.role === 'informal_worker') {
-      await setDoc(
-        doc(db, 'worker_profiles', uid),
-        {
-          verified: level === 'full',
-          verificationLevel: level,
-          updatedAt: serverTimestamp(),
-        },
-        { merge: true }
-      );
-    }
-    console.log(`  = ${account.email.padEnd(30)} -> ${level}`);
-  }
-
-  // 4. Applications — pair each logged-in worker with the matching
-  // homeowner's open job so the e2e flow has data on first login.
-  const sampleApplications = [
-    {
-      email: 'rafael.worker@hwe.test',
-      jobId: 'job-101', // Maria's Plumbing
-    },
-    {
-      email: 'jessa.worker@hwe.test',
-      jobId: 'job-102', // JR's Electrical
-    },
-    {
-      email: 'mark.worker@hwe.test',
-      jobId: 'job-103', // GreenVille's Welding
-    },
-  ].filter((s) => uidByEmail[s.email]);
-
-  const appItems = [];
-  for (const sample of sampleApplications) {
-    const workerUid = uidByEmail[sample.email];
-    const job = jobsSeed.find((j) => j.id === sample.jobId);
-    if (!workerUid || !job) continue;
-    const seedWorkerId = seedWorkerByEmail[sample.email];
-    const seedWorker = workersSeed.find((w) => w.id === seedWorkerId);
-    const clientUid = homeownerUidByName[job.clientName] || adminUid;
-    const id = `app-${job.id}-${workerUid}`;
-    appItems.push({
-      docId: id,
-      payload: {
-        id,
-        jobId: job.id,
-        workerId: workerUid,
-        workerName: seedWorker?.name || sample.email,
-        workerSkills: seedWorker?.skills || [],
-        clientId: clientUid,
-        clientName: job.clientName || null,
-        jobTitle: job.title,
-        status: 'pending',
-        message: null,
-        proposedAgreement: null,
-        proposedBy: null,
-        confirmedByClient: false,
-        confirmedByWorker: false,
-        appliedAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        isSeed: true,
-      },
-    });
-  }
-  await seedDocs(db, 'applications', appItems);
-
-  await signOut(auth);
 
   console.log('\nSeed complete.\n');
   console.log('Login credentials:');

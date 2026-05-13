@@ -5,6 +5,7 @@ import StatCard from '../../components/StatCard.jsx';
 import JobCard from '../../components/JobCard.jsx';
 import StatusBadge from '../../components/StatusBadge.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
+import WorkerAccessGate, { useWorkerAccessGate } from '../../components/verification/WorkerAccessGate.jsx';
 import {
   useApplicationsByWorker,
   useOpenJobs,
@@ -18,12 +19,15 @@ import {
 import { locationLabel } from '../../utils/clientJobs.js';
 
 function ApplicantDashboardPage() {
+  const gate = useWorkerAccessGate();
   const auth = useAuth();
   const workerUid = auth?.user?.uid || null;
 
-  const { data: profile } = useWorkerProfile(workerUid);
+  const shouldLoadData = !gate.blocked;
+
+  const { data: profile } = useWorkerProfile(shouldLoadData ? workerUid : null);
   const { data: openJobs } = useOpenJobs();
-  const { data: myApps } = useApplicationsByWorker(workerUid);
+  const { data: myApps } = useApplicationsByWorker(shouldLoadData ? workerUid : null);
 
   const myActiveJobIds = useMemo(
     () =>
@@ -56,6 +60,9 @@ function ApplicantDashboardPage() {
         subtitle="Jobs matched to your skills are pushed here automatically. Apply, chat with the homeowner, and only commit once both sides agree."
       />
 
+      <WorkerAccessGate />
+
+      {gate.blocked ? null : (
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <StatCard
           label="New Matches"
@@ -73,7 +80,9 @@ function ApplicantDashboardPage() {
           helperText="Based on client feedback"
         />
       </div>
+      )}
 
+      {!gate.blocked ? (
       <section className="mt-6">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-[#1F4E79]">New Matches For You</h2>
@@ -104,6 +113,7 @@ function ApplicantDashboardPage() {
           ) : null}
         </div>
       </section>
+      ) : null}
     </div>
   );
 }

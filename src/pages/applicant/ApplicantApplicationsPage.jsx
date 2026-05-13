@@ -6,6 +6,7 @@ import JobIssueMedia from '../../components/JobIssueMedia.jsx';
 import PageHeader from '../../components/PageHeader.jsx';
 import StatusBadge from '../../components/StatusBadge.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
+import WorkerAccessGate, { useWorkerAccessGate } from '../../components/verification/WorkerAccessGate.jsx';
 import {
   useApplicationsByWorker,
   useJob,
@@ -18,10 +19,12 @@ import {
 } from '../../lib/matching/statuses.js';
 
 function ApplicantApplicationsPage() {
+  const gate = useWorkerAccessGate();
   const auth = useAuth();
   const workerUid = auth?.user?.uid || null;
+  const shouldLoadData = !gate.blocked;
 
-  const { data: apps, loading } = useApplicationsByWorker(workerUid);
+  const { data: apps, loading } = useApplicationsByWorker(shouldLoadData ? workerUid : null);
 
   const active = useMemo(
     () => apps.filter((a) => ACTIVE_APPLICATION_STATUSES.has(a.status)),
@@ -51,19 +54,21 @@ function ApplicantApplicationsPage() {
         subtitle="Applications and bookings you're involved in. Chat with the homeowner and finalise the agreement here."
       />
 
-      {loading ? (
+      <WorkerAccessGate />
+
+      {!gate.blocked && loading ? (
         <p className="rounded-xl bg-white p-6 text-center text-sm text-gray-500 shadow-sm">
           Loading…
         </p>
       ) : null}
 
-      {!loading && active.length === 0 && completed.length === 0 ? (
+      {!gate.blocked && !loading && active.length === 0 && completed.length === 0 ? (
         <p className="rounded-xl bg-white p-6 text-center text-sm text-gray-500 shadow-sm">
           You haven't applied to any jobs yet. Open <span className="font-semibold">Matched Jobs</span> to find a fit.
         </p>
       ) : null}
 
-      {active.length > 0 ? (
+      {!gate.blocked && active.length > 0 ? (
         <div className="grid gap-4 lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
           <aside className="space-y-2">
             <h3 className="px-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
@@ -114,7 +119,7 @@ function ApplicantApplicationsPage() {
         </div>
       ) : null}
 
-      {completed.length > 0 ? (
+      {!gate.blocked && completed.length > 0 ? (
         <section className={active.length > 0 ? 'mt-8' : 'mt-4'}>
           <h2 className="mb-3 text-base font-semibold text-[#1F4E79]">Completed</h2>
           <div className="space-y-3">

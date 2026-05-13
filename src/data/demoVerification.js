@@ -1,215 +1,206 @@
 /**
- * Demo verification levels for the 3 seed informal workers and 3 seed
- * homeowners. The verification system is local-storage backed (see
- * VerificationContext), so we can't pre-seed it the way we do Firestore.
+ * Demo verification provider (mock-disabled).
  *
- * Instead, on the first login of each demo account, VerificationProvider
- * looks the user's email up in this map and writes the matching record
- * under their auth uid. After that the user can play with verification
- * normally — uploading docs, getting reviewed, etc. To re-seed, clear
- * the user's record (Admin > Verification, or `localStorage.clear()`).
- *
- * Levels:
- *   full     - Tier 4 / Fully Verified. Email OTP + ID reviewed + 1 doc reviewed
- *              + admin activation. The "Verified" badge appears.
- *   partial  - Email OTP done + ID submitted, awaiting admin review.
- *              Useful for testing the admin pending-review queue.
- *   none     - Tier 0 / Unverified. Empty record, exactly like a brand-new
- *              account that hasn't started the flow yet.
+ * `VerificationContext` imports `buildDemoVerificationRecord(email)` from this file.
+ * When mock data is disabled, return null so no demo records are auto-seeded.
  */
 
-const PESO_REVIEWER = 'Maria Cruz (PESO)';
-
-function s1Done(email, otpAt) {
-  return { mobile: null, email: email || null, otpVerifiedAt: otpAt };
+export function buildDemoVerificationRecord(_email) {
+  return null;
 }
 
-function s1Empty() {
-  return { mobile: null, email: null, otpVerifiedAt: null };
-}
+// const PESO_REVIEWER = 'Maria Cruz (PESO)';
 
-function s2Reviewed(idAt, selfieAt, reviewedAt, note) {
-  return {
-    idSubmittedAt: idAt,
-    selfieSubmittedAt: selfieAt,
-    reviewStatus: 'reviewed',
-    reviewedBy: PESO_REVIEWER,
-    reviewedAt,
-    reviewNote: note,
-  };
-}
+// function s1Done(email, otpAt) {
+//   return { mobile: null, email: email || null, otpVerifiedAt: otpAt };
+// }
 
-function s2Pending(idAt, selfieAt) {
-  return {
-    idSubmittedAt: idAt,
-    selfieSubmittedAt: selfieAt,
-    reviewStatus: 'pending',
-    reviewedBy: null,
-    reviewedAt: null,
-    reviewNote: '',
-  };
-}
+// function s1Empty() {
+//   return { mobile: null, email: null, otpVerifiedAt: null };
+// }
 
-function s2Empty() {
-  return {
-    idSubmittedAt: null,
-    selfieSubmittedAt: null,
-    reviewStatus: 'not-started',
-    reviewedBy: null,
-    reviewedAt: null,
-    reviewNote: '',
-  };
-}
+// function s2Reviewed(idAt, selfieAt, reviewedAt, note) {
+//   return {
+//     idSubmittedAt: idAt,
+//     selfieSubmittedAt: selfieAt,
+//     reviewStatus: 'reviewed',
+//     reviewedBy: PESO_REVIEWER,
+//     reviewedAt,
+//     reviewNote: note,
+//   };
+// }
 
-function s3Empty() {
-  return { documents: [], documentBacked: false };
-}
+// function s2Pending(idAt, selfieAt) {
+//   return {
+//     idSubmittedAt: idAt,
+//     selfieSubmittedAt: selfieAt,
+//     reviewStatus: 'pending',
+//     reviewedBy: null,
+//     reviewedAt: null,
+//     reviewNote: '',
+//   };
+// }
 
-function s4Active(activatedAt) {
-  return { activatedAt, activatedBy: PESO_REVIEWER };
-}
+// function s2Empty() {
+//   return {
+//     idSubmittedAt: null,
+//     selfieSubmittedAt: null,
+//     reviewStatus: 'not-started',
+//     reviewedBy: null,
+//     reviewedAt: null,
+//     reviewNote: '',
+//   };
+// }
 
-function s4Empty() {
-  return { activatedAt: null, activatedBy: null };
-}
+// function s3Empty() {
+//   return { documents: [], documentBacked: false };
+// }
 
-/**
- * Builds a "fully verified" record at Tier 4. Includes one reviewed
- * supporting doc tailored to the role (TESDA cert for workers,
- * proof-of-address for homeowners) so Stage 3 also reads as complete.
- */
-function buildFullRecord(role, { email, fullName }) {
-  const isWorker = role === 'service-provider';
-  const documents = [
-    isWorker
-      ? {
-          type: 'tesda',
-          label: 'TESDA NC II Certification',
-          submittedAt: '2025-09-02T08:00:00.000Z',
-          reviewed: true,
-          note: 'Certification valid; name matches ID.',
-        }
-      : {
-          type: 'utility',
-          label: 'Utility Bill (Proof of Address)',
-          submittedAt: '2025-09-02T08:00:00.000Z',
-          reviewed: true,
-          note: 'Address matches profile.',
-        },
-  ];
+// function s4Active(activatedAt) {
+//   return { activatedAt, activatedBy: PESO_REVIEWER };
+// }
 
-  return {
-    role,
-    fullName: fullName || null,
-    stage1: s1Done(email, '2025-09-01T08:00:00.000Z'),
-    stage2: s2Reviewed(
-      '2025-09-01T09:00:00.000Z',
-      '2025-09-01T09:01:00.000Z',
-      '2025-09-02T11:00:00.000Z',
-      'ID and selfie match. Clear photos.'
-    ),
-    stage3: { documents, documentBacked: true },
-    stage4: s4Active('2025-09-03T09:00:00.000Z'),
-  };
-}
+// function s4Empty() {
+//   return { activatedAt: null, activatedBy: null };
+// }
 
-/**
- * Builds a "partially verified" record. Email is verified and the ID +
- * selfie have been submitted but are still PENDING admin review. This
- * deliberately surfaces in the admin pending-review queue so the demo
- * can walk through the moderation flow end-to-end.
- */
-function buildPartialRecord(role, { email, fullName }) {
-  return {
-    role,
-    fullName: fullName || null,
-    stage1: s1Done(email, '2026-04-15T10:00:00.000Z'),
-    stage2: s2Pending('2026-04-15T11:00:00.000Z', '2026-04-15T11:01:00.000Z'),
-    stage3: s3Empty(),
-    stage4: s4Empty(),
-  };
-}
+// /**
+//  * Builds a "fully verified" record at Tier 4. Includes one reviewed
+//  * supporting doc tailored to the role (TESDA cert for workers,
+//  * proof-of-address for homeowners) so Stage 3 also reads as complete.
+//  */
+// function buildFullRecord(role, { email, fullName }) {
+//   const isWorker = role === 'service-provider';
+//   const documents = [
+//     isWorker
+//       ? {
+//           type: 'tesda',
+//           label: 'TESDA NC II Certification',
+//           submittedAt: '2025-09-02T08:00:00.000Z',
+//           reviewed: true,
+//           note: 'Certification valid; name matches ID.',
+//         }
+//       : {
+//           type: 'utility',
+//           label: 'Utility Bill (Proof of Address)',
+//           submittedAt: '2025-09-02T08:00:00.000Z',
+//           reviewed: true,
+//           note: 'Address matches profile.',
+//         },
+//   ];
 
-/**
- * Builds a "not verified" record (Tier 0). Same shape as a brand-new
- * account — every stage is empty.
- */
-function buildEmptyRecord(role, { fullName }) {
-  return {
-    role,
-    fullName: fullName || null,
-    stage1: s1Empty(),
-    stage2: s2Empty(),
-    stage3: s3Empty(),
-    stage4: s4Empty(),
-  };
-}
+//   return {
+//     role,
+//     fullName: fullName || null,
+//     stage1: s1Done(email, '2025-09-01T08:00:00.000Z'),
+//     stage2: s2Reviewed(
+//       '2025-09-01T09:00:00.000Z',
+//       '2025-09-01T09:01:00.000Z',
+//       '2025-09-02T11:00:00.000Z',
+//       'ID and selfie match. Clear photos.'
+//     ),
+//     stage3: { documents, documentBacked: true },
+//     stage4: s4Active('2025-09-03T09:00:00.000Z'),
+//   };
+// }
 
-const BUILDERS = {
-  full: buildFullRecord,
-  partial: buildPartialRecord,
-  none: buildEmptyRecord,
-};
+// /**
+//  * Builds a "partially verified" record. Email is verified and the ID +
+//  * selfie have been submitted but are still PENDING admin review. This
+//  * deliberately surfaces in the admin pending-review queue so the demo
+//  * can walk through the moderation flow end-to-end.
+//  */
+// function buildPartialRecord(role, { email, fullName }) {
+//   return {
+//     role,
+//     fullName: fullName || null,
+//     stage1: s1Done(email, '2026-04-15T10:00:00.000Z'),
+//     stage2: s2Pending('2026-04-15T11:00:00.000Z', '2026-04-15T11:01:00.000Z'),
+//     stage3: s3Empty(),
+//     stage4: s4Empty(),
+//   };
+// }
 
-/**
- * Demo email -> { level, role } map.
- *
- * `role` here uses the verification-system vocabulary
- * ('service-provider' / 'client'), not the auth-system one
- * ('informal_worker' / 'homeowner').
- */
-export const DEMO_VERIFICATION_BY_EMAIL = {
-  // Informal workers
-  'rafael.worker@hwe.test': {
-    level: 'full',
-    role: 'service-provider',
-    fullName: 'Rafael Santos',
-  },
-  'jessa.worker@hwe.test': {
-    level: 'partial',
-    role: 'service-provider',
-    fullName: 'Jessa Villanueva',
-  },
-  'mark.worker@hwe.test': {
-    level: 'none',
-    role: 'service-provider',
-    fullName: 'Mark Dela Cruz',
-  },
-  // Homeowners
-  'maria.home@hwe.test': {
-    level: 'full',
-    role: 'client',
-    fullName: 'Maria Santos',
-  },
-  'jr.home@hwe.test': {
-    level: 'partial',
-    role: 'client',
-    fullName: 'JR Properties',
-  },
-  'greenville.home@hwe.test': {
-    level: 'none',
-    role: 'client',
-    fullName: 'GreenVille HOA',
-  },
-};
+// /**
+//  * Builds a "not verified" record (Tier 0). Same shape as a brand-new
+//  * account — every stage is empty.
+//  */
+// function buildEmptyRecord(role, { fullName }) {
+//   return {
+//     role,
+//     fullName: fullName || null,
+//     stage1: s1Empty(),
+//     stage2: s2Empty(),
+//     stage3: s3Empty(),
+//     stage4: s4Empty(),
+//   };
+// }
 
-/**
- * Look up the demo configuration for an email. Returns
- * { level, role, fullName } or null if the email is not a demo account.
- */
-export function getDemoConfigForEmail(email) {
-  if (!email) return null;
-  return DEMO_VERIFICATION_BY_EMAIL[email.toLowerCase()] || null;
-}
+// const BUILDERS = {
+//   full: buildFullRecord,
+//   partial: buildPartialRecord,
+//   none: buildEmptyRecord,
+// };
 
-/**
- * Build the seed verification record for a demo email. Returns null if
- * the email isn't a demo account.
- */
-export function buildDemoVerificationRecord(email) {
-  const config = getDemoConfigForEmail(email);
-  if (!config) return null;
-  const builder = BUILDERS[config.level];
-  if (!builder) return null;
-  return builder(config.role, { email, fullName: config.fullName });
-}
+// /**
+//  * Demo email -> { level, role } map.
+//  *
+//  * `role` here uses the verification-system vocabulary
+//  * ('service-provider' / 'client'), not the auth-system one
+//  * ('informal_worker' / 'homeowner').
+//  */
+// export const DEMO_VERIFICATION_BY_EMAIL = {
+//   // Informal workers
+//   'rafael.worker@hwe.test': {
+//     level: 'full',
+//     role: 'service-provider',
+//     fullName: 'Rafael Santos',
+//   },
+//   'jessa.worker@hwe.test': {
+//     level: 'partial',
+//     role: 'service-provider',
+//     fullName: 'Jessa Villanueva',
+//   },
+//   'mark.worker@hwe.test': {
+//     level: 'none',
+//     role: 'service-provider',
+//     fullName: 'Mark Dela Cruz',
+//   },
+//   // Homeowners
+//   'maria.home@hwe.test': {
+//     level: 'full',
+//     role: 'client',
+//     fullName: 'Maria Santos',
+//   },
+//   'jr.home@hwe.test': {
+//     level: 'partial',
+//     role: 'client',
+//     fullName: 'JR Properties',
+//   },
+//   'greenville.home@hwe.test': {
+//     level: 'none',
+//     role: 'client',
+//     fullName: 'GreenVille HOA',
+//   },
+// };
+
+// /**
+//  * Look up the demo configuration for an email. Returns
+//  * { level, role, fullName } or null if the email is not a demo account.
+//  */
+// export function getDemoConfigForEmail(email) {
+//   if (!email) return null;
+//   return DEMO_VERIFICATION_BY_EMAIL[email.toLowerCase()] || null;
+// }
+
+// /**
+//  * Build the seed verification record for a demo email. Returns null if
+//  * the email isn't a demo account.
+//  */
+// export function buildDemoVerificationRecord(email) {
+//   const config = getDemoConfigForEmail(email);
+//   if (!config) return null;
+//   const builder = BUILDERS[config.level];
+//   if (!builder) return null;
+//   return builder(config.role, { email, fullName: config.fullName });
+// }
