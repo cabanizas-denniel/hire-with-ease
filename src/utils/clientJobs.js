@@ -17,11 +17,18 @@ export function getStatusStepIndex(status) {
 }
 
 /**
- * Render-friendly label for a job's location, which is now stored as
- * { lat, lng, barangay, label } instead of a plain string.
+ * Render-friendly home address for a job or profile location object.
  */
+export function formatHomeAddress(location) {
+  if (!location) return '';
+  if (typeof location === 'string') return location;
+  const parts = [];
+  if (location.label) parts.push(location.label);
+  if (location.barangay) parts.push(`${location.barangay}, Olongapo City`);
+  return parts.join(' · ') || '';
+}
+
+/** @deprecated use formatHomeAddress — kept for existing imports */
 export function locationLabel(job) {
-  if (!job?.location) return '';
-  if (typeof job.location === 'string') return job.location;
-  return job.location.label || job.location.barangay || '';
+  return formatHomeAddress(job?.location);
 }

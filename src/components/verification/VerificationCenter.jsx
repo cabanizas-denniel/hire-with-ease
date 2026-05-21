@@ -48,6 +48,8 @@ function VerificationCenter({ userId, role = 'service-provider', className = '' 
   const stage2State = progress?.stages.stage2.state ?? 'not-started';
   const stage3State = progress?.stages.stage3.state ?? 'not-started';
   const stage4Done = progress?.stages.stage4.state === 'complete';
+  const stage4ActivatedAt = progress?.stages.stage4.activatedAt;
+  const stage4ActivatedBy = progress?.stages.stage4.activatedBy;
   const showSupportingDocs = role === 'service-provider';
   const docs = record?.stage3?.documents || [];
 
@@ -165,7 +167,9 @@ function VerificationCenter({ userId, role = 'service-provider', className = '' 
         role === 'service-provider' ? 'PESO Activation' : 'Trust Upgrade',
       body:
         stage4Done
-          ? `Activated ${formatDate(record?.stage4?.activatedAt)} by ${record?.stage4?.activatedBy || 'PESO'}.`
+          ? role === 'service-provider'
+            ? `Activated ${formatDate(stage4ActivatedAt)} by ${stage4ActivatedBy || 'PESO'}.`
+            : `Trust bump applied ${formatDate(stage4ActivatedAt)} when your identity was approved by ${stage4ActivatedBy || record?.stage2?.reviewedBy || 'PESO'}.`
           : role === 'service-provider'
             ? 'A PESO officer activates your account once your identity is approved.'
             : 'Trust bump applied automatically after identity is reviewed.',

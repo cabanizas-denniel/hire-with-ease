@@ -312,7 +312,8 @@ function LandingPage() {
 
         <div className="flex flex-col justify-center bg-white px-4 pb-12 pt-6 sm:px-8 lg:px-10 lg:pb-20 lg:pl-8 lg:pr-12 lg:pt-28 xl:pr-16">
           <h1 className="max-w-xl text-3xl font-bold leading-tight tracking-tight text-gray-800 sm:text-4xl lg:text-[2.35rem] xl:text-[2.55rem]">
-            Book skilled workers like you book a ride
+            Connect with skilled workers—simple, fast, and effortless
+       
           </h1>
           <p className="mt-4 max-w-lg text-sm leading-relaxed text-gray-600 sm:text-base">
             Need a plumber, electrician, or carpenter? Describe the job — the system finds available, qualified workers

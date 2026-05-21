@@ -2,11 +2,14 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import {
   createUserWithEmailAndPassword,
+  EmailAuthProvider,
   onAuthStateChanged,
+  reauthenticateWithCredential,
   sendPasswordResetEmail,
   sendEmailVerification,
   signInWithEmailAndPassword,
   signOut,
+  updatePassword,
   updateProfile,
 } from 'firebase/auth';
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
@@ -253,6 +256,21 @@ export function AuthProvider({ children }) {
     await signOut(auth);
   }, []);
 
+  const changePassword = useCallback(async ({ currentPassword, newPassword }) => {
+    if (!auth?.currentUser) {
+      throw new Error('You must be signed in to change your password.');
+    }
+    const firebaseUser = auth.currentUser;
+    const email = firebaseUser.email;
+    if (!email) {
+      throw new Error('Password change is only available for email sign-in accounts.');
+    }
+    const credential = EmailAuthProvider.credential(email, currentPassword);
+    await reauthenticateWithCredential(firebaseUser, credential);
+    await updatePassword(firebaseUser, newPassword);
+    return true;
+  }, []);
+
   const value = useMemo(
     () => ({
       ...authState,
@@ -262,9 +280,10 @@ export function AuthProvider({ children }) {
       sendPasswordReset,
       register,
       logout,
+      changePassword,
       getDefaultRoute: (role = authState.role) => DASHBOARD_BY_ROLE[role] || '/login',
     }),
-    [authState, login, resendVerificationEmail, sendPasswordReset, register, logout]
+    [authState, login, resendVerificationEmail, sendPasswordReset, register, logout, changePassword]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

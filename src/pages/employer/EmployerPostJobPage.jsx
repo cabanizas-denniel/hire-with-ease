@@ -1,17 +1,20 @@
 import { useMemo, useRef, useState } from 'react';
 import {
+  HiOutlineArrowLeft,
+  HiOutlineArrowRight,
   HiOutlineExclamationTriangle,
-  HiOutlineMapPin,
   HiOutlinePhoto,
   HiOutlineTrash,
   HiOutlineXMark,
 } from 'react-icons/hi2';
 import { Link, useNavigate } from 'react-router-dom';
 import ActiveJobCard from '../../components/employer/ActiveJobCard.jsx';
-import LocationPicker from '../../components/maps/LocationPicker.jsx';
+import FormStepper from '../../components/FormStepper.jsx';
 import PageHeader from '../../components/PageHeader.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
+import SavedHomeAddressCard from '../../components/profile/SavedHomeAddressCard.jsx';
 import { CATEGORY_REQUIRED_SKILLS, JOB_CATEGORIES } from '../../data/jobs.js';
+import { getHomeownerLocationFromProfile, formatProfileHomeAddress } from '../../lib/homeLocation.js';
 import { storage } from '../../lib/firebase.js';
 import {
   assertIssueMediaFile,
@@ -20,7 +23,10 @@ import {
 } from '../../lib/jobIssueMediaUpload.js';
 import { createJob, findActiveJob, newJobId } from '../../lib/matching/jobs.js';
 import { useJobsByOwner } from '../../lib/matching/hooks.js';
+import { formatHomeAddress } from '../../utils/clientJobs.js';
 import { isVideoMediaEntry } from '../../utils/jobMedia.js';
+
+const WIZARD_STEPS = ['Identify the issue', 'Budget & schedule', 'Review & submit'];
 
 function EmployerPostJobPage() {
   const auth = useAuth();
@@ -31,8 +37,8 @@ function EmployerPostJobPage() {
   const activeJob = useMemo(() => findActiveJob(myJobs), [myJobs]);
 
   const mediaInputRef = useRef(null);
-
   const navigate = useNavigate();
+  const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
@@ -41,13 +47,10 @@ function EmployerPostJobPage() {
     title: '',
     description: '',
     budget: '',
-    locationPin: null,
-    addressDetails: '',
     type: 'Scheduled',
     schedule: '',
   });
 
-  /** Local picks before upload: { key, file, previewUrl } */
   const [mediaDrafts, setMediaDrafts] = useState([]);
 
   const handleAddMedia = (event) => {
@@ -87,8 +90,49 @@ function EmployerPostJobPage() {
     if (mediaInputRef.current) mediaInputRef.current.value = '';
   };
 
+  const validateStep = (stepIndex) => {
+    if (stepIndex === 0) {
+      if (!form.category) return 'Select a category.';
+      if (!form.title.trim()) return 'Add a short title for this job.';
+      if (!form.description.trim()) return 'Describe the issue.';
+      if (!getHomeownerLocationFromProfile(auth.profile)) {
+        return 'Set your home address on your Profile (map pin) before posting a request.';
+      }
+      if (mediaDrafts.length === 0) {
+        return 'Add at least one photo or video of the issue.';
+      }
+    }
+    if (stepIndex === 1) {
+      if (!form.budget) return 'Select a budget range.';
+      if (form.type !== 'Rush' && !form.schedule) {
+        return 'Pick a scheduled date and time.';
+      }
+    }
+    return null;
+  };
+
+  const goNext = () => {
+    const msg = validateStep(step);
+    if (msg) {
+      setError(msg);
+      return;
+    }
+    setError(null);
+    setStep((s) => Math.min(s + 1, WIZARD_STEPS.length - 1));
+  };
+
+  const goBack = () => {
+    setError(null);
+    setStep((s) => Math.max(s - 1, 0));
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
+    const msg = validateStep(0) || validateStep(1);
+    if (msg) {
+      setError(msg);
+      return;
+    }
     if (!ownerUid) {
       setError('You need to be signed in to post a job.');
       return;
@@ -98,19 +142,12 @@ function EmployerPostJobPage() {
       setError('Pick a category so we can match the right workers.');
       return;
     }
-    if (!form.locationPin) {
-      setError('Drop a pin on the map at your exact address — workers need to know where to go.');
-      return;
-    }
-    if (!form.addressDetails.trim()) {
-      setError('Add address details (street, unit, gate code, landmark) so the worker can find your home.');
-      return;
-    }
-    if (mediaDrafts.length === 0) {
-      setError('Add at least one photo or video of the issue so applicants can quote accurately.');
-      return;
-    }
 
+    const jobLocation = getHomeownerLocationFromProfile(auth.profile);
+    if (!jobLocation) {
+      setError('Set your home address on your Profile before posting.');
+      return;
+    }
     setSubmitting(true);
     setError(null);
     const jobId = newJobId();
@@ -124,15 +161,10 @@ function EmployerPostJobPage() {
         description: form.description,
         requiredSkills,
         budget: form.budget,
-        schedule: form.schedule,
+        schedule: form.type === 'Rush' ? 'ASAP · Dispatch now' : form.schedule,
         type: form.type,
         urgency: form.type === 'Rush' ? 'Urgent' : 'Normal',
-        location: {
-          lat: form.locationPin.lat,
-          lng: form.locationPin.lng,
-          barangay: form.locationPin.barangay,
-          label: form.addressDetails.trim(),
-        },
+        location: jobLocation,
         photo: null,
         media,
         postedBy: ownerUid,
@@ -159,19 +191,20 @@ function EmployerPostJobPage() {
   }
 
   const mbLimit = MAX_ISSUE_MEDIA_BYTES / (1024 * 1024);
+  const homeAddressPreview = formatProfileHomeAddress(auth.profile);
 
   return (
     <div>
       <PageHeader
         title="Request a Service"
-        subtitle="Describe what you need. The system will find and notify qualified, available workers automatically."
+        subtitle="Follow the steps below. Your request is saved to the database and matched to workers by skill and location."
       />
 
       <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4 text-sm text-[#1F4E79]">
         <p className="font-semibold">You don't need to search for workers</p>
         <p className="mt-1 text-gray-600">
-          Fill in the details below. The matching engine evaluates worker skills, availability, location, and
-          reliability — then pushes your request to the best-fit workers. You'll see ranked matches once workers respond.
+          After you submit, qualified workers in Olongapo who have matching skills will see your
+          request and can apply. You'll review applicants on the next screen.
         </p>
       </div>
 
@@ -181,259 +214,331 @@ function EmployerPostJobPage() {
         </div>
       ) : null}
 
-      <form onSubmit={handleSubmit} className="mt-5 space-y-5 rounded-xl bg-white p-4 shadow-sm sm:p-5">
-        <section>
-          <h2 className="mb-3 text-sm font-semibold text-[#1F4E79]">Job Type</h2>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">Category</label>
-              <select
-                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
-                value={form.category}
-                onChange={(e) => setForm((prev) => ({ ...prev, category: e.target.value }))}
-                required
-              >
-                <option value="">Select a category</option>
-                {JOB_CATEGORIES.map((cat) => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">Urgency</label>
-              <select
-                value={form.type}
-                onChange={(e) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    type: e.target.value,
-                    schedule:
-                      e.target.value === 'Rush' ? 'ASAP · Dispatch now' : '',
-                  }))
-                }
-                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
-              >
-                <option value="Scheduled">Scheduled (plan ahead)</option>
-                <option value="Rush">Rush (dispatch now)</option>
-              </select>
-            </div>
-          </div>
-          <div className="mt-3">
-            <label className="mb-1 block text-xs font-medium text-gray-600">Short title for this job</label>
-            <input
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
-              placeholder="e.g. Kitchen faucet replacement"
-              value={form.title}
-              onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
-              required
-            />
-          </div>
-          <div className="mt-3">
-            <label className="mb-1 block text-xs font-medium text-gray-600">Description</label>
-            <textarea
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
-              rows={3}
-              placeholder="Describe the issue, location details, what you need done..."
-              value={form.description}
-              onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
-              required
-            />
-          </div>
-        </section>
+      <form
+        onSubmit={handleSubmit}
+        className="mt-5 space-y-5 rounded-xl bg-white p-4 shadow-sm sm:p-5"
+      >
+        <FormStepper steps={WIZARD_STEPS} currentStep={step} />
 
-        <section>
-          <h2 className="mb-3 text-sm font-semibold text-[#1F4E79]">Schedule &amp; Budget</h2>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">Budget range</label>
-              <select
-                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
-                value={form.budget}
-                onChange={(e) => setForm((prev) => ({ ...prev, budget: e.target.value }))}
-                required
-              >
-                <option value="">Select budget range</option>
-                <option>PHP 500 - 1,000</option>
-                <option>PHP 1,000 - 2,000</option>
-                <option>PHP 2,000 - 3,000</option>
-                <option>PHP 3,000 - 5,000</option>
-                <option>PHP 5,000+</option>
-              </select>
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">
-                {form.type === 'Rush' ? '' : 'Scheduled start date & time'}
-              </label>
-              {form.type === 'Rush' ? (
-                <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
-                  <span className="mt-0.5 inline-block h-2 w-2 shrink-0 animate-pulse rounded-full bg-amber-500" />
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-amber-900">Dispatch now</p>
-                    <p className="mt-0.5 text-xs text-amber-800/90">
-                      The system will push this to the nearest available,
-                      qualified workers immediately. Please be on-site and
-                      ready to receive the worker within the hour.
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <input
-                    type="datetime-local"
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
-                    value={form.schedule}
-                    onChange={(e) =>
-                      setForm((prev) => ({ ...prev, schedule: e.target.value }))
-                    }
-                    required
-                  />
-                  <p className="mt-1 text-[11px] text-gray-500">
-                    Workers see this exact start time. Please be present at the
-                    location when they arrive.
-                  </p>
-                </>
-              )}
-            </div>
-          </div>
-        </section>
-
-        <section>
-          <h2 className="mb-1 text-sm font-semibold text-[#1F4E79]">
-            Job Location <span className="text-red-500">*</span>
-          </h2>
-          <p className="mb-3 text-xs text-gray-500">
-            Drop a pin on your exact address so the worker can navigate
-            directly to your home. Tap the map, or use your current location.
-          </p>
-
-          <LocationPicker
-            value={form.locationPin}
-            onChange={(locationPin) =>
-              setForm((prev) => ({ ...prev, locationPin }))
-            }
+        {step === 0 ? (
+          <IssueStep
+            form={form}
+            setForm={setForm}
+            profile={auth.profile}
+            mediaDrafts={mediaDrafts}
+            mediaInputRef={mediaInputRef}
+            mbLimit={mbLimit}
+            onAddMedia={handleAddMedia}
+            onRemoveDraft={handleRemoveDraft}
+            onClearAllMedia={handleClearAllMedia}
           />
+        ) : null}
 
-          <div className="mt-3">
-            <label className="mb-1 block text-xs font-medium text-gray-600">
-              Address details <span className="text-red-500">*</span>
-            </label>
-            <textarea
-              rows={2}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
-              placeholder="Street, house/unit no., gate code, landmark, or directions a worker would need."
-              value={form.addressDetails}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, addressDetails: e.target.value }))
-              }
-              required
-            />
-            <p className="mt-1 text-[11px] text-gray-500">
-              Only shared with workers you accept; combined with the pin so the
-              worker arrives at the right house, not just the right barangay.
-            </p>
-          </div>
-        </section>
+        {step === 1 ? (
+          <BudgetScheduleStep form={form} setForm={setForm} />
+        ) : null}
 
-        <section>
-          <h2 className="mb-1 text-sm font-semibold text-[#1F4E79]">
-            Photos / videos of the issue <span className="text-red-500">*</span>
-          </h2>
-          <p className="mb-3 text-xs text-gray-500">
-            Add one or more clips or pictures so applicants can assess scope and quote fairly. Each file can be up to{' '}
-            {mbLimit} MB.
-          </p>
+        {step === 2 ? (
+          <ReviewStep
+            form={form}
+            homeAddress={homeAddressPreview}
+            mediaCount={mediaDrafts.length}
+            requiredSkills={CATEGORY_REQUIRED_SKILLS[form.category] || []}
+          />
+        ) : null}
 
-          {mediaDrafts.length > 0 ? (
-            <div className="space-y-3">
-              <div className="grid gap-3 sm:grid-cols-2">
-                {mediaDrafts.map((draft) => (
-                  <div
-                    key={draft.key}
-                    className="overflow-hidden rounded-xl border border-gray-200 bg-gray-50"
-                  >
-                    <div className="relative bg-black/5">
-                      {isVideoMediaEntry({
-                        contentType: draft.file.type,
-                      }) ? (
-                        <video
-                          src={draft.previewUrl}
-                          controls
-                          playsInline
-                          className="max-h-56 w-full object-contain"
-                        />
-                      ) : (
-                        <img
-                          src={draft.previewUrl}
-                          alt=""
-                          className="max-h-56 w-full object-contain"
-                        />
-                      )}
-                    </div>
-                    <div className="flex items-center justify-between gap-2 border-t border-gray-200 bg-white px-3 py-2">
-                      <p className="min-w-0 truncate text-xs text-gray-500">
-                        {draft.file.name} · {(draft.file.size / 1024).toFixed(0)} KB
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveDraft(draft.key)}
-                        className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
-                      >
-                        <HiOutlineTrash className="h-4 w-4" aria-hidden="true" />
-                        Remove
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-[#1F4E79] bg-[#1F4E79]/5 px-3 py-2 text-sm font-medium text-[#1F4E79] hover:bg-[#1F4E79]/10">
-                  Add more
-                  <input
-                    ref={mediaInputRef}
-                    type="file"
-                    accept="image/*,video/*"
-                    multiple
-                    className="hidden"
-                    onChange={handleAddMedia}
-                  />
-                </label>
-                <button
-                  type="button"
-                  onClick={handleClearAllMedia}
-                  className="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                >
-                  <HiOutlineXMark className="h-4 w-4" aria-hidden="true" />
-                  Clear all
-                </button>
+        <div className="flex flex-col-reverse gap-2 border-t border-gray-100 pt-4 sm:flex-row sm:justify-between">
+          {step > 0 ? (
+            <button
+              type="button"
+              onClick={goBack}
+              className="inline-flex items-center justify-center gap-1 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            >
+              <HiOutlineArrowLeft className="h-4 w-4" aria-hidden="true" />
+              Back
+            </button>
+          ) : (
+            <span />
+          )}
+          {step < WIZARD_STEPS.length - 1 ? (
+            <button
+              type="button"
+              onClick={goNext}
+              className="inline-flex items-center justify-center gap-1 rounded-lg bg-[#1F4E79] px-5 py-2.5 text-sm font-semibold text-white"
+            >
+              Continue
+              <HiOutlineArrowRight className="h-4 w-4" aria-hidden="true" />
+            </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={submitting}
+              className="inline-flex items-center justify-center rounded-lg bg-[#1F4E79] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+            >
+              {submitting ? 'Submitting…' : 'Submit Request'}
+            </button>
+          )}
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function IssueStep({
+  form,
+  setForm,
+  profile,
+  mediaDrafts,
+  mediaInputRef,
+  mbLimit,
+  onAddMedia,
+  onRemoveDraft,
+  onClearAllMedia,
+}) {
+  return (
+    <section className="space-y-4">
+      <h2 className="text-sm font-semibold text-[#1F4E79]">Step 1 — Identify the issue</h2>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-600">Category</label>
+          <select
+            className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
+            value={form.category}
+            onChange={(e) => setForm((prev) => ({ ...prev, category: e.target.value }))}
+          >
+            <option value="">Select a category</option>
+            {JOB_CATEGORIES.map((cat) => (
+              <option key={cat} value={cat}>
+                {cat}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="sm:col-span-2">
+          <label className="mb-1 block text-xs font-medium text-gray-600">Short title</label>
+          <input
+            className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
+            placeholder="e.g. Kitchen faucet replacement"
+            value={form.title}
+            onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="mb-1 block text-xs font-medium text-gray-600">Description</label>
+          <textarea
+            className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
+            rows={3}
+            placeholder="Describe the issue and what you need done..."
+            value={form.description}
+            onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
+          />
+        </div>
+      </div>
+
+      <SavedHomeAddressCard profile={profile} />
+
+      <IssueMediaSection
+        mediaDrafts={mediaDrafts}
+        mediaInputRef={mediaInputRef}
+        mbLimit={mbLimit}
+        onAddMedia={onAddMedia}
+        onRemoveDraft={onRemoveDraft}
+        onClearAllMedia={onClearAllMedia}
+      />
+    </section>
+  );
+}
+
+function BudgetScheduleStep({ form, setForm }) {
+  return (
+    <section className="space-y-4">
+      <h2 className="text-sm font-semibold text-[#1F4E79]">Step 2 — Budget &amp; schedule</h2>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-600">Urgency</label>
+          <select
+            value={form.type}
+            onChange={(e) =>
+              setForm((prev) => ({
+                ...prev,
+                type: e.target.value,
+                schedule: e.target.value === 'Rush' ? '' : prev.schedule,
+              }))
+            }
+            className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
+          >
+            <option value="Scheduled">Scheduled (plan ahead)</option>
+            <option value="Rush">Rush (as soon as possible)</option>
+          </select>
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-600">Budget range</label>
+          <select
+            className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
+            value={form.budget}
+            onChange={(e) => setForm((prev) => ({ ...prev, budget: e.target.value }))}
+          >
+            <option value="">Select budget range</option>
+            <option>PHP 500 - 1,000</option>
+            <option>PHP 1,000 - 2,000</option>
+            <option>PHP 2,000 - 3,000</option>
+            <option>PHP 3,000 - 5,000</option>
+            <option>PHP 5,000+</option>
+          </select>
+        </div>
+        <div className="sm:col-span-2">
+          <label className="mb-1 block text-xs font-medium text-gray-600">When should work start?</label>
+          {form.type === 'Rush' ? (
+            <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
+              <span className="mt-0.5 inline-block h-2 w-2 shrink-0 animate-pulse rounded-full bg-amber-500" />
+              <div>
+                <p className="text-sm font-semibold text-amber-900">As soon as possible</p>
+                <p className="mt-0.5 text-xs text-amber-800/90">
+                  Matched workers are notified to apply. Please be home and ready.
+                </p>
               </div>
             </div>
           ) : (
-            <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-center transition hover:border-[#1F4E79] hover:bg-blue-50/40">
-              <HiOutlinePhoto className="h-8 w-8 text-gray-400" aria-hidden="true" />
-              <p className="text-sm font-semibold text-gray-700">Add photos or videos</p>
-              <p className="text-[11px] text-gray-500">
-                Images or videos, multiple files OK — up to {mbLimit} MB each.
-              </p>
+            <>
               <input
-                ref={mediaInputRef}
-                type="file"
-                accept="image/*,video/*"
-                multiple
-                className="hidden"
-                onChange={handleAddMedia}
+                type="datetime-local"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
+                value={form.schedule}
+                onChange={(e) => setForm((prev) => ({ ...prev, schedule: e.target.value }))}
               />
-            </label>
+              <p className="mt-1 text-[11px] text-gray-500">
+                Workers see this start time when they apply.
+              </p>
+            </>
           )}
-        </section>
+        </div>
+      </div>
+    </section>
+  );
+}
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className="rounded-lg bg-[#1F4E79] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
-        >
-          {submitting ? 'Submitting…' : 'Submit Request'}
-        </button>
-      </form>
+function ReviewStep({ form, homeAddress, mediaCount, requiredSkills }) {
+  return (
+    <section className="space-y-3">
+      <h2 className="text-sm font-semibold text-[#1F4E79]">Step 3 — Review &amp; submit</h2>
+      <p className="text-xs text-gray-500">
+        Submitting creates a request in the database with status <strong>Matching</strong>.
+        Workers with matching skills can apply.
+      </p>
+      <dl className="divide-y divide-gray-100 rounded-lg border border-gray-200 text-sm">
+        <ReviewRow label="Category" value={form.category} />
+        <ReviewRow label="Title" value={form.title} />
+        <ReviewRow label="Description" value={form.description} />
+        <ReviewRow label="Home address" value={homeAddress} />
+        <ReviewRow label="Media" value={`${mediaCount} file(s)`} />
+        <ReviewRow label="Budget" value={form.budget} />
+        <ReviewRow
+          label="Schedule"
+          value={form.type === 'Rush' ? 'ASAP' : form.schedule || '—'}
+        />
+        <ReviewRow label="Skills needed" value={requiredSkills.join(', ') || '—'} />
+      </dl>
+    </section>
+  );
+}
+
+function ReviewRow({ label, value }) {
+  return (
+    <div className="grid gap-1 px-3 py-2.5 sm:grid-cols-[140px_1fr]">
+      <dt className="text-xs font-semibold text-[#1F4E79]">{label}</dt>
+      <dd className="text-gray-700">{value || '—'}</dd>
+    </div>
+  );
+}
+
+function IssueMediaSection({
+  mediaDrafts,
+  mediaInputRef,
+  mbLimit,
+  onAddMedia,
+  onRemoveDraft,
+  onClearAllMedia,
+}) {
+  return (
+    <div>
+      <h3 className="mb-1 text-sm font-semibold text-[#1F4E79]">
+        Photos / videos of the issue <span className="text-red-500">*</span>
+      </h3>
+      <p className="mb-3 text-xs text-gray-500">
+        Up to {mbLimit} MB per file. Workers use these to assess the job.
+      </p>
+      {mediaDrafts.length > 0 ? (
+        <div className="space-y-3">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {mediaDrafts.map((draft) => (
+              <div
+                key={draft.key}
+                className="overflow-hidden rounded-xl border border-gray-200 bg-gray-50"
+              >
+                <div className="relative bg-black/5">
+                  {isVideoMediaEntry({ contentType: draft.file.type }) ? (
+                    <video
+                      src={draft.previewUrl}
+                      controls
+                      playsInline
+                      className="max-h-56 w-full object-contain"
+                    />
+                  ) : (
+                    <img
+                      src={draft.previewUrl}
+                      alt=""
+                      className="max-h-56 w-full object-contain"
+                    />
+                  )}
+                </div>
+                <div className="flex items-center justify-between gap-2 border-t border-gray-200 bg-white px-3 py-2">
+                  <p className="min-w-0 truncate text-xs text-gray-500">{draft.file.name}</p>
+                  <button
+                    type="button"
+                    onClick={() => onRemoveDraft(draft.key)}
+                    className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    <HiOutlineTrash className="h-4 w-4" aria-hidden="true" />
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-[#1F4E79] bg-[#1F4E79]/5 px-3 py-2 text-sm font-medium text-[#1F4E79]">
+            Add more
+            <input
+              ref={mediaInputRef}
+              type="file"
+              accept="image/*,video/*"
+              multiple
+              className="hidden"
+              onChange={onAddMedia}
+            />
+          </label>
+          <button
+            type="button"
+            onClick={onClearAllMedia}
+            className="ml-2 inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            <HiOutlineXMark className="h-4 w-4" aria-hidden="true" />
+            Clear all
+          </button>
+        </div>
+      ) : (
+        <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-center hover:border-[#1F4E79] hover:bg-blue-50/40">
+          <HiOutlinePhoto className="h-8 w-8 text-gray-400" aria-hidden="true" />
+          <p className="text-sm font-semibold text-gray-700">Add photos or videos</p>
+          <input
+            ref={mediaInputRef}
+            type="file"
+            accept="image/*,video/*"
+            multiple
+            className="hidden"
+            onChange={onAddMedia}
+          />
+        </label>
+      )}
     </div>
   );
 }
@@ -456,31 +561,12 @@ function BlockedByActiveJob({ activeJob }) {
               Why can't I post another request right now?
             </h3>
             <p className="mt-1 text-sm text-amber-900/90">
-              Workers are dispatched to <strong>your</strong> location and expect
-              you to be there when they arrive.
+              Workers expect you at{' '}
+              <strong>
+                {formatHomeAddress(activeJob.location) || 'your home address'}
+              </strong>{' '}
+              until this job is done.
             </p>
-            <ul className="mt-2 space-y-1 text-sm text-amber-900/90">
-              <li className="flex items-start gap-2">
-                <HiOutlineMapPin
-                  className="mt-0.5 h-4 w-4 shrink-0 text-amber-700"
-                  aria-hidden="true"
-                />
-                <span>
-                  You can't be in two places at once — stay focused on{' '}
-                  <strong>{activeJob.location?.label || activeJob.location?.barangay || 'your job site'}</strong> until this job is done.
-                </span>
-              </li>
-              <li className="flex items-start gap-2">
-                <HiOutlineExclamationTriangle
-                  className="mt-0.5 h-4 w-4 shrink-0 text-amber-700"
-                  aria-hidden="true"
-                />
-                <span>
-                  A second active request would mean a worker arriving at an
-                  empty address — bad for you, worse for them.
-                </span>
-              </li>
-            </ul>
           </div>
         </div>
       </div>
@@ -491,14 +577,13 @@ function BlockedByActiveJob({ activeJob }) {
 
       <div className="mt-5 rounded-xl border border-gray-100 bg-white p-4 text-sm text-gray-600 shadow-sm sm:p-5">
         <p>
-          Once this job is marked <span className="font-semibold">Completed</span>
-          , the <strong>Request a Service</strong> form will open back up
-          automatically.
+          Once this job is marked <span className="font-semibold">Completed</span>, you can post a
+          new request.
         </p>
         <div className="mt-3 flex flex-col gap-2 sm:flex-row">
           <Link
             to="/employer/jobs"
-            className="inline-flex w-full items-center justify-center rounded-lg bg-[#1F4E79] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:brightness-110 sm:w-auto"
+            className="inline-flex w-full items-center justify-center rounded-lg bg-[#1F4E79] px-4 py-2.5 text-sm font-semibold text-white sm:w-auto"
           >
             Go to My Requests
           </Link>
@@ -515,3 +600,4 @@ function BlockedByActiveJob({ activeJob }) {
 }
 
 export default EmployerPostJobPage;
+

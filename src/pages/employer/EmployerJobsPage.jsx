@@ -10,7 +10,7 @@ import {
   useJobsByOwner,
 } from '../../lib/matching/hooks.js';
 import { findActiveJob } from '../../lib/matching/jobs.js';
-import { ACTIVE_JOB_STATUSES } from '../../lib/matching/statuses.js';
+import { ACTIVE_JOB_STATUSES, JOB_STATUS } from '../../lib/matching/statuses.js';
 import { locationLabel } from '../../utils/clientJobs.js';
 
 function EmployerJobsPage() {
@@ -31,11 +31,11 @@ function EmployerJobsPage() {
   return (
     <div>
       <PageHeader
-        title="My Requests"
+        title="Requests"
         subtitle={
           activeJob
-            ? 'Your ongoing request is shown below. Past requests are archived underneath.'
-            : 'No ongoing request. Your past requests are listed below.'
+            ? 'Your ongoing request is shown below. Completed and past requests are listed underneath.'
+            : 'No ongoing request. Your past and completed requests are listed below.'
         }
       />
 
@@ -108,6 +108,7 @@ function EmployerJobsPage() {
 }
 
 function HistoryRow({ job }) {
+  const isCompleted = job.status === JOB_STATUS.COMPLETED;
   return (
     <article className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm sm:p-5">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -116,14 +117,27 @@ function HistoryRow({ job }) {
             {job.title}
           </h3>
           <p className="mt-0.5 text-xs text-gray-600 sm:text-sm">
-            {locationLabel(job)}{job.budget ? ` · ${job.budget}` : ''}
+            {isCompleted && job.confirmedWorkerName
+              ? `Worker: ${job.confirmedWorkerName} · `
+              : ''}
+            {locationLabel(job)}
+            {job.budget ? ` · ${job.budget}` : ''}
           </p>
           <p className="mt-0.5 text-[11px] text-gray-400">
-            Posted {job.postedAt || '—'} · {job.type || 'Scheduled'}
+            {isCompleted && job.completedAt
+              ? `Completed ${new Date(job.completedAt).toLocaleDateString()}`
+              : `Posted ${job.postedAt || '—'}`}
+            {' · '}
+            {job.type || 'Scheduled'}
           </p>
         </div>
         <StatusBadge status={job.status} />
       </div>
+      {isCompleted && job.agreement?.scope ? (
+        <p className="mt-3 rounded-lg bg-gray-50 px-3 py-2 text-sm italic text-gray-600">
+          &ldquo;{job.agreement.scope}&rdquo;
+        </p>
+      ) : null}
     </article>
   );
 }

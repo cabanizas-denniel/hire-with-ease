@@ -192,7 +192,10 @@ function LoginPage() {
     <AuthLayout
       title="Welcome back"
       subtitle="Sign in to your Hire With Ease account."
-      tagline="Book skilled workers like you book a ride."
+      tagline="Sign in and get matched to the right people quickly and easily."
+ 
+ 
+ 
       benefits={LOGIN_BENEFITS}
       footer={
         <p className="text-sm text-gray-600">

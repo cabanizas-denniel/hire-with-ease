@@ -10,7 +10,7 @@ import {
   useOpenJobs,
   useWorkerProfile,
 } from '../../lib/matching/hooks.js';
-import { scoreMatch } from '../../lib/matching/index.js';
+import { scoreMatch, workerMatchesJob } from '../../lib/matching/index.js';
 import { ACTIVE_APPLICATION_STATUSES } from '../../lib/matching/statuses.js';
 import { locationLabel } from '../../utils/clientJobs.js';
 
@@ -42,7 +42,7 @@ function ApplicantJobsPage() {
         const { score, reasons, matchedSkills } = scoreMatch(job, profile);
         return { job, score, reasons, matchedSkills };
       })
-      .filter((entry) => entry.matchedSkills?.length > 0)
+      .filter((entry) => workerMatchesJob(entry.job, profile))
       .sort((a, b) => b.score - a.score);
   }, [profile, openJobs]);
 
@@ -94,10 +94,9 @@ function ApplicantJobsPage() {
       <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4 text-sm text-[#1F4E79]">
         <p className="font-medium font-semibold">How matching works</p>
         <p className="mt-1 text-gray-600">
-          The system evaluates your skills, availability, and location against
-          open job requests. Apply to the ones you want and your application
-          opens a chat with the homeowner so you can finalise the price,
-          schedule, and scope before committing.
+          Rule-based matching: jobs appear here when you share at least one required
+          skill. Same barangay in Olongapo ranks higher. Apply to open a chat with
+          the homeowner and agree on price and schedule.
         </p>
       </div>
       )}

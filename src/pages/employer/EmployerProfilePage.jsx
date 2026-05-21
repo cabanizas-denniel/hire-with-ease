@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import PageHeader from '../../components/PageHeader.jsx';
 import VerificationCenter from '../../components/verification/VerificationCenter.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { ALL_BARANGAY_NAMES, resolveLocation } from '../../lib/olongapoBarangays.js';
+import ProfileHomeLocation from '../../components/profile/ProfileHomeLocation.jsx';
+import { buildSavedHomeLocation, locationToPin } from '../../lib/homeLocation.js';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../lib/firebase.js';
 
@@ -13,12 +14,13 @@ function EmployerProfilePage() {
   const [profile, setProfile] = useState({
     name: '',
     mobile: '',
-    location: '',
     locationDetails: '',
     preferredContact: 'email',
     bio: '',
     typicalBudget: 'PHP 1,000 - 3,000',
   });
+  const [homePin, setHomePin] = useState(null);
+  const [homeBarangay, setHomeBarangay] = useState('');
   const [status, setStatus] = useState(null);
   const [busy, setBusy] = useState(false);
 
@@ -29,12 +31,14 @@ function EmployerProfilePage() {
       setProfile({
         name: data.fullName || auth.user?.fullName || '',
         mobile: data.mobile || '',
-        location: data.location?.barangay || data.location?.label || '',
         locationDetails: data.locationDetails || '',
         preferredContact: data.preferredContact || 'email',
         bio: data.bio || '',
         typicalBudget: data.typicalBudget || 'PHP 1,000 - 3,000',
       });
+      const loadedPin = locationToPin(data.location, data.locationDetails);
+      setHomePin(loadedPin ? { lat: loadedPin.lat, lng: loadedPin.lng } : null);
+      setHomeBarangay(data.location?.barangay || '');
     } else {
       setProfile((p) => ({ ...p, name: auth.user?.fullName || '' }));
     }
@@ -49,19 +53,36 @@ function EmployerProfilePage() {
     if (!userId) return;
     setBusy(true);
     setStatus(null);
+    if (!homePin?.lat || !homePin?.lng) {
+      setStatus({
+        kind: 'error',
+        text: 'Pin your home on the map (tap the map or use current location).',
+      });
+      setBusy(false);
+      return;
+    }
+    if (!homeBarangay) {
+      setStatus({
+        kind: 'error',
+        text: 'Select your barangay from the dropdown.',
+      });
+      setBusy(false);
+      return;
+    }
+
     try {
-      const point = resolveLocation(profile.location) || null;
+      const { location, coords } = buildSavedHomeLocation(
+        homePin,
+        profile.locationDetails,
+        homeBarangay
+      );
       await setDoc(
         doc(db, 'users', userId),
         {
           fullName: profile.name,
           mobile: profile.mobile,
-          location: {
-            lat: point?.lat ?? null,
-            lng: point?.lng ?? null,
-            barangay: point?.barangay ?? null,
-            label: profile.location || null,
-          },
+          location,
+          coords,
           locationDetails: profile.locationDetails,
           preferredContact: profile.preferredContact,
           bio: profile.bio,
@@ -148,39 +169,16 @@ function EmployerProfilePage() {
             </div>
 
             <div className="sm:col-span-2">
-              <label className="mb-1 block text-xs font-medium text-gray-600">
-                Address / service location
-              </label>
-              <select
-                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base cursor-pointer"
-                value={profile.location}
-                onChange={(e) => handleChange('location', e.target.value)}
-              >
-                <option value="">Select a barangay</option>
-                {ALL_BARANGAY_NAMES.map((name) => (
-                  <option key={name} value={name}>
-                    {name}, Olongapo
-                  </option>
-                ))}
-              </select>
-              <div className="mt-2 border-l-2 border-gray-200 pl-3">
-                <label className="mb-1 block text-xs font-medium text-gray-600">
-                  Additional location details{' '}
-                  <span className="text-gray-400">(optional)</span>
-                </label>
-                <textarea
-                  rows={2}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                  placeholder="House/unit no., floor, gate code, landmark, or directions workers should know."
-                  value={profile.locationDetails}
-                  onChange={(e) =>
-                    handleChange('locationDetails', e.target.value)
-                  }
-                />
-                <p className="mt-1 text-[11px] text-gray-500">
-                  Only shared with workers you accept for a job.
-                </p>
-              </div>
+              <h3 className="mb-2 text-sm font-semibold text-[#1F4E79]">Home address in Olongapo</h3>
+              <ProfileHomeLocation
+                idPrefix="employer-home"
+                pin={homePin}
+                onPinChange={setHomePin}
+                barangay={homeBarangay}
+                onBarangayChange={setHomeBarangay}
+                addressDetails={profile.locationDetails}
+                onAddressDetailsChange={(value) => handleChange('locationDetails', value)}
+              />
             </div>
 
             <div>

@@ -6,22 +6,37 @@ export * from './threads.js';
 export * from './workerProfile.js';
 
 /**
- * Pure scoring helper used by both worker- and homeowner-facing pages.
- * Returns a score and the list of reasons we matched. Cold-start logic
- * — keep deterministic so the same job + profile always rank the same.
+ * Rule-based matching (deterministic — same job + profile always ranks the same):
+ * 1. Required: worker shares at least one skill the job needs.
+ * 2. Bonus: same barangay in Olongapo (+5 score).
+ * 3. Bonus: job category is in worker's preferred list (+3 score).
  */
+export function workerMatchesJob(job, profile) {
+  if (!job || !profile) return false;
+  const skills = profile.skills || [];
+  const required = job.requiredSkills || [];
+  return required.some((s) => skills.includes(s));
+}
+
 export function scoreMatch(job, profile) {
-  if (!job || !profile) return { score: 0, reasons: [] };
+  if (!job || !profile) return { score: 0, reasons: [], matchedSkills: [] };
   const skills = profile.skills || [];
   const required = job.requiredSkills || [];
   const matchedSkills = required.filter((s) => skills.includes(s));
   const reasons = [];
-  if (matchedSkills.length > 0) {
-    reasons.push(`Skills: ${matchedSkills.join(', ')}`);
+  let score = 0;
+
+  if (matchedSkills.length === 0) {
+    return { score: 0, reasons: [], matchedSkills: [] };
   }
+
+  reasons.push(`Skills: ${matchedSkills.join(', ')}`);
+  score += matchedSkills.length * 10;
+
   if (job.location?.barangay && profile.location?.barangay) {
     if (job.location.barangay === profile.location.barangay) {
-      reasons.push('Same barangay as your service area');
+      reasons.push('Same barangay in Olongapo');
+      score += 5;
     }
   }
   if (
@@ -29,12 +44,8 @@ export function scoreMatch(job, profile) {
     profile.preferredCategories.includes(job.category)
   ) {
     reasons.push(`Preferred category: ${job.category}`);
+    score += 3;
   }
-  return {
-    score:
-      matchedSkills.length * 10 +
-      (reasons.length > matchedSkills.length ? reasons.length - matchedSkills.length : 0),
-    reasons,
-    matchedSkills,
-  };
+
+  return { score, reasons, matchedSkills };
 }

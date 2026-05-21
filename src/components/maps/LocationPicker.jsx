@@ -53,17 +53,16 @@ function FlyTo({ position }) {
 }
 
 /**
- * Map-based location picker for posting a job.
+ * Map-based home location picker (worker & homeowner profiles).
  *
- * Captures the precise coordinates of the homeowner's address so the
- * worker has navigation-ready data — no more vague "Mabayuan" strings.
+ * Captures precise coordinates for matching and directions.
  *
  * Props:
- *   - value: { lat, lng, barangay, label } | null
+ *   - value: { lat, lng, barangay?, label? } | null
  *   - onChange(value)
- *   - addressDetails: optional free-form text, controlled separately
+ *   - inferBarangay: when true, auto-labels nearest centroid (legacy); profiles use false + dropdown
  */
-function LocationPicker({ value, onChange, height = 260 }) {
+function LocationPicker({ value, onChange, height = 260, inferBarangay = true }) {
   const [geoState, setGeoState] = useState({ status: 'idle', error: null });
   const [pendingFly, setPendingFly] = useState(null);
 
@@ -71,14 +70,16 @@ function LocationPicker({ value, onChange, height = 260 }) {
     lat >= SW.lat && lat <= NE.lat && lng >= SW.lng && lng <= NE.lng;
 
   const setPin = (lat, lng) => {
-    const nearest = nearestBarangay(lat, lng);
-    onChange({
+    const next = {
       lat,
       lng,
-      barangay: nearest?.name || null,
-      // preserve any free-form detail the user typed earlier
       label: value?.label || null,
-    });
+    };
+    if (inferBarangay) {
+      const nearest = nearestBarangay(lat, lng);
+      next.barangay = nearest?.name || null;
+    }
+    onChange(next);
   };
 
   const handleUseMyLocation = () => {
@@ -197,10 +198,15 @@ function LocationPicker({ value, onChange, height = 260 }) {
         </button>
         {value ? (
           <p className="text-[11px] text-gray-600">
-            <span className="font-semibold text-[#1F4E79]">
-              {value.barangay || 'Pinned'}
-            </span>{' '}
-            · {value.lat.toFixed(5)}, {value.lng.toFixed(5)}
+            {inferBarangay ? (
+              <>
+                <span className="font-semibold text-[#1F4E79]">
+                  {value.barangay || 'Pinned'}
+                </span>{' '}
+                ·{' '}
+              </>
+            ) : null}
+            {value.lat.toFixed(5)}, {value.lng.toFixed(5)}
           </p>
         ) : (
           <p className="text-[11px] text-gray-500">

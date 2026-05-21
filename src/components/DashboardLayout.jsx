@@ -1,20 +1,23 @@
 import { useMemo, useState } from 'react';
+import { useAuth } from '../context/AuthContext.jsx';
 import Navbar from './Navbar.jsx';
 import Sidebar from './Sidebar.jsx';
 
+const PROFILE_ROUTE_BY_ROLE = {
+  applicant: '/applicant/profile',
+  employer: '/employer/profile',
+};
+
 const SIDEBAR_LINKS = {
   applicant: [
-    { to: '/applicant/dashboard', label: 'Dashboard' },
-    { to: '/applicant/profile', label: 'My Profile' },
+    { to: '/applicant/profile', label: 'Profile' },
     { to: '/applicant/jobs', label: 'Matched Jobs' },
     { to: '/applicant/applications', label: 'My Jobs' },
   ],
   employer: [
-    { to: '/employer/dashboard', label: 'Dashboard' },
-    { to: '/employer/profile', label: 'My Profile' },
+    { to: '/employer/profile', label: 'Profile' },
     { to: '/employer/post-job', label: 'Request Service' },
-    { to: '/employer/jobs', label: 'My Requests' },
-    { to: '/employer/hired', label: 'Job History' },
+    { to: '/employer/jobs', label: 'Requests' },
   ],
   admin: [
     { to: '/admin/dashboard', label: 'Analytics' },
@@ -26,7 +29,16 @@ const SIDEBAR_LINKS = {
 
 function DashboardLayout({ role, children }) {
   const [open, setOpen] = useState(false);
-  const links = useMemo(() => SIDEBAR_LINKS[role] || [], [role]);
+  const { user } = useAuth();
+  const links = useMemo(() => {
+    const base = SIDEBAR_LINKS[role] || [];
+    const profileTo = PROFILE_ROUTE_BY_ROLE[role];
+    if (!profileTo) return base;
+    const displayName = user?.fullName?.trim();
+    return base.map((link) =>
+      link.to === profileTo ? { ...link, label: displayName || 'Profile' } : link
+    );
+  }, [role, user?.fullName]);
 
   return (
     <div className="min-h-screen bg-gray-50">

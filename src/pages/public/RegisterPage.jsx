@@ -85,7 +85,7 @@ function RegisterPage() {
     <AuthLayout
       title="Create your account"
       subtitle="Tell us who you are — we'll tailor the experience to your role."
-      tagline="Join the platform that pushes work to the right people."
+      tagline="Join the platform that matches you to the right people."
       benefits={REGISTER_BENEFITS}
       footer={
         <p className="text-sm text-gray-600">

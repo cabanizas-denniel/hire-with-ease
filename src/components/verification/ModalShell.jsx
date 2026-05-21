@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { HiOutlineXMark } from 'react-icons/hi2';
 
 /**
@@ -17,13 +18,22 @@ function ModalShell({ isOpen, title, subtitle, children, onClose, footer, size =
     return () => window.removeEventListener('keydown', onKey);
   }, [isOpen, onClose]);
 
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const width =
     size === 'lg' ? 'max-w-xl' : size === 'sm' ? 'max-w-sm' : 'max-w-md';
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:items-center">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4">
       <div
         className={`flex max-h-[min(92dvh,44rem)] w-full ${width} flex-col overflow-hidden rounded-xl bg-white shadow-xl`}
         role="dialog"
@@ -57,7 +67,8 @@ function ModalShell({ isOpen, title, subtitle, children, onClose, footer, size =
           </div>
         ) : null}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

@@ -246,8 +246,6 @@ function EmployerCandidatesPage() {
 }
 
 function JobSummaryCard({ job }) {
-  const lat = job.location?.lat;
-  const lng = job.location?.lng;
   return (
     <section className="mb-5 overflow-hidden rounded-xl border border-blue-100 bg-blue-50/60">
       <JobIssueMedia job={job} variant="gallery" titleAlt={`Issue media for "${job.title}"`} />
@@ -256,28 +254,10 @@ function JobSummaryCard({ job }) {
           {job.title} <StatusBadge status={job.status} />
         </p>
         <div className="mt-2 grid gap-1 text-xs text-gray-700 sm:grid-cols-2">
-          <p>
-            <span className="font-semibold text-[#1F4E79]">Address:</span>{' '}
+          <p className="sm:col-span-2">
+            <span className="font-semibold text-[#1F4E79]">Home address:</span>{' '}
             {locationLabel(job) || '—'}
           </p>
-          <p>
-            <span className="font-semibold text-[#1F4E79]">Barangay:</span>{' '}
-            {job.location?.barangay || '—'}
-          </p>
-          {typeof lat === 'number' && typeof lng === 'number' ? (
-            <p className="sm:col-span-2">
-              <span className="font-semibold text-[#1F4E79]">Pin:</span>{' '}
-              {lat.toFixed(5)}, {lng.toFixed(5)}{' '}
-              <a
-                className="text-[#2E75B6] underline"
-                href={`https://www.google.com/maps?q=${lat},${lng}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Open in maps
-              </a>
-            </p>
-          ) : null}
           <p>
             <span className="font-semibold text-[#1F4E79]">Budget:</span>{' '}
             {job.budget || '—'}

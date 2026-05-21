@@ -3,8 +3,20 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { collection, doc, onSnapshot, query, setDoc, updateDoc } from 'firebase/firestore';
 import { useAuth } from './AuthContext.jsx';
 import { db } from '../lib/firebase.js';
-import { getStageProgress, getTrustTier, isFullyVerified } from '../utils/trust.js';
+import {
+  getStageProgress,
+  getTrustTier,
+  isFullyVerified,
+  normalizeStage2ReviewStatus,
+} from '../utils/trust.js';
 import { compressImageForUpload } from '../lib/imageUtils.js';
+import {
+  notifyAdminsVerificationSubmission,
+  notifyApplicationRejected,
+  notifyDocumentReview,
+  notifyIdentityReview,
+  notifyWorkerActivation,
+} from '../lib/notifications.js';
 
 const VerificationContext = createContext(null);
 
@@ -193,6 +205,28 @@ export function VerificationProvider({ children }) {
     [persistToFirestore, user?.uid, appRole]
   );
 
+  // Backfill employer trust upgrade for accounts approved before auto-activation existed.
+  useEffect(() => {
+    const isClientRecord = (userId, rec) =>
+      rec?.role === 'client' || (userId === user?.uid && appRole === 'employer');
+    const needsBackfill = Object.entries(records).filter(
+      ([userId, rec]) =>
+        isClientRecord(userId, rec) &&
+        normalizeStage2ReviewStatus(rec.stage2?.reviewStatus) === 'reviewed' &&
+        !rec.stage4?.activatedAt
+    );
+    if (!needsBackfill.length) return;
+    for (const [userId] of needsBackfill) {
+      void update(userId, (r) => ({
+        ...r,
+        stage4: {
+          activatedAt: r.stage2?.reviewedAt || new Date().toISOString(),
+          activatedBy: r.stage2?.reviewedBy || 'PESO',
+        },
+      }));
+    }
+  }, [records, update]);
+
   const confirmOtp = useCallback(
     (userId, { email } = {}) => {
       const trimmed = typeof email === 'string' ? email.trim() : '';
@@ -248,25 +282,39 @@ export function VerificationProvider({ children }) {
         throw new Error('Please upload a clear selfie holding your ID.');
       }
 
+      let verificationRole = 'service-provider';
       await update(
         userId,
-        (rec) => ({
-          ...rec,
-          stage2: {
-            ...rec.stage2,
-            idSubmittedAt: nowIso,
-            selfieSubmittedAt: nowIso,
-            idImage: idDataUrl || idImage || rec.stage2.idImage || null,
-            idBackImage: idBackDataUrl || idBackImage || rec.stage2.idBackImage || null,
-            selfieImage: selfieDataUrl || selfieImage || rec.stage2.selfieImage || null,
-            reviewStatus: 'pending',
-            reviewedBy: null,
-            reviewedAt: null,
-            reviewNote: '',
-          },
-        }),
+        (rec) => {
+          verificationRole = rec.role === 'client' ? 'client' : 'service-provider';
+          return {
+            ...rec,
+            stage2: {
+              ...rec.stage2,
+              idSubmittedAt: nowIso,
+              selfieSubmittedAt: nowIso,
+              idImage: idDataUrl || idImage || rec.stage2.idImage || null,
+              idBackImage: idBackDataUrl || idBackImage || rec.stage2.idBackImage || null,
+              selfieImage: selfieDataUrl || selfieImage || rec.stage2.selfieImage || null,
+              reviewStatus: 'pending',
+              reviewedBy: null,
+              reviewedAt: null,
+              reviewNote: '',
+            },
+          };
+        },
         { awaitPersist: true }
       );
+
+      try {
+        await notifyAdminsVerificationSubmission(userId, {
+          kind: 'identity',
+          verificationRole,
+          eventAt: nowIso,
+        });
+      } catch (err) {
+        console.warn('Could not create admin identity submission notification', err);
+      }
 
       if (typeof onProgress === 'function') {
         try {
@@ -281,20 +329,45 @@ export function VerificationProvider({ children }) {
 
   const reviewIdentity = useCallback(
     async (userId, { approve, reviewer, note = '' }) => {
+      const nowIso = new Date().toISOString();
+      let verificationRole = 'service-provider';
       await update(
         userId,
-        (rec) => ({
-          ...rec,
-          stage2: {
-            ...rec.stage2,
-            reviewStatus: approve ? 'reviewed' : 'rejected',
-            reviewedBy: reviewer,
-            reviewedAt: new Date().toISOString(),
-            reviewNote: note,
-          },
-        }),
+        (rec) => {
+          verificationRole = rec.role === 'client' ? 'client' : 'service-provider';
+          const isClient = rec.role === 'client';
+          const next = {
+            ...rec,
+            stage2: {
+              ...rec.stage2,
+              reviewStatus: approve ? 'reviewed' : 'rejected',
+              reviewedBy: reviewer,
+              reviewedAt: nowIso,
+              reviewNote: note,
+            },
+          };
+          // Employers: trust upgrade (stage 4) is automatic once PESO approves identity.
+          if (isClient) {
+            next.stage4 = approve
+              ? {
+                  activatedAt: nowIso,
+                  activatedBy: reviewer || 'PESO',
+                }
+              : { activatedAt: null, activatedBy: null };
+          }
+          return next;
+        },
         { awaitPersist: true }
       );
+      try {
+        await notifyIdentityReview(userId, {
+          approved: approve,
+          verificationRole,
+          eventAt: nowIso,
+        });
+      } catch (err) {
+        console.warn('Could not create identity review notification', err);
+      }
     },
     [update]
   );
@@ -335,17 +408,32 @@ export function VerificationProvider({ children }) {
           : null,
       };
 
+      let verificationRole = 'service-provider';
       await update(
         userId,
-        (rec) => ({
-          ...rec,
-          stage3: {
-            ...rec.stage3,
-            documents: [...(rec.stage3.documents || []), payload],
-          },
-        }),
+        (rec) => {
+          verificationRole = rec.role === 'client' ? 'client' : 'service-provider';
+          return {
+            ...rec,
+            stage3: {
+              ...rec.stage3,
+              documents: [...(rec.stage3.documents || []), payload],
+            },
+          };
+        },
         { awaitPersist: true }
       );
+
+      try {
+        await notifyAdminsVerificationSubmission(userId, {
+          kind: 'document',
+          verificationRole,
+          eventAt: nowIso,
+          documentLabel: label || type,
+        });
+      } catch (err) {
+        console.warn('Could not create admin document submission notification', err);
+      }
 
       if (typeof onProgress === 'function') {
         try {
@@ -360,9 +448,15 @@ export function VerificationProvider({ children }) {
 
   const reviewDocument = useCallback(
     async (userId, { docIndex, approve, note = '', reviewer = 'PESO' }) => {
+      const nowIso = new Date().toISOString();
+      let verificationRole = 'service-provider';
+      let docLabel = 'supporting document';
       await update(
         userId,
         (rec) => {
+          verificationRole = rec.role === 'client' ? 'client' : 'service-provider';
+          const target = (rec.stage3.documents || [])[docIndex];
+          docLabel = target?.label || target?.type || docLabel;
           const documents = (rec.stage3.documents || []).map((d, i) =>
             i === docIndex
               ? {
@@ -370,7 +464,7 @@ export function VerificationProvider({ children }) {
                   reviewed: approve,
                   reviewStatus: approve ? 'reviewed' : 'rejected',
                   reviewedBy: reviewer,
-                  reviewedAt: new Date().toISOString(),
+                  reviewedAt: nowIso,
                   reviewNote: note,
                 }
               : d
@@ -385,6 +479,17 @@ export function VerificationProvider({ children }) {
         },
         { awaitPersist: true }
       );
+      try {
+        await notifyDocumentReview(userId, {
+          approved: approve,
+          verificationRole,
+          docIndex,
+          label: docLabel,
+          eventAt: nowIso,
+        });
+      } catch (err) {
+        console.warn('Could not create document review notification', err);
+      }
     },
     [update]
   );
@@ -436,8 +541,15 @@ export function VerificationProvider({ children }) {
         },
         { awaitPersist: true }
       );
+      try {
+        const rec = records[userId];
+        const verificationRole = rec?.role === 'client' ? 'client' : 'service-provider';
+        await notifyApplicationRejected(userId, { verificationRole, eventAt: nowIso });
+      } catch (err) {
+        console.warn('Could not create rejection notification', err);
+      }
     },
-    [update]
+    [update, records]
   );
 
   const removeDocument = useCallback(
@@ -462,17 +574,25 @@ export function VerificationProvider({ children }) {
 
   const setActivation = useCallback(
     async (userId, { active, by }) => {
+      const nowIso = new Date().toISOString();
       await update(
         userId,
         (rec) => ({
           ...rec,
           stage4: {
-            activatedAt: active ? new Date().toISOString() : null,
+            activatedAt: active ? nowIso : null,
             activatedBy: active ? by : null,
           },
         }),
         { awaitPersist: true }
       );
+      if (active) {
+        try {
+          await notifyWorkerActivation(userId, { eventAt: nowIso });
+        } catch (err) {
+          console.warn('Could not create activation notification', err);
+        }
+      }
     },
     [update]
   );

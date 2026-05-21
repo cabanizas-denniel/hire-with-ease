@@ -165,9 +165,10 @@ function ApplicationWorkspace({ application }) {
     }
   };
 
-  const lat = job?.location?.lat;
-  const lng = job?.location?.lng;
-  const address = job?.location?.label || job?.location?.barangay || '';
+  const address =
+    [job?.location?.label, job?.location?.barangay && `${job.location.barangay}, Olongapo`]
+      .filter(Boolean)
+      .join(' · ') || '';
 
   return (
     <>
@@ -192,23 +193,9 @@ function ApplicationWorkspace({ application }) {
               {job?.budget || '—'}
             </p>
             <p className="sm:col-span-2">
-              <span className="font-semibold text-[#1F4E79]">Address:</span>{' '}
+              <span className="font-semibold text-[#1F4E79]">Home address:</span>{' '}
               {address || '—'}
             </p>
-            {typeof lat === 'number' && typeof lng === 'number' ? (
-              <p className="sm:col-span-2">
-                <span className="font-semibold text-[#1F4E79]">Pin:</span>{' '}
-                {lat.toFixed(5)}, {lng.toFixed(5)}{' '}
-                <a
-                  className="text-[#2E75B6] underline"
-                  href={`https://www.google.com/maps?q=${lat},${lng}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Open in maps
-                </a>
-              </p>
-            ) : null}
             {job?.schedule ? (
               <p className="sm:col-span-2">
                 <span className="font-semibold text-[#1F4E79]">Schedule:</span>{' '}

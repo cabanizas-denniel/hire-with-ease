@@ -1,19 +1,24 @@
 import { useState } from 'react';
-import { HiOutlineBell } from 'react-icons/hi2';
+import { HiOutlineArrowRightOnRectangle, HiOutlineBell, HiOutlineUserCircle } from 'react-icons/hi2';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
+import AdminAccountModal from './admin/AdminAccountModal.jsx';
 import BrandMark from './BrandMark.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
-import { getUnreadCount } from '../data/notifications.js';
+import { useNotificationsOptional } from '../context/NotificationsContext.jsx';
 
 const NOTIFICATION_ROUTE = {
   applicant: '/applicant/notifications',
   employer: '/employer/notifications',
+  admin: '/admin/notifications',
 };
 
 function Navbar({ links = [], onMenuClick }) {
   const { isAuthenticated, role, logout, getDefaultRoute } = useAuth();
+  const notifications = useNotificationsOptional();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [accountModalOpen, setAccountModalOpen] = useState(false);
+  const unreadCount = notifications?.unreadCount ?? 0;
 
   const handleLogout = () => {
     if (!window.confirm('Log out of Hire With Ease?')) return;
@@ -39,15 +44,16 @@ function Navbar({ links = [], onMenuClick }) {
         </a>
       );
     }
+    const profilePaths = ['/employer/profile', '/applicant/profile'];
     return (
       <NavLink
-        key={item.label + (item.to || '')}
+        key={item.to || item.label}
         to={item.to}
-        end
+        end={!profilePaths.includes(item.to)}
         className={({ isActive }) => (isActive ? linkActive : linkInactive)}
         onClick={() => setMobileOpen(false)}
       >
-        {item.label}
+        <span className="max-w-[10rem] truncate sm:max-w-[14rem]">{item.label}</span>
       </NavLink>
     );
   };
@@ -55,6 +61,7 @@ function Navbar({ links = [], onMenuClick }) {
   const showMobileNav = links.length > 0 && !onMenuClick;
 
   return (
+    <>
     <header className="sticky top-0 z-40 border-b border-gray-200 bg-white/95 backdrop-blur">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
         <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
@@ -99,18 +106,20 @@ function Navbar({ links = [], onMenuClick }) {
               {NOTIFICATION_ROUTE[role] ? (
                 <NotificationBell
                   to={NOTIFICATION_ROUTE[role]}
-                  unread={getUnreadCount(role)}
+                  unread={unreadCount}
                 />
               ) : null}
-              <span className="hidden rounded-md bg-gray-100 px-2 py-1 text-xs capitalize text-gray-600 sm:inline-block">
-                {role}
-              </span>
+              {role === 'admin' ? (
+                <AdminProfileButton onOpenAccount={() => setAccountModalOpen(true)} />
+              ) : null}
               <button
                 type="button"
                 onClick={handleLogout}
-                className="rounded-lg bg-[#1F4E79] px-3 py-2 text-sm font-medium text-white cursor-pointer"
+                aria-label="Log out"
+                title="Log out"
+                className="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg border border-[#1F4E79] bg-[#1F4E79] text-white transition-colors hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1F4E79] focus-visible:ring-offset-1"
               >
-                Logout
+                <HiOutlineArrowRightOnRectangle className="h-5 w-5" aria-hidden="true" />
               </button>
             </>
           ) : (
@@ -131,7 +140,33 @@ function Navbar({ links = [], onMenuClick }) {
           <div className="flex flex-col gap-3">{links.map((item) => renderLink(item))}</div>
         </div>
       ) : null}
+
     </header>
+
+    {role === 'admin' ? (
+      <AdminAccountModal
+        isOpen={accountModalOpen}
+        onClose={() => setAccountModalOpen(false)}
+      />
+    ) : null}
+    </>
+  );
+}
+
+const navIconButtonClass =
+  'inline-flex h-10 w-10 items-center justify-center rounded-lg border transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1F4E79] focus-visible:ring-offset-1';
+
+function AdminProfileButton({ onOpenAccount }) {
+  return (
+    <button
+      type="button"
+      onClick={onOpenAccount}
+      aria-label="Account settings"
+      title="Account"
+      className={`${navIconButtonClass} border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:text-[#1F4E79]`}
+    >
+      <HiOutlineUserCircle className="h-5 w-5" aria-hidden="true" />
+    </button>
   );
 }
 
@@ -145,7 +180,7 @@ function NotificationBell({ to, unread = 0 }) {
       aria-label={hasUnread ? `Notifications, ${unread} unread` : 'Notifications'}
       title="Notifications"
       className={({ isActive }) =>
-        `relative inline-flex h-10 w-10 items-center justify-center rounded-lg border transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1F4E79] focus-visible:ring-offset-1 ${
+        `relative ${navIconButtonClass} ${
           isActive
             ? 'border-[#1F4E79]/30 bg-[#1F4E79]/10 text-[#1F4E79]'
             : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:text-[#1F4E79]'

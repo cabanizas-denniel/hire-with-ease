@@ -112,6 +112,10 @@ export function isFullyVerified(record, role = 'service-provider') {
 export function getStageProgress(record, role = 'service-provider') {
   const tier = getTrustTier(record, role);
   const { stage1, stage2, stage3, stage4 } = record || {};
+  const stage2Status = normalizeStage2ReviewStatus(stage2?.reviewStatus);
+  const identityReviewed = stage2Status === 'reviewed';
+  const clientTrustUpgradeDone =
+    role === 'client' && (Boolean(stage4?.activatedAt) || identityReviewed);
 
   return {
     tier,
@@ -121,7 +125,7 @@ export function getStageProgress(record, role = 'service-provider') {
         completedAt: stage1?.otpVerifiedAt ?? null,
       },
       stage2: {
-        state: normalizeStage2ReviewStatus(stage2?.reviewStatus),
+        state: stage2Status,
         submittedAt: stage2?.idSubmittedAt ?? null,
         reviewedAt: stage2?.reviewedAt ?? null,
         reviewNote: stage2?.reviewNote ?? '',
@@ -136,9 +140,12 @@ export function getStageProgress(record, role = 'service-provider') {
         reviewedDocumentCount: (stage3?.documents || []).filter((d) => d.reviewed).length,
       },
       stage4: {
-        state: stage4?.activatedAt ? 'complete' : 'pending',
-        activatedAt: stage4?.activatedAt ?? null,
-        activatedBy: stage4?.activatedBy ?? null,
+        state:
+          stage4?.activatedAt || clientTrustUpgradeDone ? 'complete' : 'pending',
+        activatedAt: stage4?.activatedAt ?? (clientTrustUpgradeDone ? stage2?.reviewedAt : null),
+        activatedBy:
+          stage4?.activatedBy ??
+          (clientTrustUpgradeDone && !stage4?.activatedAt ? 'PESO' : null),
       },
     },
   };

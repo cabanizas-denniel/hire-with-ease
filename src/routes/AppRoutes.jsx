@@ -20,13 +20,13 @@ const EmployerProfilePage = lazy(() => import('../pages/employer/EmployerProfile
 const EmployerPostJobPage = lazy(() => import('../pages/employer/EmployerPostJobPage.jsx'));
 const EmployerJobsPage = lazy(() => import('../pages/employer/EmployerJobsPage.jsx'));
 const EmployerCandidatesPage = lazy(() => import('../pages/employer/EmployerCandidatesPage.jsx'));
-const EmployerHiredPage = lazy(() => import('../pages/employer/EmployerHiredPage.jsx'));
 const EmployerNotificationsPage = lazy(() => import('../pages/employer/EmployerNotificationsPage.jsx'));
 
 const AdminDashboardPage = lazy(() => import('../pages/admin/AdminDashboardPage.jsx'));
 const AdminWorkersPage = lazy(() => import('../pages/admin/AdminWorkersPage.jsx'));
 const AdminVerificationPage = lazy(() => import('../pages/admin/AdminVerificationPage.jsx'));
 const AdminReportsPage = lazy(() => import('../pages/admin/AdminReportsPage.jsx'));
+const AdminNotificationsPage = lazy(() => import('../pages/admin/AdminNotificationsPage.jsx'));
 
 function RoleLayout({ role }) {
   return (
@@ -77,7 +77,7 @@ function AppRoutes() {
             <Route path="post-job" element={<EmployerPostJobPage />} />
             <Route path="jobs" element={<EmployerJobsPage />} />
             <Route path="candidates/:jobId" element={<EmployerCandidatesPage />} />
-            <Route path="hired" element={<EmployerHiredPage />} />
+            <Route path="hired" element={<Navigate to="/employer/jobs" replace />} />
             <Route path="notifications" element={<EmployerNotificationsPage />} />
             <Route path="*" element={<Navigate to="dashboard" replace />} />
           </Route>
@@ -89,6 +89,7 @@ function AppRoutes() {
             <Route path="dashboard" element={<AdminDashboardPage />} />
             <Route path="workers" element={<AdminWorkersPage />} />
             <Route path="verification" element={<AdminVerificationPage />} />
+            <Route path="notifications" element={<AdminNotificationsPage />} />
             <Route path="reports" element={<AdminReportsPage />} />
             <Route path="*" element={<Navigate to="dashboard" replace />} />
           </Route>
