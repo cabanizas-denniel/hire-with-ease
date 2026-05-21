@@ -252,7 +252,8 @@ function ApplicationWorkspace({ application }) {
         workerId={application.workerId}
         workerName={application.workerName || user?.fullName}
         role="worker"
-        className="h-[400px]"
+        jobBudget={job?.budget}
+        compact
       />
 
       <AgreementCard

@@ -1,28 +1,6 @@
-import WorkerCard from '../ApplicantCard.jsx';
+import WorkerMatchDetailCard from '../matching/WorkerMatchDetailCard.jsx';
 
-function workerLocationLabel(profile) {
-  const loc = profile?.location;
-  if (!loc) return 'Olongapo';
-  if (typeof loc === 'string') return loc;
-  const parts = [loc.barangay, loc.label].filter(Boolean);
-  return parts.length ? `${parts.join(' · ')}, Olongapo` : 'Olongapo';
-}
-
-function toWorkerCardModel(entry) {
-  const { profile, matchedSkills } = entry;
-  return {
-    id: profile.docId || profile.uid,
-    name: profile.name || 'Worker',
-    location: workerLocationLabel(profile),
-    skills: profile.skills || [],
-    rating: profile.rating ?? null,
-    jobsCompleted: profile.jobsCompleted ?? 0,
-    verified: Boolean(profile.verified),
-    certifications: profile.certifications || [],
-  };
-}
-
-function FindingWorkersPanel({ searching, matches, jobTitle }) {
+function FindingWorkersPanel({ searching, matches, jobTitle, onChatWithMatch, chatWorkerId }) {
   if (searching) {
     return (
       <section className="mb-6 overflow-hidden rounded-xl border border-[#1F4E79]/20 bg-gradient-to-br from-blue-50 to-white p-6 shadow-sm">
@@ -78,22 +56,14 @@ function FindingWorkersPanel({ searching, matches, jobTitle }) {
       {matches.length > 0 ? (
         <ul className="space-y-3">
           {matches.map((entry) => {
-            const worker = toWorkerCardModel(entry);
+            const id = entry.profile?.docId || entry.profile?.uid;
             return (
-              <li key={worker.id}>
-                <div className="relative">
-                  <WorkerCard
-                    applicant={worker}
-                    matchedSkills={entry.matchedSkills}
-                    showActions={false}
-                  />
-                  {entry.reasons?.length ? (
-                    <div className="mx-4 -mt-2 mb-2 rounded-lg border border-green-100 bg-green-50 px-3 py-2 text-xs text-green-900">
-                      <span className="font-semibold">Why matched: </span>
-                      {entry.reasons.join(' · ')}
-                    </div>
-                  ) : null}
-                </div>
+              <li key={id}>
+                <WorkerMatchDetailCard
+                  entry={entry}
+                  selected={chatWorkerId === id}
+                  onChat={onChatWithMatch}
+                />
               </li>
             );
           })}

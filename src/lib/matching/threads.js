@@ -14,6 +14,7 @@ import {
   addDoc,
   collection,
   doc,
+  getDoc,
   onSnapshot,
   orderBy,
   query,
@@ -21,6 +22,7 @@ import {
   setDoc,
 } from 'firebase/firestore';
 import { db } from '../firebase.js';
+import { NEGOTIATION_WINDOW_MS } from './negotiation.js';
 
 export function buildThreadId(jobId, workerId) {
   if (!jobId || !workerId) return null;
@@ -86,28 +88,43 @@ export async function sendMessage({
   authorName,
   authorRole,
   text,
+  messageType = 'text',
+  imageUrl = null,
+  dismissSuggestions = false,
 }) {
   const trimmed = (text || '').trim();
-  if (!trimmed) return null;
+  if (!trimmed && !imageUrl) return null;
   const threadId = await ensureThread({ jobId, workerId, clientId, jobTitle });
+  const threadRef = doc(db, 'threads', threadId);
+  const threadSnap = await getDoc(threadRef);
+  const threadData = threadSnap.exists() ? threadSnap.data() : {};
+
   const messagesRef = collection(db, 'threads', threadId, 'messages');
   const created = await addDoc(messagesRef, {
     authorId,
     authorName: authorName || null,
     authorRole: authorRole || null,
-    text: trimmed,
+    text: trimmed || (messageType === 'check_in' ? 'Check-in photo' : messageType === 'check_out' ? 'Check-out photo' : ''),
+    messageType,
+    imageUrl: imageUrl || null,
     createdAt: serverTimestamp(),
   });
-  // Touch thread so list views can sort by latest activity.
-  await setDoc(
-    doc(db, 'threads', threadId),
-    {
-      lastMessage: trimmed,
-      lastAuthorId: authorId,
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true }
-  );
+
+  const threadPatch = {
+    lastMessage: trimmed || `[${messageType}]`,
+    lastAuthorId: authorId,
+    updatedAt: serverTimestamp(),
+  };
+  if (!threadData.negotiationStartedAt) {
+    const expiresIso = new Date(Date.now() + NEGOTIATION_WINDOW_MS).toISOString();
+    threadPatch.negotiationStartedAt = serverTimestamp();
+    threadPatch.negotiationExpiresAtIso = expiresIso;
+  }
+  if (dismissSuggestions) {
+    threadPatch.suggestionsDismissed = true;
+  }
+
+  await setDoc(threadRef, threadPatch, { merge: true });
   return created.id;
 }
 

@@ -108,6 +108,8 @@ function EmployerCandidatesPage() {
     [applicants]
   );
 
+  const [chatWorkerId, setChatWorkerId] = useState(null);
+  const [chatWorkerName, setChatWorkerName] = useState(null);
   const [pickedAppId, setPickedAppId] = useState(null);
   const fallbackAppId = activeApplicants[0]?.docId || activeApplicants[0]?.id || null;
   const selectedAppId =
@@ -118,6 +120,31 @@ function EmployerCandidatesPage() {
   const selected = activeApplicants.find(
     (a) => (a.docId || a.id) === selectedAppId
   );
+
+  const activeWorkerId = selected?.workerId || chatWorkerId;
+  const activeWorkerName = selected?.workerName || chatWorkerName;
+
+  const handleChatWithMatch = (entry) => {
+    const id = entry.profile?.docId || entry.profile?.uid;
+    if (!id) return;
+    setChatWorkerId(id);
+    setChatWorkerName(entry.profile?.name || 'Worker');
+    setPickedAppId(null);
+  };
+
+  const handleSelectApplicant = async (app) => {
+    const id = app.docId || app.id;
+    setPickedAppId(id);
+    setChatWorkerId(app.workerId);
+    setChatWorkerName(app.workerName || 'Worker');
+    if (app.status === APPLICATION_STATUS.PENDING) {
+      try {
+        await moveToNegotiating(id);
+      } catch {
+        /* worker may have already advanced */
+      }
+    }
+  };
 
   useEffect(() => {
     if (!job) return;
@@ -142,18 +169,6 @@ function EmployerCandidatesPage() {
     if (activeApplicants.length === 0) return;
     setJobStatus(job.docId || job.id, JOB_STATUS.MATCHED).catch(() => {});
   }, [activeApplicants.length, job, ownerUid]);
-
-  const handleSelectApplicant = async (app) => {
-    const id = app.docId || app.id;
-    setPickedAppId(id);
-    if (app.status === APPLICATION_STATUS.PENDING) {
-      try {
-        await moveToNegotiating(id);
-      } catch {
-        /* worker may have already advanced */
-      }
-    }
-  };
 
   const handleDecline = async (app) => {
     if (!window.confirm(`Decline ${app.workerName || 'this applicant'}?`)) return;
@@ -196,7 +211,42 @@ function EmployerCandidatesPage() {
           searching={showFindingUi}
           matches={matchedWorkers}
           jobTitle={job.title}
+          onChatWithMatch={showFindingUi ? undefined : handleChatWithMatch}
+          chatWorkerId={chatWorkerId}
         />
+      ) : null}
+
+      {job && activeWorkerId && !showFindingUi ? (
+        <section className="mb-5 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,280px)]">
+          <ChatPanel
+            jobId={job.docId || job.id}
+            jobTitle={job.title}
+            clientId={job.postedBy}
+            clientName={job.postedByName || job.clientName}
+            clientEmail={auth.user?.email || job.postedByEmail}
+            clientMobile={auth.profile?.mobile || job.postedByMobile}
+            workerId={activeWorkerId}
+            workerName={activeWorkerName}
+            role="client"
+            jobBudget={job.budget}
+            compact
+          />
+          {selected ? (
+            <AgreementCard
+              application={selected}
+              role="client"
+              jobBudget={job.budget}
+            />
+          ) : (
+            <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 p-4 text-xs text-gray-600">
+              <p className="font-semibold text-[#1F4E79]">Agreement</p>
+              <p className="mt-1">
+                This worker has not applied yet. You can chat using suggested prompts above.
+                Once they apply, you can propose and confirm a final agreement here.
+              </p>
+            </div>
+          )}
+        </section>
       ) : null}
 
       {!showFindingUi ? (
@@ -204,7 +254,7 @@ function EmployerCandidatesPage() {
           <h3 className="mb-3 px-1 text-sm font-semibold text-[#1F4E79]">
             Applicants who applied
           </h3>
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,280px)_minmax(0,1fr)]">
             <aside className="space-y-2">
               <p className="px-1 text-xs text-gray-500">
                 Applicants ({activeApplicants.length})
@@ -284,44 +334,23 @@ function EmployerCandidatesPage() {
               </ul>
             </aside>
 
-            <div className="space-y-4">
-              {selected && job ? (
-                <>
-                  <ChatPanel
-                    jobId={job.docId || job.id}
-                    jobTitle={job.title}
-                    clientId={job.postedBy}
-                    clientName={job.postedByName || job.clientName}
-                    clientEmail={auth.user?.email || job.postedByEmail}
-                    clientMobile={auth.profile?.mobile || job.postedByMobile}
-                    workerId={selected.workerId}
-                    workerName={selected.workerName}
-                    role="client"
-                    className="h-[420px]"
-                  />
-                  <AgreementCard
-                    application={selected}
-                    role="client"
-                    jobBudget={job.budget}
-                  />
-                  {job.confirmedWorkerId ? (
-                    <p className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900">
-                      <HiOutlineCheckBadge
-                        className="mr-1 inline h-4 w-4 align-text-bottom"
-                        aria-hidden="true"
-                      />
-                      This job is locked to {job.confirmedWorkerName || 'the chosen worker'}.
-                      All other applicants have been notified that the position has been filled.
-                    </p>
-                  ) : null}
-                </>
-              ) : (
-                <div className="rounded-xl bg-white p-8 text-center text-sm text-gray-500 shadow-sm">
+            <div className="space-y-3">
+              {!activeWorkerId ? (
+                <div className="rounded-xl bg-white p-6 text-center text-sm text-gray-500 shadow-sm">
                   {activeApplicants.length === 0
-                    ? 'When a worker applies, select them here to chat and negotiate.'
-                    : 'Select an applicant from the list to open the chat and propose an agreement.'}
+                    ? 'Click Chat & negotiate on a matched worker above.'
+                    : 'Select an applicant, or chat with a matched worker above.'}
                 </div>
-              )}
+              ) : null}
+              {job?.confirmedWorkerId ? (
+                <p className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900">
+                  <HiOutlineCheckBadge
+                    className="mr-1 inline h-4 w-4 align-text-bottom"
+                    aria-hidden="true"
+                  />
+                  This job is locked to {job.confirmedWorkerName || 'the chosen worker'}.
+                </p>
+              ) : null}
             </div>
           </div>
         </>
