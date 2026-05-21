@@ -39,6 +39,7 @@ export async function applyToJob({
   clientName,
   clientEmail = null,
   clientMobile = null,
+  clientTrustTier = null,
   jobTitle,
   message,
 }) {
@@ -56,6 +57,8 @@ export async function applyToJob({
       clientName: clientName || null,
       clientEmail: clientEmail || null,
       clientMobile: clientMobile || null,
+      clientTrustTier:
+        typeof clientTrustTier === 'number' ? clientTrustTier : null,
       jobTitle: jobTitle || null,
       status: APPLICATION_STATUS.PENDING,
       message: message || null,

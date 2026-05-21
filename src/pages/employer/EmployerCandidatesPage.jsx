@@ -5,6 +5,7 @@ import {
   HiOutlineCheckBadge,
   HiOutlineXMark,
 } from 'react-icons/hi2';
+import FindingWorkersPanel from '../../components/employer/FindingWorkersPanel.jsx';
 import AgreementCard from '../../components/matching/AgreementCard.jsx';
 import ChatPanel from '../../components/matching/ChatPanel.jsx';
 import JobIssueMedia from '../../components/JobIssueMedia.jsx';
@@ -12,9 +13,15 @@ import PageHeader from '../../components/PageHeader.jsx';
 import SkillBadge from '../../components/SkillBadge.jsx';
 import StatusBadge from '../../components/StatusBadge.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { filterRealApplications, hydrateEngineMatches } from '../../lib/matching/index.js';
+import { collectDeclinedWorkerIds } from '../../lib/matching/matchDeclines.js';
+import { pruneDeclinedEngineMatches } from '../../lib/matching/jobs.js';
+import { runJobMatching } from '../../lib/matching/runJobMatching.js';
 import {
   useApplicationsForJob,
   useJob,
+  useMatchDeclines,
+  useWorkerProfiles,
 } from '../../lib/matching/hooks.js';
 import { setJobStatus, setMatchedWorkers } from '../../lib/matching/jobs.js';
 import {
@@ -28,6 +35,8 @@ import {
 } from '../../lib/matching/statuses.js';
 import { locationLabel } from '../../utils/clientJobs.js';
 
+const FINDING_MIN_MS = 3200;
+
 function EmployerCandidatesPage() {
   const { jobId } = useParams();
   const auth = useAuth();
@@ -35,16 +44,70 @@ function EmployerCandidatesPage() {
 
   const { data: job, loading: jobLoading } = useJob(jobId);
   const { data: applicants, loading: appsLoading } = useApplicationsForJob(jobId);
+  const { data: workerProfiles, loading: profilesLoading } = useWorkerProfiles();
+  const { data: matchDeclines } = useMatchDeclines(jobId);
+  const [engineRunning, setEngineRunning] = useState(false);
+
+  const declinedWorkerIds = useMemo(
+    () => collectDeclinedWorkerIds(jobId, workerProfiles, matchDeclines || []),
+    [jobId, workerProfiles, matchDeclines],
+  );
+
+  const [findingWorkers, setFindingWorkers] = useState(() =>
+    Boolean(jobId && sessionStorage.getItem(`hwe-finding-workers-${jobId}`))
+  );
+
+  useEffect(() => {
+    if (!jobId || !findingWorkers) return;
+    const key = `hwe-finding-workers-${jobId}`;
+    const timer = window.setTimeout(() => {
+      sessionStorage.removeItem(key);
+      setFindingWorkers(false);
+    }, FINDING_MIN_MS);
+    return () => window.clearTimeout(timer);
+  }, [jobId, findingWorkers]);
+
+  const matchedWorkers = useMemo(
+    () =>
+      job ? hydrateEngineMatches(job, workerProfiles, declinedWorkerIds) : [],
+    [job, workerProfiles, declinedWorkerIds],
+  );
+
+  useEffect(() => {
+    if (!job || !ownerUid || job.postedBy !== ownerUid || profilesLoading) return;
+    void pruneDeclinedEngineMatches(
+      job.docId || job.id,
+      job,
+      workerProfiles,
+      matchDeclines || [],
+    );
+  }, [job, ownerUid, profilesLoading, workerProfiles, matchDeclines]);
+
+  useEffect(() => {
+    if (!job || !ownerUid || job.postedBy !== ownerUid) return;
+    if (job.engineRanAt || profilesLoading) return;
+    let cancelled = false;
+    setEngineRunning(true);
+    runJobMatching(job)
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setEngineRunning(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [job, ownerUid, profilesLoading]);
+
+  const showFindingUi = findingWorkers || engineRunning;
 
   const activeApplicants = useMemo(
-    () => applicants.filter((a) => ACTIVE_APPLICATION_STATUSES.has(a.status)),
+    () =>
+      filterRealApplications(applicants).filter((a) =>
+        ACTIVE_APPLICATION_STATUSES.has(a.status)
+      ),
     [applicants]
   );
 
-  // Track the homeowner's most recent click, but fall back to the first
-  // active applicant. Doing the resolution in render (instead of in a
-  // useEffect that calls setState) avoids the "set-state-in-effect"
-  // cascade-render warning React 19 surfaces.
   const [pickedAppId, setPickedAppId] = useState(null);
   const fallbackAppId = activeApplicants[0]?.docId || activeApplicants[0]?.id || null;
   const selectedAppId =
@@ -56,19 +119,22 @@ function EmployerCandidatesPage() {
     (a) => (a.docId || a.id) === selectedAppId
   );
 
-  // Keep job.matchedWorkers in sync so the Active Job card stays accurate.
   useEffect(() => {
     if (!job) return;
     if (!ownerUid || job.postedBy !== ownerUid) return;
     if (job.status === JOB_STATUS.COMPLETED) return;
-    const desired = activeApplicants.length;
+    const desired = matchedWorkers.length;
     if ((job.matchedWorkers ?? 0) !== desired) {
       setMatchedWorkers(job.docId || job.id, desired).catch(() => {});
     }
-  }, [activeApplicants.length, job, ownerUid]);
+  }, [
+    activeApplicants.length,
+    job,
+    ownerUid,
+    matchedWorkers.length,
+    showFindingUi,
+  ]);
 
-  // When the homeowner has at least one applicant we move the job from
-  // "Matching" to "Matched" so the dashboard stepper reflects reality.
   useEffect(() => {
     if (!job) return;
     if (!ownerUid || job.postedBy !== ownerUid) return;
@@ -84,7 +150,7 @@ function EmployerCandidatesPage() {
       try {
         await moveToNegotiating(id);
       } catch {
-        // No-op; the worker may have already moved it forward.
+        /* worker may have already advanced */
       }
     }
   };
@@ -94,23 +160,24 @@ function EmployerCandidatesPage() {
     try {
       await declineApplication(app.docId || app.id);
     } catch (err) {
-       
       alert(err.message || 'Could not decline applicant.');
     }
   };
 
+  const pageTitle = showFindingUi ? 'Finding workers' : 'Applicants';
+  const pageSubtitle = showFindingUi
+    ? job
+      ? `Matching workers for "${job.title}"`
+      : 'Loading your request…'
+    : job
+      ? `Workers who responded to "${job.title}"`
+      : jobLoading
+        ? 'Loading job…'
+        : 'Job not found.';
+
   return (
     <div>
-      <PageHeader
-        title="Applicants"
-        subtitle={
-          job
-            ? `Workers who responded to "${job.title}"`
-            : jobLoading
-              ? 'Loading job…'
-              : 'Job not found.'
-        }
-      />
+      <PageHeader title={pageTitle} subtitle={pageSubtitle} />
 
       <div className="mb-3">
         <Link
@@ -124,125 +191,141 @@ function EmployerCandidatesPage() {
 
       {job ? <JobSummaryCard job={job} /> : null}
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
-        <aside className="space-y-2">
-          <h3 className="px-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
-            Applicants ({activeApplicants.length})
+      {job ? (
+        <FindingWorkersPanel
+          searching={showFindingUi}
+          matches={matchedWorkers}
+          jobTitle={job.title}
+        />
+      ) : null}
+
+      {!showFindingUi ? (
+        <>
+          <h3 className="mb-3 px-1 text-sm font-semibold text-[#1F4E79]">
+            Applicants who applied
           </h3>
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
+            <aside className="space-y-2">
+              <p className="px-1 text-xs text-gray-500">
+                Applicants ({activeApplicants.length})
+              </p>
 
-          {appsLoading ? (
-            <p className="rounded-xl bg-white p-4 text-sm text-gray-500 shadow-sm">
-              Loading…
-            </p>
-          ) : null}
-
-          {!appsLoading && activeApplicants.length === 0 ? (
-            <p className="rounded-xl bg-white p-4 text-sm text-gray-500 shadow-sm">
-              No applicants yet. The system is still pushing your request to
-              qualified, available workers — they'll appear here once they
-              respond.
-            </p>
-          ) : null}
-
-          <ul className="space-y-2">
-            {activeApplicants.map((app) => {
-              const id = app.docId || app.id;
-              const isSelected = id === selectedAppId;
-              return (
-                <li key={id}>
-                  <button
-                    type="button"
-                    onClick={() => handleSelectApplicant(app)}
-                    className={`w-full rounded-xl border bg-white p-3 text-left shadow-sm transition ${
-                      isSelected
-                        ? 'border-[#1F4E79] ring-2 ring-[#1F4E79]/30'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-[#1F4E79]">
-                          {app.workerName || 'Worker'}
-                        </p>
-                        <p className="mt-0.5 text-[11px] text-gray-500">
-                          Applied {formatDate(app.appliedAt)}
-                        </p>
-                      </div>
-                      <ApplicationStatusPill status={app.status} />
-                    </div>
-                    {app.workerSkills?.length ? (
-                      <div className="mt-2 flex flex-wrap gap-1">
-                        {app.workerSkills.slice(0, 4).map((s) => (
-                          <span
-                            key={s}
-                            className="rounded-full bg-[#2E75B6]/10 px-2 py-0.5 text-[10px] font-medium text-[#1F4E79]"
-                          >
-                            {s}
-                          </span>
-                        ))}
-                      </div>
-                    ) : null}
-                    <div className="mt-3 flex items-center gap-2">
-                      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600">
-                        {isSelected ? 'Open chat' : 'Chat'}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDecline(app);
-                        }}
-                        className="ml-auto inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-700 hover:bg-red-100"
-                      >
-                        <HiOutlineXMark className="h-3 w-3" aria-hidden="true" />
-                        Decline
-                      </button>
-                    </div>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </aside>
-
-        <div className="space-y-4">
-          {selected && job ? (
-            <>
-              <ChatPanel
-                jobId={job.docId || job.id}
-                jobTitle={job.title}
-                clientId={job.postedBy}
-                clientName={job.postedByName || job.clientName}
-                clientEmail={auth.user?.email || job.postedByEmail}
-                clientMobile={auth.profile?.mobile || job.postedByMobile}
-                workerId={selected.workerId}
-                workerName={selected.workerName}
-                role="client"
-                className="h-[420px]"
-              />
-              <AgreementCard
-                application={selected}
-                role="client"
-                jobBudget={job.budget}
-              />
-              {job.confirmedWorkerId ? (
-                <p className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900">
-                  <HiOutlineCheckBadge className="mr-1 inline h-4 w-4 align-text-bottom" aria-hidden="true" />
-                  This job is locked to {job.confirmedWorkerName || 'the chosen worker'}. All
-                  other applicants have been notified that the position has
-                  been filled.
+              {appsLoading ? (
+                <p className="rounded-xl bg-white p-4 text-sm text-gray-500 shadow-sm">
+                  Loading…
                 </p>
               ) : null}
-            </>
-          ) : (
-            <div className="rounded-xl bg-white p-8 text-center text-sm text-gray-500 shadow-sm">
-              {activeApplicants.length === 0
-                ? 'You will be able to chat and negotiate as soon as the first applicant arrives.'
-                : 'Select an applicant from the list to open the chat and propose an agreement.'}
+
+              {!appsLoading && activeApplicants.length === 0 ? (
+                <p className="rounded-xl bg-white p-4 text-sm text-gray-500 shadow-sm">
+                  No one has applied yet. Matched workers above can see your request — they
+                  will appear here once they apply.
+                </p>
+              ) : null}
+
+              <ul className="space-y-2">
+                {activeApplicants.map((app) => {
+                  const id = app.docId || app.id;
+                  const isSelected = id === selectedAppId;
+                  return (
+                    <li key={id}>
+                      <button
+                        type="button"
+                        onClick={() => handleSelectApplicant(app)}
+                        className={`w-full rounded-xl border bg-white p-3 text-left shadow-sm transition ${
+                          isSelected
+                            ? 'border-[#1F4E79] ring-2 ring-[#1F4E79]/30'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-[#1F4E79]">
+                              {app.workerName || 'Worker'}
+                            </p>
+                            <p className="mt-0.5 text-[11px] text-gray-500">
+                              Applied {formatDate(app.appliedAt)}
+                            </p>
+                          </div>
+                          <ApplicationStatusPill status={app.status} />
+                        </div>
+                        {app.workerSkills?.length ? (
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            {app.workerSkills.slice(0, 4).map((s) => (
+                              <span
+                                key={s}
+                                className="rounded-full bg-[#2E75B6]/10 px-2 py-0.5 text-[10px] font-medium text-[#1F4E79]"
+                              >
+                                {s}
+                              </span>
+                            ))}
+                          </div>
+                        ) : null}
+                        <div className="mt-3 flex items-center gap-2">
+                          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600">
+                            {isSelected ? 'Open chat' : 'Chat'}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDecline(app);
+                            }}
+                            className="ml-auto inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-700 hover:bg-red-100"
+                          >
+                            <HiOutlineXMark className="h-3 w-3" aria-hidden="true" />
+                            Decline
+                          </button>
+                        </div>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </aside>
+
+            <div className="space-y-4">
+              {selected && job ? (
+                <>
+                  <ChatPanel
+                    jobId={job.docId || job.id}
+                    jobTitle={job.title}
+                    clientId={job.postedBy}
+                    clientName={job.postedByName || job.clientName}
+                    clientEmail={auth.user?.email || job.postedByEmail}
+                    clientMobile={auth.profile?.mobile || job.postedByMobile}
+                    workerId={selected.workerId}
+                    workerName={selected.workerName}
+                    role="client"
+                    className="h-[420px]"
+                  />
+                  <AgreementCard
+                    application={selected}
+                    role="client"
+                    jobBudget={job.budget}
+                  />
+                  {job.confirmedWorkerId ? (
+                    <p className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900">
+                      <HiOutlineCheckBadge
+                        className="mr-1 inline h-4 w-4 align-text-bottom"
+                        aria-hidden="true"
+                      />
+                      This job is locked to {job.confirmedWorkerName || 'the chosen worker'}.
+                      All other applicants have been notified that the position has been filled.
+                    </p>
+                  ) : null}
+                </>
+              ) : (
+                <div className="rounded-xl bg-white p-8 text-center text-sm text-gray-500 shadow-sm">
+                  {activeApplicants.length === 0
+                    ? 'When a worker applies, select them here to chat and negotiate.'
+                    : 'Select an applicant from the list to open the chat and propose an agreement.'}
+                </div>
+              )}
             </div>
-          )}
-        </div>
-      </div>
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }

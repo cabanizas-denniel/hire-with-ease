@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { HiOutlinePaperAirplane } from 'react-icons/hi2';
+import TrustBadge from '../TrustBadge.jsx';
+import { shouldShowClientTrustBadge } from '../../lib/employerTrust.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useMessages, useThread } from '../../lib/matching/hooks.js';
 import {
@@ -20,6 +22,7 @@ function ChatPanel({
   clientName,
   clientEmail = null,
   clientMobile = null,
+  clientTrustTier = null,
   workerId,
   workerName,
   role,
@@ -108,6 +111,11 @@ function ChatPanel({
             ? `Chat with ${workerName || 'worker'}`
             : `Chat with ${clientName || 'homeowner'}`}
         </h3>
+        {role === 'worker' && shouldShowClientTrustBadge(clientTrustTier) ? (
+          <div className="mt-1">
+            <TrustBadge tier={clientTrustTier} role="client" size="sm" />
+          </div>
+        ) : null}
         {role === 'worker' ? (
           <ClientContactDetails
             email={homeownerContactEmail}

@@ -1,10 +1,24 @@
 import { HiOutlineMapPin } from 'react-icons/hi2';
 import { getJobMediaEntries } from '../utils/jobMedia.js';
+import HomeownerTrustRow from './HomeownerTrustRow.jsx';
 import JobIssueMedia from './JobIssueMedia.jsx';
 import SkillBadge from './SkillBadge.jsx';
 import StatusBadge from './StatusBadge.jsx';
 
-function JobCard({ job, onAccept, onDecline, onViewDetails, compact = false, matchReasons }) {
+function JobCard({
+  job,
+  onAccept,
+  onDecline,
+  onViewDetails,
+  compact = false,
+  showDescription = false,
+  showFullMedia = false,
+  declineLabel = 'Not Interested',
+  clientTrustTier = null,
+  matchReasons,
+}) {
+  const trustTier =
+    clientTrustTier ?? job.postedByTrustTier ?? job.clientTrustTier ?? null;
   const isRush = job.type === 'Rush';
   const hasMedia = getJobMediaEntries(job).length > 0;
 
@@ -13,8 +27,8 @@ function JobCard({ job, onAccept, onDecline, onViewDetails, compact = false, mat
       {hasMedia ? (
         <JobIssueMedia
           job={job}
-          variant="card"
-          compact={compact}
+          variant={showFullMedia ? 'gallery' : 'card'}
+          compact={compact && !showFullMedia}
           titleAlt={`Photo for "${job.title}"`}
         />
       ) : null}
@@ -23,8 +37,8 @@ function JobCard({ job, onAccept, onDecline, onViewDetails, compact = false, mat
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <h3 className="text-base font-semibold text-[#1F4E79]">{job.title}</h3>
-            {job.clientName ? (
-              <p className="mt-0.5 text-xs text-gray-500">Requested by {job.clientName}</p>
+            {job.clientName || trustTier != null ? (
+              <HomeownerTrustRow name={job.clientName} trustTier={trustTier} />
             ) : null}
           </div>
           <span
@@ -49,6 +63,10 @@ function JobCard({ job, onAccept, onDecline, onViewDetails, compact = false, mat
           <p className="mt-1 text-sm text-gray-500">{job.schedule}</p>
         ) : null}
 
+        {showDescription && job.description ? (
+          <p className="mt-3 whitespace-pre-wrap text-sm text-gray-700">{job.description}</p>
+        ) : null}
+
         {job.requiredSkills?.length ? (
           <div className="mt-3 flex flex-wrap gap-2">
             {job.requiredSkills.map((skill) => (
@@ -70,6 +88,15 @@ function JobCard({ job, onAccept, onDecline, onViewDetails, compact = false, mat
 
         {!compact ? (
           <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+            {onDecline ? (
+              <button
+                type="button"
+                onClick={() => onDecline(job)}
+                className="cursor-pointer w-full rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+              >
+                {declineLabel}
+              </button>
+            ) : null}
             {onViewDetails ? (
               <button
                 type="button"
@@ -77,15 +104,6 @@ function JobCard({ job, onAccept, onDecline, onViewDetails, compact = false, mat
                 className="cursor-pointer w-full rounded-lg border border-[#1F4E79] px-4 py-2 text-sm font-medium text-[#1F4E79]"
               >
                 View Details
-              </button>
-            ) : null}
-            {onDecline ? (
-              <button
-                type="button"
-                onClick={() => onDecline(job)}
-                className="cursor-pointer w-full rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-600"
-              >
-                Not Interested
               </button>
             ) : null}
             {onAccept ? (

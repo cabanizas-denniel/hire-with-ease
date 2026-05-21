@@ -4,6 +4,27 @@ export * from './applications.js';
 export * from './agreements.js';
 export * from './threads.js';
 export * from './workerProfile.js';
+export {
+  MATCH_LIMITS,
+  GREEDY_POOL_SIZE,
+  availabilitySlotForInstant,
+  scoreWorkerFactors,
+  greedyBestFirstNarrow,
+  astarSelectShortlist,
+  runMatchingEngine,
+  serializeEngineMatches,
+  hydrateEngineMatches,
+} from './engine.js';
+export { runJobMatching } from './runJobMatching.js';
+
+import { filterRealWorkerProfiles } from './seedFilters.js';
+
+export {
+  filterRealApplications,
+  filterRealWorkerProfiles,
+  isSeedApplication,
+  isSeedWorkerProfile,
+} from './seedFilters.js';
 
 /**
  * Rule-based matching (deterministic — same job + profile always ranks the same):
@@ -48,4 +69,23 @@ export function scoreMatch(job, profile) {
   }
 
   return { score, reasons, matchedSkills };
+}
+
+/**
+ * Workers who qualify for this job (skill overlap), ranked for homeowner view.
+ * Excludes suspended/banned profiles when moderationStatus is set.
+ */
+export function rankWorkersForJob(job, workerProfiles = []) {
+  if (!job?.requiredSkills?.length) return [];
+  return filterRealWorkerProfiles(workerProfiles)
+    .filter((profile) => {
+      const status = profile.moderationStatus || 'active';
+      return status === 'active';
+    })
+    .map((profile) => {
+      const { score, reasons, matchedSkills } = scoreMatch(job, profile);
+      return { profile, score, reasons, matchedSkills };
+    })
+    .filter((entry) => entry.matchedSkills.length > 0)
+    .sort((a, b) => b.score - a.score);
 }

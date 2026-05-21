@@ -15,16 +15,22 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import SavedHomeAddressCard from '../../components/profile/SavedHomeAddressCard.jsx';
 import { CATEGORY_REQUIRED_SKILLS, JOB_CATEGORIES } from '../../data/jobs.js';
 import { getHomeownerLocationFromProfile, formatProfileHomeAddress } from '../../lib/homeLocation.js';
-import { storage } from '../../lib/firebase.js';
 import {
   assertIssueMediaFile,
   MAX_ISSUE_MEDIA_BYTES,
-  uploadJobIssueFiles,
+  MAX_ISSUE_PHOTOS,
+  prepareJobIssueMedia,
 } from '../../lib/jobIssueMediaUpload.js';
 import { createJob, findActiveJob, newJobId } from '../../lib/matching/jobs.js';
 import { useJobsByOwner } from '../../lib/matching/hooks.js';
+import {
+  formatScheduledStart,
+  scheduledStartAtIso,
+  todayDateInputValue,
+  validateScheduledStart,
+} from '../../lib/scheduleFormat.js';
+import { clientTrustTierFromUserDoc } from '../../lib/employerTrust.js';
 import { formatHomeAddress } from '../../utils/clientJobs.js';
-import { isVideoMediaEntry } from '../../utils/jobMedia.js';
 
 const WIZARD_STEPS = ['Identify the issue', 'Budget & schedule', 'Review & submit'];
 
@@ -45,6 +51,7 @@ function EmployerPostJobPage() {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const [submitPhase, setSubmitPhase] = useState('');
   const [error, setError] = useState(null);
 
   const [form, setForm] = useState({
@@ -52,8 +59,8 @@ function EmployerPostJobPage() {
     title: '',
     description: '',
     budget: '',
-    type: 'Scheduled',
-    schedule: '',
+    scheduleDate: '',
+    scheduleTime: '',
   });
 
   const [mediaDrafts, setMediaDrafts] = useState([]);
@@ -64,9 +71,12 @@ function EmployerPostJobPage() {
     if (!list.length) return;
     setError(null);
     try {
+      if (mediaDrafts.length + list.length > MAX_ISSUE_PHOTOS) {
+        throw new Error(`You can add at most ${MAX_ISSUE_PHOTOS} photos per request.`);
+      }
       list.forEach((file) => assertIssueMediaFile(file));
     } catch (err) {
-      setError(err.message || 'Could not add that file.');
+      setError(err.message || 'Could not add that photo.');
       return;
     }
     setMediaDrafts((prev) => {
@@ -104,14 +114,15 @@ function EmployerPostJobPage() {
         return 'Set your home address on your Profile (map pin) before posting a request.';
       }
       if (mediaDrafts.length === 0) {
-        return 'Add at least one photo or video of the issue.';
+        return 'Add at least one photo of the issue.';
+      }
+      if (mediaDrafts.length > MAX_ISSUE_PHOTOS) {
+        return `Add at most ${MAX_ISSUE_PHOTOS} photos.`;
       }
     }
     if (stepIndex === 1) {
       if (!form.budget) return 'Select a budget range.';
-      if (form.type !== 'Rush' && !form.schedule) {
-        return 'Pick a scheduled date and time.';
-      }
+      return validateScheduledStart(form.scheduleDate, form.scheduleTime);
     }
     return null;
   };
@@ -123,7 +134,11 @@ function EmployerPostJobPage() {
       return;
     }
     setError(null);
-    setStep((s) => Math.min(s + 1, WIZARD_STEPS.length - 1));
+    // Defer step change so this click cannot land on the Submit button that
+    // replaces Continue in the same footer slot (step 2 → 3).
+    window.setTimeout(() => {
+      setStep((s) => Math.min(s + 1, WIZARD_STEPS.length - 1));
+    }, 50);
   };
 
   const goBack = () => {
@@ -131,11 +146,11 @@ function EmployerPostJobPage() {
     setStep((s) => Math.max(s - 1, 0));
   };
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
+  const handleSubmit = async () => {
     const msg = validateStep(0) || validateStep(1);
     if (msg) {
       setError(msg);
+      setStep(msg.includes('date') || msg.includes('time') || msg.includes('budget') ? 1 : 0);
       return;
     }
     if (!ownerUid) {
@@ -155,10 +170,16 @@ function EmployerPostJobPage() {
     }
     setSubmitting(true);
     setError(null);
+    setSubmitPhase('Preparing…');
     const jobId = newJobId();
     const files = mediaDrafts.map((d) => d.file);
     try {
-      const media = await uploadJobIssueFiles(storage, jobId, files);
+      const media = await prepareJobIssueMedia(jobId, files, {
+        onProgress: ({ index, total }) => {
+          setSubmitPhase(`Processing photo ${index + 1} of ${total}…`);
+        },
+      });
+      setSubmitPhase('Saving your request…');
       await createJob({
         id: jobId,
         title: form.title,
@@ -166,9 +187,10 @@ function EmployerPostJobPage() {
         description: form.description,
         requiredSkills,
         budget: form.budget,
-        schedule: form.type === 'Rush' ? 'ASAP · Dispatch now' : form.schedule,
-        type: form.type,
-        urgency: form.type === 'Rush' ? 'Urgent' : 'Normal',
+        schedule: formatScheduledStart(form.scheduleDate, form.scheduleTime),
+        scheduledStartAt: scheduledStartAtIso(form.scheduleDate, form.scheduleTime),
+        type: 'Scheduled',
+        urgency: 'Normal',
         location: jobLocation,
         photo: null,
         media,
@@ -176,11 +198,15 @@ function EmployerPostJobPage() {
         postedByName: ownerName,
         postedByEmail: auth.user?.email || null,
         postedByMobile: auth.profile?.mobile || null,
+        postedByTrustTier: clientTrustTierFromUserDoc(auth.profile),
       });
       handleClearAllMedia();
-      navigate(`/employer/candidates/${jobId}`);
+      sessionStorage.setItem(`hwe-finding-workers-${jobId}`, '1');
+      navigate(`/employer/candidates/${jobId}`, { replace: false });
     } catch (err) {
       setError(err.message || 'Could not submit your request. Please try again.');
+      setSubmitPhase('');
+    } finally {
       setSubmitting(false);
     }
   };
@@ -199,6 +225,8 @@ function EmployerPostJobPage() {
 
   const mbLimit = MAX_ISSUE_MEDIA_BYTES / (1024 * 1024);
   const homeAddressPreview = formatProfileHomeAddress(auth.profile);
+  const schedulePreview = formatScheduledStart(form.scheduleDate, form.scheduleTime);
+  const minScheduleDate = todayDateInputValue();
 
   return (
     <div>
@@ -215,14 +243,14 @@ function EmployerPostJobPage() {
         </p>
       </div>
 
-      {error ? (
+      {error && step !== 2 ? (
         <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
           {error}
         </div>
       ) : null}
 
       <form
-        onSubmit={handleSubmit}
+        onSubmit={(event) => event.preventDefault()}
         className="mt-5 space-y-5 rounded-xl bg-white p-4 shadow-sm sm:p-5"
       >
         <FormStepper steps={WIZARD_STEPS} currentStep={step} />
@@ -242,15 +270,19 @@ function EmployerPostJobPage() {
         ) : null}
 
         {step === 1 ? (
-          <BudgetScheduleStep form={form} setForm={setForm} />
+          <BudgetScheduleStep form={form} setForm={setForm} minScheduleDate={minScheduleDate} />
         ) : null}
 
         {step === 2 ? (
           <ReviewStep
             form={form}
             homeAddress={homeAddressPreview}
+            scheduleLabel={schedulePreview}
             mediaCount={mediaDrafts.length}
             requiredSkills={CATEGORY_REQUIRED_SKILLS[form.category] || []}
+            submitting={submitting}
+            submitPhase={submitPhase}
+            submitError={error}
           />
         ) : null}
 
@@ -278,8 +310,9 @@ function EmployerPostJobPage() {
             </button>
           ) : (
             <button
-              type="submit"
+              type="button"
               disabled={submitting}
+              onClick={handleSubmit}
               className="inline-flex items-center justify-center rounded-lg bg-[#1F4E79] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
             >
               {submitting ? 'Submitting…' : 'Submit Request'}
@@ -321,7 +354,7 @@ function IssueStep({
             ))}
           </select>
         </div>
-        <div className="sm:col-span-2">
+        <div className="sm:col-span-1">
           <label className="mb-1 block text-xs font-medium text-gray-600">Short title</label>
           <input
             className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
@@ -356,93 +389,121 @@ function IssueStep({
   );
 }
 
-function BudgetScheduleStep({ form, setForm }) {
+function BudgetScheduleStep({ form, setForm, minScheduleDate }) {
+  const preview =
+    form.scheduleDate && form.scheduleTime
+      ? formatScheduledStart(form.scheduleDate, form.scheduleTime)
+      : null;
+
   return (
     <section className="space-y-4">
       <h2 className="text-sm font-semibold text-[#1F4E79]">Step 2 — Budget &amp; schedule</h2>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">Urgency</label>
-          <select
-            value={form.type}
-            onChange={(e) =>
-              setForm((prev) => ({
-                ...prev,
-                type: e.target.value,
-                schedule: e.target.value === 'Rush' ? '' : prev.schedule,
-              }))
-            }
-            className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
-          >
-            <option value="Scheduled">Scheduled (plan ahead)</option>
-            <option value="Rush">Rush (as soon as possible)</option>
-          </select>
+      <p className="text-xs text-gray-500">
+        All requests are scheduled. Pick when you want the worker to start — date and time are
+        separate so it's easy to read.
+      </p>
+
+      <div>
+        <label className="mb-1 block text-xs font-medium text-gray-600">Budget range</label>
+        <select
+          className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
+          value={form.budget}
+          onChange={(e) => setForm((prev) => ({ ...prev, budget: e.target.value }))}
+        >
+          <option value="">Select budget range</option>
+          <option>PHP 500 - 1,000</option>
+          <option>PHP 1,000 - 2,000</option>
+          <option>PHP 2,000 - 3,000</option>
+          <option>PHP 3,000 - 5,000</option>
+          <option>PHP 5,000+</option>
+        </select>
+      </div>
+
+      <div className="rounded-xl border border-gray-200 bg-gray-50/60 p-4">
+        <p className="text-xs font-semibold uppercase tracking-wide text-[#1F4E79]">
+          Preferred start
+        </p>
+        <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label htmlFor="job-schedule-date" className="mb-1 block text-xs font-medium text-gray-600">
+              Date
+            </label>
+            <input
+              id="job-schedule-date"
+              type="date"
+              min={minScheduleDate}
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-base"
+              value={form.scheduleDate}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, scheduleDate: e.target.value }))
+              }
+            />
+          </div>
+          <div>
+            <label htmlFor="job-schedule-time" className="mb-1 block text-xs font-medium text-gray-600">
+              Time
+            </label>
+            <input
+              id="job-schedule-time"
+              type="time"
+              step={900}
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-base"
+              value={form.scheduleTime}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, scheduleTime: e.target.value }))
+              }
+            />
+          </div>
         </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">Budget range</label>
-          <select
-            className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
-            value={form.budget}
-            onChange={(e) => setForm((prev) => ({ ...prev, budget: e.target.value }))}
-          >
-            <option value="">Select budget range</option>
-            <option>PHP 500 - 1,000</option>
-            <option>PHP 1,000 - 2,000</option>
-            <option>PHP 2,000 - 3,000</option>
-            <option>PHP 3,000 - 5,000</option>
-            <option>PHP 5,000+</option>
-          </select>
-        </div>
-        <div className="sm:col-span-2">
-          <label className="mb-1 block text-xs font-medium text-gray-600">When should work start?</label>
-          {form.type === 'Rush' ? (
-            <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
-              <span className="mt-0.5 inline-block h-2 w-2 shrink-0 animate-pulse rounded-full bg-amber-500" />
-              <div>
-                <p className="text-sm font-semibold text-amber-900">As soon as possible</p>
-                <p className="mt-0.5 text-xs text-amber-800/90">
-                  Matched workers are notified to apply. Please be home and ready.
-                </p>
-              </div>
-            </div>
-          ) : (
-            <>
-              <input
-                type="datetime-local"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
-                value={form.schedule}
-                onChange={(e) => setForm((prev) => ({ ...prev, schedule: e.target.value }))}
-              />
-              <p className="mt-1 text-[11px] text-gray-500">
-                Workers see this start time when they apply.
-              </p>
-            </>
-          )}
-        </div>
+        {preview ? (
+          <p className="mt-3 rounded-lg border border-blue-100 bg-blue-50/80 px-3 py-2 text-sm text-[#1F4E79]">
+            <span className="font-semibold">Scheduled for:</span> {preview}
+          </p>
+        ) : (
+          <p className="mt-3 text-xs text-gray-500">
+            Workers will see this date and time when they apply.
+          </p>
+        )}
       </div>
     </section>
   );
 }
 
-function ReviewStep({ form, homeAddress, mediaCount, requiredSkills }) {
+function ReviewStep({
+  form,
+  homeAddress,
+  scheduleLabel,
+  mediaCount,
+  requiredSkills,
+  submitting = false,
+  submitPhase = '',
+  submitError = null,
+}) {
   return (
     <section className="space-y-3">
       <h2 className="text-sm font-semibold text-[#1F4E79]">Step 3 — Review &amp; submit</h2>
       <p className="text-xs text-gray-500">
-        Submitting creates a request in the database with status <strong>Matching</strong>.
-        Workers with matching skills can apply.
+        When you submit, we save your request and find qualified workers by skill and location.
+        You'll see who matches, then workers can apply and chat with you.
       </p>
+      {submitting ? (
+        <p className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-[#1F4E79]">
+          {submitPhase || 'Submitting your request…'}
+        </p>
+      ) : null}
+      {submitError ? (
+        <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+          {submitError}
+        </p>
+      ) : null}
       <dl className="divide-y divide-gray-100 rounded-lg border border-gray-200 text-sm">
         <ReviewRow label="Category" value={form.category} />
         <ReviewRow label="Title" value={form.title} />
         <ReviewRow label="Description" value={form.description} />
         <ReviewRow label="Home address" value={homeAddress} />
-        <ReviewRow label="Media" value={`${mediaCount} file(s)`} />
+        <ReviewRow label="Photos" value={`${mediaCount} photo(s)`} />
         <ReviewRow label="Budget" value={form.budget} />
-        <ReviewRow
-          label="Schedule"
-          value={form.type === 'Rush' ? 'ASAP' : form.schedule || '—'}
-        />
+        <ReviewRow label="Scheduled start" value={scheduleLabel || '—'} />
         <ReviewRow label="Skills needed" value={requiredSkills.join(', ') || '—'} />
       </dl>
     </section>
@@ -469,10 +530,11 @@ function IssueMediaSection({
   return (
     <div>
       <h3 className="mb-1 text-sm font-semibold text-[#1F4E79]">
-        Photos / videos of the issue <span className="text-red-500">*</span>
+        Photos of the issue <span className="text-red-500">*</span>
       </h3>
       <p className="mb-3 text-xs text-gray-500">
-        Up to {mbLimit} MB per file. Workers use these to assess the job.
+        Up to {MAX_ISSUE_PHOTOS} photos, {mbLimit} MB each (saved with your request — no cloud storage).
+        Workers use these to assess the job.
       </p>
       {mediaDrafts.length > 0 ? (
         <div className="space-y-3">
@@ -483,20 +545,11 @@ function IssueMediaSection({
                 className="overflow-hidden rounded-xl border border-gray-200 bg-gray-50"
               >
                 <div className="relative bg-black/5">
-                  {isVideoMediaEntry({ contentType: draft.file.type }) ? (
-                    <video
-                      src={draft.previewUrl}
-                      controls
-                      playsInline
-                      className="max-h-56 w-full object-contain"
-                    />
-                  ) : (
-                    <img
-                      src={draft.previewUrl}
-                      alt=""
-                      className="max-h-56 w-full object-contain"
-                    />
-                  )}
+                  <img
+                    src={draft.previewUrl}
+                    alt=""
+                    className="max-h-56 w-full object-contain"
+                  />
                 </div>
                 <div className="flex items-center justify-between gap-2 border-t border-gray-200 bg-white px-3 py-2">
                   <p className="min-w-0 truncate text-xs text-gray-500">{draft.file.name}</p>
@@ -517,7 +570,7 @@ function IssueMediaSection({
             <input
               ref={mediaInputRef}
               type="file"
-              accept="image/*,video/*"
+              accept="image/jpeg,image/png,image/webp,image/*"
               multiple
               className="hidden"
               onChange={onAddMedia}
@@ -535,11 +588,12 @@ function IssueMediaSection({
       ) : (
         <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-center hover:border-[#1F4E79] hover:bg-blue-50/40">
           <HiOutlinePhoto className="h-8 w-8 text-gray-400" aria-hidden="true" />
-          <p className="text-sm font-semibold text-gray-700">Add photos or videos</p>
+          <p className="text-sm font-semibold text-gray-700">Add photos</p>
+          <p className="text-xs text-gray-500">JPEG, PNG, or WEBP only</p>
           <input
             ref={mediaInputRef}
             type="file"
-            accept="image/*,video/*"
+            accept="image/jpeg,image/png,image/webp,image/*"
             multiple
             className="hidden"
             onChange={onAddMedia}

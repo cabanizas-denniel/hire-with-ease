@@ -3,6 +3,7 @@ import { HiOutlineArrowRight } from 'react-icons/hi2';
 import AgreementCard from '../../components/matching/AgreementCard.jsx';
 import ChatPanel from '../../components/matching/ChatPanel.jsx';
 import JobIssueMedia from '../../components/JobIssueMedia.jsx';
+import HomeownerTrustRow from '../../components/HomeownerTrustRow.jsx';
 import PageHeader from '../../components/PageHeader.jsx';
 import StatusBadge from '../../components/StatusBadge.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
@@ -94,9 +95,12 @@ function ApplicantApplicationsPage() {
                           <p className="truncate text-sm font-semibold text-[#1F4E79]">
                             {app.jobTitle || 'Job'}
                           </p>
-                          <p className="mt-0.5 text-[11px] text-gray-500">
-                            {app.clientName || 'Homeowner'}
-                          </p>
+                          <HomeownerTrustRow
+                            name={app.clientName || 'Homeowner'}
+                            trustTier={app.clientTrustTier}
+                            prefix=""
+                            className="mt-0.5"
+                          />
                         </div>
                         <StatusBadge status={prettyAppStatus(app.status)} />
                       </div>
@@ -184,10 +188,17 @@ function ApplicationWorkspace({ application }) {
             <StatusBadge status={prettyAppStatus(application.status)} />
           </p>
           <div className="mt-2 grid gap-1 text-xs text-gray-700 sm:grid-cols-2">
-            <p>
+            <div className="sm:col-span-2">
               <span className="font-semibold text-[#1F4E79]">Homeowner:</span>{' '}
-              {application.clientName || '—'}
-            </p>
+              <HomeownerTrustRow
+                name={application.clientName || 'Homeowner'}
+                trustTier={
+                  application.clientTrustTier ?? job?.postedByTrustTier ?? null
+                }
+                prefix=""
+                className="mt-1 inline-flex"
+              />
+            </div>
             {(application.clientEmail || job?.postedByEmail) ? (
               <p>
                 <span className="font-semibold text-[#1F4E79]">Email:</span>{' '}
@@ -235,6 +246,9 @@ function ApplicationWorkspace({ application }) {
         clientName={application.clientName}
         clientEmail={application.clientEmail || job?.postedByEmail}
         clientMobile={application.clientMobile || job?.postedByMobile}
+        clientTrustTier={
+          application.clientTrustTier ?? job?.postedByTrustTier ?? null
+        }
         workerId={application.workerId}
         workerName={application.workerName || user?.fullName}
         role="worker"

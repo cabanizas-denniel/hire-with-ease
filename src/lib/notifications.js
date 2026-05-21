@@ -106,6 +106,30 @@ export async function notifyWorkerActivation(userId, { eventAt }) {
   });
 }
 
+/**
+ * Homeowner bell: matching engine found 1–5 workers for a service request.
+ */
+export async function notifyEmployerJobMatches(
+  homeownerId,
+  { jobId, jobTitle, matchCount },
+) {
+  if (!homeownerId || !jobId || !matchCount) return;
+
+  const count = Math.min(Math.max(matchCount, 1), 5);
+  const title =
+    count === 1
+      ? '1 worker matches your request'
+      : `${count} workers match your request`;
+
+  await createUserNotification(homeownerId, {
+    eventKey: `match:job:${jobId}`,
+    type: NOTIFICATION_UI_TYPES.MATCH,
+    title,
+    message: `We found ${count} qualified worker${count === 1 ? '' : 's'} for "${jobTitle}". Review their profiles and pick who to chat with.`,
+    linkTo: `/employer/candidates/${jobId}`,
+  });
+}
+
 export async function notifyApplicationRejected(userId, { verificationRole, eventAt }) {
   await createUserNotification(userId, {
     eventKey: `verification:application:rejected:${eventAt}`,

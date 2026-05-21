@@ -1,6 +1,12 @@
 import SkillBadge from './SkillBadge.jsx';
 
-function WorkerCard({ applicant, onViewProfile, onSelect, matchedSkills = [] }) {
+function WorkerCard({
+  applicant,
+  onViewProfile,
+  onSelect,
+  matchedSkills = [],
+  showActions = true,
+}) {
   const certifications = Array.isArray(applicant.certifications) ? applicant.certifications : [];
   const certificationCount = certifications.length;
 
@@ -63,22 +69,28 @@ function WorkerCard({ applicant, onViewProfile, onSelect, matchedSkills = [] }) 
         </div>
       ) : null}
 
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-        <button
-          type="button"
-          onClick={() => onViewProfile?.(applicant)}
-          className="cursor-pointer w-full rounded-lg border border-[#1F4E79] px-4 py-2 text-sm font-medium text-[#1F4E79]"
-        >
-          View Profile
-        </button>
-        <button
-          type="button"
-          onClick={() => onSelect?.(applicant)}
-          className="cursor-pointer w-full rounded-lg bg-[#1F4E79] px-4 py-2 text-sm font-medium text-white"
-        >
-          Select Worker
-        </button>
-      </div>
+      {showActions && (onViewProfile || onSelect) ? (
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+          {onViewProfile ? (
+            <button
+              type="button"
+              onClick={() => onViewProfile(applicant)}
+              className="cursor-pointer w-full rounded-lg border border-[#1F4E79] px-4 py-2 text-sm font-medium text-[#1F4E79]"
+            >
+              View Profile
+            </button>
+          ) : null}
+          {onSelect ? (
+            <button
+              type="button"
+              onClick={() => onSelect(applicant)}
+              className="cursor-pointer w-full rounded-lg bg-[#1F4E79] px-4 py-2 text-sm font-medium text-white"
+            >
+              Select Worker
+            </button>
+          ) : null}
+        </div>
+      ) : null}
     </article>
   );
 }

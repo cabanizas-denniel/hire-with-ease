@@ -90,3 +90,13 @@ export async function saveWorkerProfile(uid, partial) {
     updatedAt: serverTimestamp(),
   });
 }
+
+/** Remove a matched job from the worker's feed and drop them from the homeowner shortlist. */
+export async function dismissMatchedJob(uid, jobId) {
+  if (!uid || !jobId) return;
+  const { recordMatchDecline } = await import('./matchDeclines.js');
+  await recordMatchDecline({ jobId, workerId: uid });
+  const profile = await getWorkerProfile(uid);
+  const dismissed = [...new Set([...(profile?.dismissedJobIds || []), jobId])];
+  await saveWorkerProfile(uid, { dismissedJobIds: dismissed });
+}

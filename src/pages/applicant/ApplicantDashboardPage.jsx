@@ -39,15 +39,21 @@ function ApplicantDashboardPage() {
     [myApps]
   );
 
+  const dismissedJobIds = useMemo(
+    () => new Set(profile?.dismissedJobIds || []),
+    [profile?.dismissedJobIds],
+  );
+
   const newMatches = useMemo(() => {
     if (!profile) return [];
     return openJobs
       .map((job) => ({ job, ...scoreMatch(job, profile) }))
       .filter((entry) => entry.matchedSkills?.length > 0)
       .filter((entry) => !myActiveJobIds.has(entry.job.docId || entry.job.id))
+      .filter((entry) => !dismissedJobIds.has(entry.job.docId || entry.job.id))
       .sort((a, b) => b.score - a.score)
       .slice(0, 3);
-  }, [profile, openJobs, myActiveJobIds]);
+  }, [profile, openJobs, myActiveJobIds, dismissedJobIds]);
 
   const completedCount = (myApps || []).filter(
     (a) => a.status === APPLICATION_STATUS.COMPLETED

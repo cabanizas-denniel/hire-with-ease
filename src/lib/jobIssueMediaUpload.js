@@ -1,52 +1,58 @@
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { compressImageForUpload, ACCEPTED_IMAGE_TYPES } from './imageUtils.js';
 
-/** Per-file limit for images and videos on the request form. */
-export const MAX_ISSUE_MEDIA_BYTES = 25 * 1024 * 1024;
+/** Max source file size before compression (browser read). */
+export const MAX_ISSUE_MEDIA_BYTES = 10 * 1024 * 1024;
+
+/** Firestore doc limit — keep total embedded media under ~900 KB. */
+export const MAX_ISSUE_PHOTOS = 4;
 
 export function assertIssueMediaFile(file) {
-  if (!file) throw new Error('Pick a file first.');
+  if (!file) throw new Error('Pick a photo first.');
   if (file.size > MAX_ISSUE_MEDIA_BYTES) {
-    throw new Error(`"${file.name}" is larger than 25 MB. Choose a smaller file.`);
+    throw new Error(`"${file.name}" is larger than 10 MB. Choose a smaller photo.`);
   }
   const t = file.type || '';
-  if (!t.startsWith('image/') && !t.startsWith('video/')) {
-    throw new Error(`"${file.name}" must be an image or a video.`);
+  if (!t.startsWith('image/') && !ACCEPTED_IMAGE_TYPES.includes(t)) {
+    throw new Error(`"${file.name}" must be a photo (JPEG, PNG, or WEBP). Videos are not supported.`);
   }
-}
-
-function safeFileSegment(name) {
-  const base = (name || 'file').split(/[/\\]/).pop();
-  const cleaned = base.replace(/[^\w.\-]+/g, '_').slice(0, 120);
-  return cleaned || 'file';
 }
 
 /**
- * Upload issue photos/videos to Firebase Storage (requires bucket + rules allowing writes).
- * Returns compact records stored on the job document.
+ * Compress and embed issue photos on the job document (no Firebase Storage).
+ * Returns media entries with data-URL `url` fields readable by JobIssueMedia.
  */
-export async function uploadJobIssueFiles(storage, jobId, files) {
-  if (!storage) {
-    throw new Error(
-      'File uploads need Firebase Storage. Set VITE_FIREBASE_STORAGE_BUCKET in .env and configure Storage rules.'
-    );
+export async function prepareJobIssueMedia(_jobId, files, { onProgress } = {}) {
+  const list = files || [];
+  if (list.length > MAX_ISSUE_PHOTOS) {
+    throw new Error(`Add at most ${MAX_ISSUE_PHOTOS} photos per request.`);
   }
+
   const results = [];
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i];
+  let totalBytes = 0;
+  const maxTotalBytes = 900 * 1024;
+
+  for (let i = 0; i < list.length; i++) {
+    const file = list[i];
     assertIssueMediaFile(file);
-    const path = `job-issue-media/${jobId}/${i}-${safeFileSegment(file.name)}`;
-    const storageRef = ref(storage, path);
-    await uploadBytes(storageRef, file, {
-      contentType: file.type || 'application/octet-stream',
-    });
-    const url = await getDownloadURL(storageRef);
+    onProgress?.({ index: i, total: list.length });
+
+    const compressed = await compressImageForUpload(file);
+    if (totalBytes + compressed.bytes > maxTotalBytes) {
+      throw new Error(
+        'These photos are too large to save together (Firestore limit). Remove one or use smaller images.'
+      );
+    }
+    totalBytes += compressed.bytes;
+
     results.push({
-      url,
-      contentType: file.type || '',
+      url: compressed.dataUrl,
+      contentType: 'image/jpeg',
       originalName: file.name,
-      bytes: file.size,
+      bytes: compressed.bytes,
       uploadedAt: new Date().toISOString(),
+      inline: true,
     });
   }
+
   return results;
 }

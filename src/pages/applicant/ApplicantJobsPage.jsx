@@ -12,6 +12,7 @@ import {
 } from '../../lib/matching/hooks.js';
 import { scoreMatch, workerMatchesJob } from '../../lib/matching/index.js';
 import { ACTIVE_APPLICATION_STATUSES } from '../../lib/matching/statuses.js';
+import { dismissMatchedJob } from '../../lib/matching/workerProfile.js';
 import { locationLabel } from '../../utils/clientJobs.js';
 
 function ApplicantJobsPage() {
@@ -23,6 +24,11 @@ function ApplicantJobsPage() {
   const { data: profile, loading: profileLoading } = useWorkerProfile(shouldLoadData ? workerUid : null);
   const { data: openJobs, loading: jobsLoading } = useOpenJobs();
   const { data: myApps } = useApplicationsByWorker(shouldLoadData ? workerUid : null);
+
+  const dismissedJobIds = useMemo(
+    () => new Set(profile?.dismissedJobIds || []),
+    [profile?.dismissedJobIds],
+  );
 
   const myActiveJobIds = useMemo(
     () =>
@@ -43,41 +49,58 @@ function ApplicantJobsPage() {
         return { job, score, reasons, matchedSkills };
       })
       .filter((entry) => workerMatchesJob(entry.job, profile))
+      .filter((entry) => !dismissedJobIds.has(entry.job.docId || entry.job.id))
       .sort((a, b) => b.score - a.score);
-  }, [profile, openJobs]);
+  }, [profile, openJobs, dismissedJobIds]);
 
-  const [actionEntry, setActionEntry] = useState(null);
-  const [actionType, setActionType] = useState('');
+  const [applyEntry, setApplyEntry] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
 
-  const closeModal = () => {
-    setActionEntry(null);
-    setActionType('');
+  const closeApplyModal = () => {
+    setApplyEntry(null);
     setError(null);
   };
 
   const handleApply = async () => {
-    if (!actionEntry?.job || !workerUid) return;
+    if (!applyEntry?.job || !workerUid) return;
     setBusy(true);
     setError(null);
     try {
       await applyToJob({
-        jobId: actionEntry.job.docId || actionEntry.job.id,
+        jobId: applyEntry.job.docId || applyEntry.job.id,
         workerId: workerUid,
         workerName: profile?.name || auth?.user?.fullName,
         workerSkills: profile?.skills || [],
-        clientId: actionEntry.job.postedBy || null,
-        clientName: actionEntry.job.postedByName || actionEntry.job.clientName,
-        clientEmail: actionEntry.job.postedByEmail || null,
-        clientMobile: actionEntry.job.postedByMobile || null,
-        jobTitle: actionEntry.job.title,
+        clientId: applyEntry.job.postedBy || null,
+        clientName: applyEntry.job.postedByName || applyEntry.job.clientName,
+        clientEmail: applyEntry.job.postedByEmail || null,
+        clientMobile: applyEntry.job.postedByMobile || null,
+        clientTrustTier: applyEntry.job.postedByTrustTier ?? null,
+        jobTitle: applyEntry.job.title,
       });
-      closeModal();
+      closeApplyModal();
     } catch (err) {
       setError(err.message || 'Could not submit your application.');
     } finally {
       setBusy(false);
+    }
+  };
+
+  const handleDecline = async (job) => {
+    const jobId = job.docId || job.id;
+    if (
+      !window.confirm(
+        'Decline this job? It will be removed from your matched jobs list.',
+      )
+    ) {
+      return;
+    }
+    if (!workerUid) return;
+    try {
+      await dismissMatchedJob(workerUid, jobId);
+    } catch (err) {
+      alert(err.message || 'Could not decline this job.');
     }
   };
 
@@ -129,14 +152,10 @@ function ApplicantJobsPage() {
 
         {matched.map(({ job, reasons }) => {
           const alreadyApplied = myActiveJobIds.has(job.docId || job.id);
-          const handleApplyClick = alreadyApplied ? undefined : (j) => {
-            setActionEntry({ job: j, reasons });
-            setActionType('apply');
-          };
-          const handleDetailsClick = (j) => {
-            setActionEntry({ job: j, reasons });
-            setActionType('details');
-          };
+          const handleApplyClick = alreadyApplied
+            ? undefined
+            : (j) => setApplyEntry({ job: j, reasons });
+
           return (
             <div key={job.docId || job.id} className="relative">
               {alreadyApplied ? (
@@ -152,8 +171,11 @@ function ApplicantJobsPage() {
                   schedule: job.schedule || (job.type === 'Rush' ? 'ASAP · Dispatch now' : ''),
                 }}
                 matchReasons={reasons}
+                showDescription
+                showFullMedia
+                declineLabel="Decline Job"
+                onDecline={alreadyApplied ? undefined : handleDecline}
                 onAccept={handleApplyClick}
-                onViewDetails={handleDetailsClick}
               />
             </div>
           );
@@ -162,35 +184,23 @@ function ApplicantJobsPage() {
       )}
 
       <Modal
-        isOpen={Boolean(actionEntry)}
-        title={
-          actionType === 'apply'
-            ? `Apply to "${actionEntry?.job?.title}"?`
-            : actionEntry?.job?.title || ''
-        }
-        onClose={closeModal}
-        onConfirm={actionType === 'apply' ? handleApply : closeModal}
-        confirmText={
-          actionType === 'apply' ? (busy ? 'Submitting…' : 'Submit application') : 'Close'
-        }
+        isOpen={Boolean(applyEntry)}
+        title={`Apply to "${applyEntry?.job?.title}"?`}
+        onClose={closeApplyModal}
+        onConfirm={handleApply}
+        confirmText={busy ? 'Submitting…' : 'Submit application'}
       >
-        {actionType === 'apply' ? (
-          <>
-            <p>
-              You'll let {actionEntry?.job?.postedByName || 'the homeowner'} know
-              you're interested. They can chat with you to negotiate the price
-              and schedule. Applying is not yet a commitment — you only commit
-              when both sides confirm a final agreement.
-            </p>
-            {error ? (
-              <p className="mt-2 rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700">
-                {error}
-              </p>
-            ) : null}
-          </>
-        ) : (
-          <p>{actionEntry?.job?.description}</p>
-        )}
+        <p>
+          You'll let {applyEntry?.job?.postedByName || 'the homeowner'} know
+          you're interested. They can chat with you to negotiate the price
+          and schedule. Applying is not yet a commitment — you only commit
+          when both sides confirm a final agreement.
+        </p>
+        {error ? (
+          <p className="mt-2 rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700">
+            {error}
+          </p>
+        ) : null}
       </Modal>
     </div>
   );

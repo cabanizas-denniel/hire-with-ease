@@ -1,6 +1,6 @@
 /**
- * Normalize job issue attachments: new jobs use `media` (Storage URLs);
- * older seeded jobs may still use inline `photo.dataUrl`.
+ * Normalize job issue attachments: `media` entries use inline data URLs or legacy URLs;
+ * older jobs may still use `photo.dataUrl`.
  */
 export function getJobMediaEntries(job) {
   if (!job) return [];

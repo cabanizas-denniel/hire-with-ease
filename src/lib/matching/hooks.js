@@ -5,6 +5,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { useCollection } from '../useFirestoreData.js';
 import {
   subscribeApplication,
   subscribeApplicationsByWorker,
@@ -16,6 +17,7 @@ import {
   subscribeOpenJobs,
 } from './jobs.js';
 import { subscribeMessages, subscribeThread } from './threads.js';
+import { subscribeMatchDeclines } from './matchDeclines.js';
 import { subscribeWorkerProfile } from './workerProfile.js';
 
 /**
@@ -129,5 +131,18 @@ export function useWorkerProfile(uid) {
     [uid],
     null,
     `worker-profile:${uid || ''}`
+  );
+}
+
+export function useWorkerProfiles() {
+  return useCollection('worker_profiles');
+}
+
+export function useMatchDeclines(jobId) {
+  return useSubscription(
+    (onData, onError) => subscribeMatchDeclines(jobId, onData, onError),
+    [jobId],
+    [],
+    `match-declines:${jobId || ''}`,
   );
 }

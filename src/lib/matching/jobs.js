@@ -17,6 +17,7 @@ import {
   updateDoc,
   where,
 } from 'firebase/firestore';
+import { collectDeclinedWorkerIds } from './matchDeclines.js';
 import { db } from '../firebase.js';
 import {
   resolveLocation,
@@ -80,6 +81,7 @@ export function buildJobDoc({
   requiredSkills = [],
   budget,
   schedule,
+  scheduledStartAt = null,
   type = 'Scheduled',
   urgency = 'Normal',
   location,
@@ -87,6 +89,7 @@ export function buildJobDoc({
   postedByName,
   postedByEmail = null,
   postedByMobile = null,
+  postedByTrustTier = null,
   photo = null,
   media = null,
 }) {
@@ -107,8 +110,13 @@ export function buildJobDoc({
     urgency,
     budget: budget || null,
     schedule: schedule || (type === 'Rush' ? 'ASAP · Dispatch now' : ''),
+    scheduledStartAt: scheduledStartAt || null,
     clientName: postedByName || null,
     matchedWorkers: 0,
+    engineMatches: [],
+    engineMatchedWorkerIds: [],
+    engineRanAt: null,
+    engineMeta: null,
     postedAt: new Date().toISOString().slice(0, 10),
     location: resolveJobLocation(location),
     photo: photo ?? null,
@@ -117,6 +125,8 @@ export function buildJobDoc({
     postedByName: postedByName || null,
     postedByEmail: postedByEmail || null,
     postedByMobile: postedByMobile || null,
+    postedByTrustTier:
+      typeof postedByTrustTier === 'number' ? postedByTrustTier : null,
     confirmedWorkerId: null,
     confirmedWorkerName: null,
     agreement: null,
@@ -128,9 +138,17 @@ export function buildJobDoc({
 /**
  * Create a new job in /jobs. Returns the created doc id.
  */
-export async function createJob(payload) {
+export async function createJob(payload, { runEngine = true } = {}) {
   const data = buildJobDoc(payload);
   await setDoc(doc(db, 'jobs', data.id), data);
+  if (runEngine) {
+    try {
+      const { runJobMatching } = await import('./runJobMatching.js');
+      await runJobMatching({ ...data, docId: data.id });
+    } catch (err) {
+      console.warn('Matching engine could not run after job create', err);
+    }
+  }
   return data.id;
 }
 
@@ -217,6 +235,37 @@ export async function setJobStatus(jobId, status, extra = {}) {
 export async function setMatchedWorkers(jobId, count) {
   await updateDoc(doc(db, 'jobs', jobId), {
     matchedWorkers: count,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+/**
+ * Remove declined workers from persisted engineMatches (homeowner-owned job doc).
+ */
+export async function pruneDeclinedEngineMatches(
+  jobId,
+  job,
+  workerProfiles = [],
+  matchDeclineDocs = [],
+) {
+  if (!db || !jobId || !job?.engineMatches?.length) return;
+
+  const declined = collectDeclinedWorkerIds(
+    jobId,
+    workerProfiles,
+    matchDeclineDocs,
+  );
+  if (!declined.size) return;
+
+  const engineMatches = job.engineMatches.filter(
+    (row) => !declined.has(row.workerId),
+  );
+  if (engineMatches.length === job.engineMatches.length) return;
+
+  await updateDoc(doc(db, 'jobs', jobId), {
+    engineMatches,
+    engineMatchedWorkerIds: engineMatches.map((m) => m.workerId),
+    matchedWorkers: engineMatches.length,
     updatedAt: serverTimestamp(),
   });
 }
