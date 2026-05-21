@@ -2,7 +2,15 @@ import { resolveLocation } from './olongapoBarangays.js';
 import { formatHomeAddress } from '../utils/clientJobs.js';
 
 /** Map pin shape used by LocationPicker on profile forms. */
-export function locationToPin(location, locationDetails = '') {
+export function locationToPin(location, locationDetails = '', coords = null) {
+  if (coords?.lat != null && coords?.lng != null) {
+    return {
+      lat: coords.lat,
+      lng: coords.lng,
+      barangay: location?.barangay || null,
+      label: locationDetails?.trim() || location?.label || null,
+    };
+  }
   if (!location) return null;
   if (location.lat != null && location.lng != null) {
     return {
@@ -38,11 +46,11 @@ export function pinToFirestoreLocation(pin, addressDetails = '', barangay = '') 
 /** Home location for job posting from a homeowner /users doc. */
 export function getHomeownerLocationFromProfile(profile) {
   if (!profile) return null;
-  const pin = locationToPin(profile.location, profile.locationDetails);
+  const pin = locationToPin(profile.location, profile.locationDetails, profile.coords);
   return pinToFirestoreLocation(
     pin,
     profile.locationDetails,
-    profile.location?.barangay || ''
+    profile.location?.barangay || profile.barangay || ''
   );
 }
 

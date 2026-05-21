@@ -188,6 +188,28 @@ function ApplicationWorkspace({ application }) {
               <span className="font-semibold text-[#1F4E79]">Homeowner:</span>{' '}
               {application.clientName || '—'}
             </p>
+            {(application.clientEmail || job?.postedByEmail) ? (
+              <p>
+                <span className="font-semibold text-[#1F4E79]">Email:</span>{' '}
+                <a
+                  href={`mailto:${application.clientEmail || job.postedByEmail}`}
+                  className="text-[#2E75B6] hover:underline"
+                >
+                  {application.clientEmail || job.postedByEmail}
+                </a>
+              </p>
+            ) : null}
+            {(application.clientMobile || job?.postedByMobile) ? (
+              <p>
+                <span className="font-semibold text-[#1F4E79]">Phone:</span>{' '}
+                <a
+                  href={`tel:${String(application.clientMobile || job.postedByMobile).replace(/\s/g, '')}`}
+                  className="text-[#2E75B6] hover:underline"
+                >
+                  {application.clientMobile || job.postedByMobile}
+                </a>
+              </p>
+            ) : null}
             <p>
               <span className="font-semibold text-[#1F4E79]">Budget:</span>{' '}
               {job?.budget || '—'}
@@ -211,6 +233,8 @@ function ApplicationWorkspace({ application }) {
         jobTitle={application.jobTitle}
         clientId={application.clientId}
         clientName={application.clientName}
+        clientEmail={application.clientEmail || job?.postedByEmail}
+        clientMobile={application.clientMobile || job?.postedByMobile}
         workerId={application.workerId}
         workerName={application.workerName || user?.fullName}
         role="worker"

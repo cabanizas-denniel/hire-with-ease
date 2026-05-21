@@ -85,6 +85,8 @@ export function buildJobDoc({
   location,
   postedBy,
   postedByName,
+  postedByEmail = null,
+  postedByMobile = null,
   photo = null,
   media = null,
 }) {
@@ -113,6 +115,8 @@ export function buildJobDoc({
     media: mediaList,
     postedBy: postedBy || null,
     postedByName: postedByName || null,
+    postedByEmail: postedByEmail || null,
+    postedByMobile: postedByMobile || null,
     confirmedWorkerId: null,
     confirmedWorkerName: null,
     agreement: null,

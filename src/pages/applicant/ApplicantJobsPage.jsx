@@ -69,6 +69,8 @@ function ApplicantJobsPage() {
         workerSkills: profile?.skills || [],
         clientId: actionEntry.job.postedBy || null,
         clientName: actionEntry.job.postedByName || actionEntry.job.clientName,
+        clientEmail: actionEntry.job.postedByEmail || null,
+        clientMobile: actionEntry.job.postedByMobile || null,
         jobTitle: actionEntry.job.title,
       });
       closeModal();

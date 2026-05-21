@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { HiOutlinePaperAirplane } from 'react-icons/hi2';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { useMessages } from '../../lib/matching/hooks.js';
+import { useMessages, useThread } from '../../lib/matching/hooks.js';
 import {
   buildThreadId,
   ensureThread,
@@ -12,18 +12,14 @@ import {
  * Chat thread between a homeowner and a single applicant. Both sides
  * see the same messages because the thread id is deterministic
  * (`${jobId}__${workerId}`).
- *
- * Props:
- *  - jobId, jobTitle    -- the job being negotiated about
- *  - clientId, clientName
- *  - workerId, workerName
- *  - role               -- 'client' | 'worker'  (used for message styling)
  */
 function ChatPanel({
   jobId,
   jobTitle,
   clientId,
   clientName,
+  clientEmail = null,
+  clientMobile = null,
   workerId,
   workerName,
   role,
@@ -32,18 +28,45 @@ function ChatPanel({
   const { user } = useAuth();
   const threadId = buildThreadId(jobId, workerId);
   const { data: messages, loading } = useMessages(threadId);
+  const { data: thread } = useThread(threadId);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState(null);
   const scrollerRef = useRef(null);
 
+  const resolvedClientEmail = thread?.clientEmail || clientEmail || null;
+  const resolvedClientMobile = thread?.clientMobile || clientMobile || null;
+
+  const homeownerContactEmail =
+    role === 'client' ? user?.email || clientEmail : resolvedClientEmail;
+  const homeownerContactMobile =
+    role === 'client' ? clientMobile : resolvedClientMobile;
+
   useEffect(() => {
     if (!threadId) return;
-    ensureThread({ jobId, workerId, clientId, jobTitle }).catch((err) => {
-       
+    ensureThread({
+      jobId,
+      workerId,
+      clientId,
+      clientName,
+      jobTitle,
+      clientEmail: role === 'client' ? user?.email || clientEmail : clientEmail,
+      clientMobile: role === 'client' ? clientMobile : clientMobile,
+    }).catch((err) => {
       console.warn('Could not ensure thread', err);
     });
-  }, [threadId, jobId, workerId, clientId, jobTitle]);
+  }, [
+    threadId,
+    jobId,
+    workerId,
+    clientId,
+    clientName,
+    jobTitle,
+    role,
+    user?.email,
+    clientEmail,
+    clientMobile,
+  ]);
 
   useEffect(() => {
     const el = scrollerRef.current;
@@ -85,6 +108,12 @@ function ChatPanel({
             ? `Chat with ${workerName || 'worker'}`
             : `Chat with ${clientName || 'homeowner'}`}
         </h3>
+        {role === 'worker' ? (
+          <ClientContactDetails
+            email={homeownerContactEmail}
+            mobile={homeownerContactMobile}
+          />
+        ) : null}
       </header>
 
       <div
@@ -155,6 +184,45 @@ function ChatPanel({
         </button>
       </form>
     </div>
+  );
+}
+
+function ClientContactDetails({ email, mobile }) {
+  const hasEmail = Boolean(email?.trim());
+  const hasMobile = Boolean(mobile?.trim());
+
+  if (!hasEmail && !hasMobile) {
+    return (
+      <p className="mt-2 text-xs text-gray-500">
+        Homeowner contact details are not on file yet.
+      </p>
+    );
+  }
+
+  return (
+    <dl className="mt-2 space-y-1 rounded-lg border border-gray-100 bg-gray-50/80 px-3 py-2 text-xs">
+      <p className="font-semibold text-[#1F4E79]">Homeowner contact</p>
+      {hasEmail ? (
+        <div className="flex flex-wrap gap-x-2 gap-y-0.5">
+          <dt className="font-medium text-gray-600">Email</dt>
+          <dd>
+            <a href={`mailto:${email}`} className="text-[#2E75B6] hover:underline">
+              {email}
+            </a>
+          </dd>
+        </div>
+      ) : null}
+      {hasMobile ? (
+        <div className="flex flex-wrap gap-x-2 gap-y-0.5">
+          <dt className="font-medium text-gray-600">Phone</dt>
+          <dd>
+            <a href={`tel:${mobile.replace(/\s/g, '')}`} className="text-[#2E75B6] hover:underline">
+              {mobile}
+            </a>
+          </dd>
+        </div>
+      ) : null}
+    </dl>
   );
 }
 

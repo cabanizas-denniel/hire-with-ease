@@ -32,23 +32,49 @@ export function buildThreadId(jobId, workerId) {
  * via setDoc({ merge: true }) so callers can call this every time
  * the negotiation page mounts.
  */
-export async function ensureThread({ jobId, workerId, clientId, jobTitle }) {
+export async function ensureThread({
+  jobId,
+  workerId,
+  clientId,
+  clientName,
+  clientEmail,
+  clientMobile,
+  jobTitle,
+}) {
   const threadId = buildThreadId(jobId, workerId);
   if (!threadId) throw new Error('ensureThread: jobId and workerId are required');
   const ref = doc(db, 'threads', threadId);
-  await setDoc(
-    ref,
-    {
-      jobId,
-      workerId,
-      clientId: clientId || null,
-      jobTitle: jobTitle || null,
-      participants: [clientId, workerId].filter(Boolean),
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true }
-  );
+  const patch = {
+    jobId,
+    workerId,
+    clientId: clientId || null,
+    jobTitle: jobTitle || null,
+    participants: [clientId, workerId].filter(Boolean),
+    updatedAt: serverTimestamp(),
+  };
+  if (clientName) patch.clientName = clientName;
+  if (clientEmail) patch.clientEmail = clientEmail;
+  if (clientMobile) patch.clientMobile = clientMobile;
+  await setDoc(ref, patch, { merge: true });
   return threadId;
+}
+
+export function subscribeThread(threadId, onData, onError) {
+  if (!threadId) {
+    onData(null);
+    return () => {};
+  }
+  return onSnapshot(
+    doc(db, 'threads', threadId),
+    (snap) => {
+      if (!snap.exists()) {
+        onData(null);
+        return;
+      }
+      onData({ id: snap.id, ...snap.data() });
+    },
+    (err) => onError?.(err)
+  );
 }
 
 export async function sendMessage({

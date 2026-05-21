@@ -15,7 +15,7 @@ import {
   subscribeJobsByOwner,
   subscribeOpenJobs,
 } from './jobs.js';
-import { subscribeMessages } from './threads.js';
+import { subscribeMessages, subscribeThread } from './threads.js';
 import { subscribeWorkerProfile } from './workerProfile.js';
 
 /**
@@ -111,6 +111,15 @@ export function useMessages(threadId) {
     [threadId],
     [],
     `messages:${threadId || ''}`
+  );
+}
+
+export function useThread(threadId) {
+  return useSubscription(
+    (onData, onError) => subscribeThread(threadId, onData, onError),
+    [threadId],
+    null,
+    `thread:${threadId || ''}`
   );
 }
 

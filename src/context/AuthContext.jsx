@@ -256,6 +256,25 @@ export function AuthProvider({ children }) {
     await signOut(auth);
   }, []);
 
+  const refreshProfile = useCallback(async () => {
+    if (!auth?.currentUser) return null;
+    try {
+      const { firestoreRole, fullName, profile } = await loadUserProfile(auth.currentUser);
+      setAuthState((prev) => ({
+        ...prev,
+        role: toAppRole(firestoreRole) ?? prev.role,
+        user: prev.user
+          ? { ...prev.user, fullName: fullName || prev.user.fullName }
+          : prev.user,
+        profile,
+      }));
+      return profile;
+    } catch (err) {
+      console.error('Failed to refresh profile', err);
+      return null;
+    }
+  }, []);
+
   const changePassword = useCallback(async ({ currentPassword, newPassword }) => {
     if (!auth?.currentUser) {
       throw new Error('You must be signed in to change your password.');
@@ -281,9 +300,19 @@ export function AuthProvider({ children }) {
       register,
       logout,
       changePassword,
+      refreshProfile,
       getDefaultRoute: (role = authState.role) => DASHBOARD_BY_ROLE[role] || '/login',
     }),
-    [authState, login, resendVerificationEmail, sendPasswordReset, register, logout, changePassword]
+    [
+      authState,
+      login,
+      resendVerificationEmail,
+      sendPasswordReset,
+      register,
+      logout,
+      changePassword,
+      refreshProfile,
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -37,6 +37,8 @@ export async function applyToJob({
   workerSkills = [],
   clientId,
   clientName,
+  clientEmail = null,
+  clientMobile = null,
   jobTitle,
   message,
 }) {
@@ -52,6 +54,8 @@ export async function applyToJob({
       workerSkills,
       clientId: clientId || null,
       clientName: clientName || null,
+      clientEmail: clientEmail || null,
+      clientMobile: clientMobile || null,
       jobTitle: jobTitle || null,
       status: APPLICATION_STATUS.PENDING,
       message: message || null,

@@ -213,6 +213,8 @@ function EmployerCandidatesPage() {
                 jobTitle={job.title}
                 clientId={job.postedBy}
                 clientName={job.postedByName || job.clientName}
+                clientEmail={auth.user?.email || job.postedByEmail}
+                clientMobile={auth.profile?.mobile || job.postedByMobile}
                 workerId={selected.workerId}
                 workerName={selected.workerName}
                 role="client"

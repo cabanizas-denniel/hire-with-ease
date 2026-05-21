@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   HiOutlineArrowLeft,
   HiOutlineArrowRight,
@@ -35,6 +35,11 @@ function EmployerPostJobPage() {
 
   const { data: myJobs, loading } = useJobsByOwner(ownerUid);
   const activeJob = useMemo(() => findActiveJob(myJobs), [myJobs]);
+
+  const { refreshProfile } = auth;
+  useEffect(() => {
+    if (ownerUid) void refreshProfile?.();
+  }, [ownerUid, refreshProfile]);
 
   const mediaInputRef = useRef(null);
   const navigate = useNavigate();
@@ -169,6 +174,8 @@ function EmployerPostJobPage() {
         media,
         postedBy: ownerUid,
         postedByName: ownerName,
+        postedByEmail: auth.user?.email || null,
+        postedByMobile: auth.profile?.mobile || null,
       });
       handleClearAllMedia();
       navigate(`/employer/candidates/${jobId}`);
