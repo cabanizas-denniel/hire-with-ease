@@ -217,7 +217,7 @@ function EmployerCandidatesPage() {
       ) : null}
 
       {job && activeWorkerId && !showFindingUi ? (
-        <section className="mb-5 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,280px)]">
+        <section className={`mb-5 ${selected ? 'grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,280px)]' : ''}`}>
           <ChatPanel
             jobId={job.docId || job.id}
             jobTitle={job.title}
@@ -229,6 +229,8 @@ function EmployerCandidatesPage() {
             workerName={activeWorkerName}
             role="client"
             jobBudget={job.budget}
+            jobStatus={job.status}
+            applicationStatus={selected?.status}
             compact
           />
           {selected ? (
@@ -237,15 +239,7 @@ function EmployerCandidatesPage() {
               role="client"
               jobBudget={job.budget}
             />
-          ) : (
-            <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 p-4 text-xs text-gray-600">
-              <p className="font-semibold text-[#1F4E79]">Agreement</p>
-              <p className="mt-1">
-                This worker has not applied yet. You can chat using suggested prompts above.
-                Once they apply, you can propose and confirm a final agreement here.
-              </p>
-            </div>
-          )}
+          ) : null}
         </section>
       ) : null}
 

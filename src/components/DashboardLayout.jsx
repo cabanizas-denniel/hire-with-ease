@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import Navbar from './Navbar.jsx';
 import Sidebar from './Sidebar.jsx';
+import blueprintBg from '../assets/images/background.jpg';
 
 const PROFILE_ROUTE_BY_ROLE = {
   applicant: '/applicant/profile',
@@ -41,7 +42,11 @@ function DashboardLayout({ role, children }) {
   }, [role, user?.fullName]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div
+      className="hwe-shell min-h-screen bg-[#2ea3e6] bg-cover bg-fixed bg-center"
+      style={{ backgroundImage: `url(${blueprintBg})` }}
+    >
+      <div className="min-h-screen bg-[#0c3d6e]/25">
       <Navbar links={links} onMenuClick={() => setOpen(true)} />
       <div className="mx-auto flex w-full max-w-7xl px-4 pb-4 sm:px-6">
         <div className="hidden lg:hidden">
@@ -51,6 +56,7 @@ function DashboardLayout({ role, children }) {
           <Sidebar links={links} open={open} onClose={() => setOpen(false)} />
         </div>
         <main className="w-full">{children}</main>  
+      </div>
       </div>
     </div>
   );

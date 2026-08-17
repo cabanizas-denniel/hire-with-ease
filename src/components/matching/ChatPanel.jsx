@@ -25,6 +25,9 @@ import {
 } from '../../lib/matching/threads.js';
 import ReportFlagDialog from './ReportFlagDialog.jsx';
 import ScheduleAgreementModal from './ScheduleAgreementModal.jsx';
+import JobProgressBar from './JobProgressBar.jsx';
+import { setJobStatus } from '../../lib/matching/jobs.js';
+import { APPLICATION_STATUS, JOB_STATUS } from '../../lib/matching/statuses.js';
 
 const DEFAULT_HEIGHT = 'min-h-[200px] max-h-[min(320px,45vh)]';
 
@@ -40,6 +43,8 @@ function ChatPanel({
   workerName,
   role,
   jobBudget = '',
+  jobStatus = null,
+  applicationStatus = null,
   className = '',
   compact = true,
 }) {
@@ -66,6 +71,20 @@ function ChatPanel({
   const expired = isNegotiationExpired(thread);
   const countdown = formatNegotiationCountdown(thread);
   const schedule = thread?.scheduleAgreement;
+
+  const hasCheckIn = (messages || []).some((m) => m.messageType === 'check_in');
+  const hasCheckOut = (messages || []).some((m) => m.messageType === 'check_out');
+  const bookingLocked =
+    jobStatus === JOB_STATUS.CONFIRMED ||
+    jobStatus === JOB_STATUS.IN_PROGRESS ||
+    applicationStatus === APPLICATION_STATUS.CONFIRMED;
+  const showCheckIn = role === 'worker' && bookingLocked && !hasCheckIn && !expired;
+  const showCheckOut =
+    role === 'worker' &&
+    hasCheckIn &&
+    !hasCheckOut &&
+    (jobStatus === JOB_STATUS.IN_PROGRESS || bookingLocked) &&
+    !expired;
 
   const showSuggestions = useMemo(
     () =>
@@ -130,6 +149,11 @@ function ChatPanel({
         imageUrl,
         dismissSuggestions: dismissSuggestions || role === 'client',
       });
+      if (messageType === 'check_in' && jobId) {
+        await setJobStatus(jobId, JOB_STATUS.IN_PROGRESS, {
+          startedAt: new Date().toISOString(),
+        }).catch(() => {});
+      }
       if (messageType === 'text') setDraft('');
     } catch (err) {
       setError(err.message || 'Could not send message.');
@@ -173,8 +197,18 @@ function ChatPanel({
 
   return (
     <div
-      className={`flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white ${className}`}
+      className={`flex flex-col overflow-hidden rounded-xl border border-[#1F4E79]/25 bg-white/95 ${className}`}
     >
+      {bookingLocked || applicationStatus ? (
+        <div className="shrink-0 bg-[#1F4E79] px-2 pt-1">
+          <JobProgressBar
+            applicationStatus={applicationStatus}
+            jobStatus={jobStatus}
+            hasCheckIn={hasCheckIn}
+            hasCheckOut={hasCheckOut}
+          />
+        </div>
+      ) : null}
       <header className="flex shrink-0 items-start justify-between gap-2 border-b border-gray-100 px-3 py-2">
         <div className="min-w-0">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
@@ -277,27 +311,50 @@ function ChatPanel({
                   className={`flex ${mine ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`max-w-[85%] rounded-xl px-2.5 py-1.5 text-xs shadow-sm ${
-                      mine
-                        ? 'bg-[#1F4E79] text-white'
-                        : 'bg-gray-100 text-gray-800'
-                    } ${isProof ? 'ring-1 ring-amber-300' : ''}`}
+                    className={`max-w-[85%] overflow-hidden rounded-xl text-xs shadow-sm ${
+                      isProof
+                        ? 'border border-[#2ea3e6]/40 bg-white text-gray-800'
+                        : mine
+                          ? 'bg-[#1F4E79] px-2.5 py-1.5 text-white'
+                          : 'bg-slate-100 px-2.5 py-1.5 text-gray-800'
+                    }`}
                   >
                     {isProof ? (
-                      <p className="mb-1 text-[9px] font-bold uppercase tracking-wide text-amber-600">
-                        {m.messageType === 'check_in' ? 'Check-in proof' : 'Check-out proof'}
-                      </p>
-                    ) : null}
-                    {m.imageUrl ? (
-                      <img
-                        src={m.imageUrl}
-                        alt=""
-                        className="mb-1 max-h-32 rounded-lg object-cover"
-                      />
-                    ) : null}
-                    {m.text ? (
-                      <p className="whitespace-pre-wrap break-words">{m.text}</p>
-                    ) : null}
+                      <div>
+                        <p
+                          className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${
+                            m.messageType === 'check_in'
+                              ? 'bg-amber-400 text-[#1F4E79]'
+                              : 'bg-emerald-500 text-white'
+                          }`}
+                        >
+                          {m.messageType === 'check_in' ? 'Check-in proof' : 'Check-out proof'}
+                        </p>
+                        {m.imageUrl ? (
+                          <img
+                            src={m.imageUrl}
+                            alt=""
+                            className="max-h-44 w-full object-cover"
+                          />
+                        ) : null}
+                        {m.text ? (
+                          <p className="px-2.5 py-1.5 text-[11px] text-gray-700">{m.text}</p>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <>
+                        {m.imageUrl ? (
+                          <img
+                            src={m.imageUrl}
+                            alt=""
+                            className="mb-1 max-h-32 rounded-lg object-cover"
+                          />
+                        ) : null}
+                        {m.text ? (
+                          <p className="whitespace-pre-wrap break-words">{m.text}</p>
+                        ) : null}
+                      </>
+                    )}
                   </div>
                 </li>
               );
@@ -331,32 +388,41 @@ function ChatPanel({
         </p>
       ) : null}
 
-      {role === 'worker' && !expired ? (
-        <div className="flex shrink-0 gap-1 border-t border-amber-100 bg-amber-50/50 px-2 py-1">
-          <button
-            type="button"
-            disabled={sending}
-            onClick={() => {
-              setProofMode('check_in');
-              fileInputRef.current?.click();
-            }}
-            className="inline-flex flex-1 items-center justify-center gap-1 rounded-lg border border-amber-200 px-2 py-1 text-[10px] font-semibold text-amber-900"
-          >
-            <HiOutlineCamera className="h-3.5 w-3.5" aria-hidden="true" />
-            Check-in photo
-          </button>
-          <button
-            type="button"
-            disabled={sending}
-            onClick={() => {
-              setProofMode('check_out');
-              fileInputRef.current?.click();
-            }}
-            className="inline-flex flex-1 items-center justify-center gap-1 rounded-lg border border-amber-200 px-2 py-1 text-[10px] font-semibold text-amber-900"
-          >
-            <HiOutlineCamera className="h-3.5 w-3.5" aria-hidden="true" />
-            Check-out photo
-          </button>
+      {role === 'worker' && (showCheckIn || showCheckOut) ? (
+        <div className="shrink-0 border-t border-[#2ea3e6]/25 bg-[#e8f6fd] px-3 py-2">
+          {showCheckIn ? (
+            <button
+              type="button"
+              disabled={sending}
+              onClick={() => {
+                setProofMode('check_in');
+                fileInputRef.current?.click();
+              }}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-amber-400 px-3 py-2 text-xs font-bold text-[#1F4E79] shadow-sm hover:bg-amber-300"
+            >
+              <HiOutlineCamera className="h-4 w-4" aria-hidden="true" />
+              Check in with a photo
+            </button>
+          ) : null}
+          {showCheckOut ? (
+            <div className="space-y-1.5">
+              <p className="text-center text-[11px] font-medium text-[#1F4E79]">
+                Work in progress. Check out when you leave the site.
+              </p>
+              <button
+                type="button"
+                disabled={sending}
+                onClick={() => {
+                  setProofMode('check_out');
+                  fileInputRef.current?.click();
+                }}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white shadow-sm hover:bg-emerald-500"
+              >
+                <HiOutlineCamera className="h-4 w-4" aria-hidden="true" />
+                Check out with a photo
+              </button>
+            </div>
+          ) : null}
           <input
             ref={fileInputRef}
             type="file"

@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import { HiOutlineArrowRight } from 'react-icons/hi2';
 import AgreementCard from '../../components/matching/AgreementCard.jsx';
 import ChatPanel from '../../components/matching/ChatPanel.jsx';
 import JobIssueMedia from '../../components/JobIssueMedia.jsx';
@@ -12,7 +11,6 @@ import {
   useApplicationsByWorker,
   useJob,
 } from '../../lib/matching/hooks.js';
-import { setJobStatus } from '../../lib/matching/jobs.js';
 import {
   ACTIVE_APPLICATION_STATUSES,
   APPLICATION_STATUS,
@@ -156,19 +154,6 @@ function ApplicationWorkspace({ application }) {
   const { user } = useAuth();
   const { data: job } = useJob(application.jobId);
 
-  const handleStartJob = async () => {
-    if (!job) return;
-    if (!window.confirm('Mark yourself as on-site and start the job?')) return;
-    try {
-      await setJobStatus(job.docId || job.id, JOB_STATUS.IN_PROGRESS, {
-        startedAt: new Date().toISOString(),
-      });
-    } catch (err) {
-       
-      alert(err.message || 'Could not update the job. Please try again.');
-    }
-  };
-
   const address =
     [job?.location?.label, job?.location?.barangay && `${job.location.barangay}, Olongapo`]
       .filter(Boolean)
@@ -253,6 +238,8 @@ function ApplicationWorkspace({ application }) {
         workerName={application.workerName || user?.fullName}
         role="worker"
         jobBudget={job?.budget}
+        jobStatus={job?.status}
+        applicationStatus={application.status}
         compact
       />
 
@@ -262,23 +249,11 @@ function ApplicationWorkspace({ application }) {
         jobBudget={job?.budget}
       />
 
-      {application.status === APPLICATION_STATUS.CONFIRMED &&
-      job?.status === JOB_STATUS.CONFIRMED ? (
-        <button
-          type="button"
-          onClick={handleStartJob}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white sm:w-auto"
-        >
-          I'm on-site — Start Job
-          <HiOutlineArrowRight className="h-4 w-4" aria-hidden="true" />
-        </button>
-      ) : null}
-
       {job?.status === JOB_STATUS.IN_PROGRESS &&
       job?.confirmedWorkerId === application.workerId ? (
-        <p className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900">
-          Job is in progress. The homeowner will mark it as complete once the
-          work is done.
+        <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-950">
+          You are checked in. When you finish on site, send a check-out photo in chat.
+          The homeowner marks the job complete after they review the proof.
         </p>
       ) : null}
     </>

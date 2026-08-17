@@ -96,7 +96,7 @@ function AgreementCard({ application, role, jobBudget }) {
   };
 
   return (
-    <section className="rounded-xl border border-gray-200 bg-white">
+    <section className="rounded-xl border border-[#2ea3e6]/40 bg-white/95">
       <header className="border-b border-gray-100 px-4 py-3">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
           Final agreement

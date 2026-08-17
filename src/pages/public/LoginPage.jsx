@@ -4,6 +4,12 @@ import AuthLayout from '../../components/auth/AuthLayout.jsx';
 import PasswordInput from '../../components/PasswordInput.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 
+const DEMO_LOGINS = [
+  { label: 'PESO admin', email: 'admin@hwe.test', password: 'Admin123!' },
+  { label: 'Worker (activated)', email: 'rafael.worker@hwe.test', password: 'Worker123!' },
+  { label: 'Homeowner (trusted)', email: 'maria.home@hwe.test', password: 'Home123!' },
+];
+
 const LOGIN_BENEFITS = [
   'Pushed matches — no endless scrolling for jobs or workers.',
   'Trust tiers and ratings are visible before you accept or hire.',
@@ -310,6 +316,33 @@ function LoginPage() {
             ) : null}
           </div>
         ) : null}
+
+        <div className="rounded-xl border border-[#1F4E79]/15 bg-[#1F4E79]/5 p-3">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[#1F4E79]">
+            Thesis demo accounts
+          </p>
+          <p className="mt-0.5 text-[11px] text-gray-600">
+            Run <code className="rounded bg-white px-1">npm run seed</code> once, then tap a row to fill the form.
+          </p>
+          <ul className="mt-2 space-y-1">
+            {DEMO_LOGINS.map((row) => (
+              <li key={row.email}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setForm({ email: row.email, password: row.password });
+                    setError('');
+                    setNeedsVerification(false);
+                  }}
+                  className="w-full rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-left text-[11px] hover:border-[#1F4E79]/40"
+                >
+                  <span className="font-semibold text-[#1F4E79]">{row.label}</span>
+                  <span className="mt-0.5 block truncate text-gray-500">{row.email}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
 
         {error ? (
           <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">

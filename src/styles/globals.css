@@ -15,8 +15,6 @@ body {
   padding-bottom: env(safe-area-inset-bottom);
 }
 
-/* Leaflet assigns high z-index values to controls/markers.
-   Ensure the map can't overlap sticky headers/nav outside of it. */
 .leaflet-container {
   z-index: 0;
 }
@@ -39,9 +37,29 @@ summary {
 :root {
   --color-primary: #1f4e79;
   --color-accent: #2e75b6;
+  --color-blueprint: #2ea3e6;
+  --color-safety: #f5b942;
   --hero-art-bg: #e4edf5;
   --hero-art-bg-mid: #dde7f1;
   --hero-art-bg-foot: #d2e0ed;
+}
+
+.hwe-shell .rounded-xl {
+  border-color: rgba(31, 78, 121, 0.22);
+}
+
+.hwe-shell .bg-white,
+.hwe-shell article.bg-white,
+.hwe-shell section.bg-white {
+  background-color: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 10px 28px rgba(8, 45, 90, 0.18);
+}
+
+.hwe-shell .bg-blue-50\/60,
+.hwe-shell .bg-blue-50\/80,
+.hwe-shell .bg-emerald-50\/80 {
+  background-color: rgba(255, 255, 255, 0.9);
+  border-color: rgba(46, 163, 230, 0.35);
 }
 
 @media (prefers-reduced-motion: no-preference) {
