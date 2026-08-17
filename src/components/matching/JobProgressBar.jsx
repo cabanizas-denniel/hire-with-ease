@@ -1,4 +1,4 @@
-import { JOB_STATUS, APPLICATION_STATUS } from '../lib/matching/statuses.js';
+import { JOB_STATUS, APPLICATION_STATUS } from '../../lib/matching/statuses.js';
 
 const STEPS = [
   { id: 'applied', label: 'Applied' },

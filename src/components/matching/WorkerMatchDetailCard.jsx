@@ -2,7 +2,6 @@ import {
   HiOutlineAcademicCap,
   HiOutlineMapPin,
   HiOutlineStar,
-  HiOutlineUserCircle,
 } from 'react-icons/hi2';
 import SkillBadge from '../SkillBadge.jsx';
 
