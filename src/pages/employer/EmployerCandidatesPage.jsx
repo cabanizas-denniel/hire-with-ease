@@ -6,7 +6,6 @@ import {
   HiOutlineXMark,
 } from 'react-icons/hi2';
 import FindingWorkersPanel from '../../components/employer/FindingWorkersPanel.jsx';
-import AgreementCard from '../../components/matching/AgreementCard.jsx';
 import ChatPanel from '../../components/matching/ChatPanel.jsx';
 import JobIssueMedia from '../../components/JobIssueMedia.jsx';
 import PageHeader from '../../components/PageHeader.jsx';
@@ -217,7 +216,7 @@ function EmployerCandidatesPage() {
       ) : null}
 
       {job && activeWorkerId && !showFindingUi ? (
-        <section className={`mb-5 ${selected ? 'grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,280px)]' : ''}`}>
+        <section className="mb-5">
           <ChatPanel
             jobId={job.docId || job.id}
             jobTitle={job.title}
@@ -233,13 +232,6 @@ function EmployerCandidatesPage() {
             applicationStatus={selected?.status}
             compact
           />
-          {selected ? (
-            <AgreementCard
-              application={selected}
-              role="client"
-              jobBudget={job.budget}
-            />
-          ) : null}
         </section>
       ) : null}
 

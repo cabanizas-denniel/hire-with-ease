@@ -42,21 +42,35 @@ function DashboardLayout({ role, children }) {
   }, [role, user?.fullName]);
 
   return (
-    <div
-      className="hwe-shell min-h-screen bg-[#2ea3e6] bg-cover bg-fixed bg-center"
-      style={{ backgroundImage: `url(${blueprintBg})` }}
-    >
-      <div className="min-h-screen bg-[#0c3d6e]/25">
-      <Navbar links={links} onMenuClick={() => setOpen(true)} />
-      <div className="mx-auto flex w-full max-w-7xl px-4 pb-4 sm:px-6">
-        <div className="hidden lg:hidden">
-          <Sidebar links={links} open={true} onClose={() => setOpen(false)} />
+    <div className="hwe-shell relative min-h-screen bg-[#06243f]">
+      <div
+        className="pointer-events-none fixed inset-0 bg-cover bg-center bg-no-repeat"
+        style={{
+          backgroundImage: `url(${blueprintBg})`,
+          backgroundAttachment: 'fixed',
+          filter: 'brightness(0.42) saturate(0.8) contrast(1.05)',
+        }}
+        aria-hidden="true"
+      />
+      <div
+        className="pointer-events-none fixed inset-0"
+        style={{
+          background:
+            'radial-gradient(ellipse at center, rgba(4, 22, 44, 0.15) 0%, rgba(4, 22, 44, 0.55) 55%, rgba(2, 10, 24, 0.88) 100%)',
+        }}
+        aria-hidden="true"
+      />
+      <div className="relative">
+        <Navbar links={links} onMenuClick={() => setOpen(true)} />
+        <div className="mx-auto flex w-full max-w-7xl px-4 pb-4 sm:px-6">
+          <div className="hidden lg:hidden">
+            <Sidebar links={links} open={true} onClose={() => setOpen(false)} />
+          </div>
+          <div className="lg:hidden">
+            <Sidebar links={links} open={open} onClose={() => setOpen(false)} />
+          </div>
+          <main className="w-full">{children}</main>
         </div>
-        <div className="lg:hidden">
-          <Sidebar links={links} open={open} onClose={() => setOpen(false)} />
-        </div>
-        <main className="w-full">{children}</main>  
-      </div>
       </div>
     </div>
   );
