@@ -1,4 +1,5 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { DashboardRouteFallback } from '../components/PageSkeleton.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 
 function ProtectedRoute({ allowedRole }) {
@@ -6,7 +7,7 @@ function ProtectedRoute({ allowedRole }) {
   const location = useLocation();
 
   if (loading) {
-    return <div className="min-h-screen bg-gray-50" />;
+    return <DashboardRouteFallback />;
   }
 
   if (!isAuthenticated) {

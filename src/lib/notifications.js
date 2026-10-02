@@ -130,6 +130,122 @@ export async function notifyEmployerJobMatches(
   });
 }
 
+/**
+ * Bell alerts when a worker submits (or re-submits) a schedule proposal.
+ * Notifies both the homeowner and the worker.
+ */
+export async function notifyScheduleProposed({
+  workerId,
+  clientId,
+  jobId,
+  jobTitle,
+  scheduleLabel,
+  price,
+  eventAt = new Date().toISOString(),
+}) {
+  if (!workerId || !clientId || !jobId) return;
+
+  const jobLabel = jobTitle || 'your job';
+  const detail = [scheduleLabel, price].filter(Boolean).join(' · ');
+
+  await createUserNotification(clientId, {
+    eventKey: `schedule:proposed:client:${jobId}:${eventAt}`,
+    type: NOTIFICATION_UI_TYPES.STATUS,
+    title: 'Schedule proposal received',
+    message: detail
+      ? `A worker proposed a schedule for "${jobLabel}": ${detail}. Open chat to review and confirm.`
+      : `A worker proposed a schedule for "${jobLabel}". Open chat to review and confirm.`,
+    linkTo: `/employer/candidates/${jobId}`,
+  });
+
+  await createUserNotification(workerId, {
+    eventKey: `schedule:proposed:worker:${jobId}:${eventAt}`,
+    type: NOTIFICATION_UI_TYPES.STATUS,
+    title: 'Schedule proposal sent',
+    message: detail
+      ? `Your schedule for "${jobLabel}" was submitted (${detail}). Waiting for the homeowner to confirm.`
+      : `Your schedule for "${jobLabel}" was submitted. Waiting for the homeowner to confirm.`,
+    linkTo: '/applicant/applications',
+  });
+}
+
+/**
+ * Bell alerts when the homeowner confirms / approves the agreement.
+ */
+export async function notifyScheduleConfirmed({
+  workerId,
+  clientId,
+  jobId,
+  jobTitle,
+  scheduleLabel,
+  price,
+  eventAt = new Date().toISOString(),
+}) {
+  if (!workerId || !clientId || !jobId) return;
+
+  const jobLabel = jobTitle || 'your job';
+  const detail = [scheduleLabel, price].filter(Boolean).join(' · ');
+
+  await createUserNotification(workerId, {
+    eventKey: `schedule:confirmed:worker:${jobId}:${eventAt}`,
+    type: NOTIFICATION_UI_TYPES.STATUS,
+    title: 'Agreement confirmed',
+    message: detail
+      ? `The homeowner approved your agreement for "${jobLabel}" (${detail}). The booking is locked.`
+      : `The homeowner approved your agreement for "${jobLabel}". The booking is locked.`,
+    linkTo: '/applicant/applications',
+  });
+
+  await createUserNotification(clientId, {
+    eventKey: `schedule:confirmed:client:${jobId}:${eventAt}`,
+    type: NOTIFICATION_UI_TYPES.STATUS,
+    title: 'Agreement confirmed',
+    message: detail
+      ? `You confirmed the agreement for "${jobLabel}" (${detail}). The booking is locked.`
+      : `You confirmed the agreement for "${jobLabel}". The booking is locked.`,
+    linkTo: `/employer/candidates/${jobId}`,
+  });
+}
+
+/**
+ * Bell alerts when either party declines a hire / unlocks a booking.
+ */
+export async function notifyHireDeclined({
+  workerId,
+  clientId,
+  jobId,
+  jobTitle,
+  byRole,
+  unlocked = false,
+  eventAt = new Date().toISOString(),
+}) {
+  if (!workerId || !clientId || !jobId) return;
+
+  const jobLabel = jobTitle || 'the job';
+  const byHomeowner = byRole === 'client';
+  const unlockNote = unlocked ? ' The booking is unlocked.' : '';
+
+  await createUserNotification(workerId, {
+    eventKey: `schedule:declined:worker:${jobId}:${eventAt}`,
+    type: NOTIFICATION_UI_TYPES.STATUS,
+    title: byHomeowner ? 'Homeowner declined hire' : 'You declined the hire',
+    message: byHomeowner
+      ? `The homeowner declined you for "${jobLabel}".${unlockNote}`
+      : `You withdrew from "${jobLabel}".${unlockNote}`,
+    linkTo: '/applicant/applications',
+  });
+
+  await createUserNotification(clientId, {
+    eventKey: `schedule:declined:client:${jobId}:${eventAt}`,
+    type: NOTIFICATION_UI_TYPES.STATUS,
+    title: byHomeowner ? 'You declined the hire' : 'Worker declined hire',
+    message: byHomeowner
+      ? `You declined the worker for "${jobLabel}".${unlockNote}`
+      : `The worker withdrew from "${jobLabel}".${unlockNote}`,
+    linkTo: `/employer/candidates/${jobId}`,
+  });
+}
+
 export async function notifyApplicationRejected(userId, { verificationRole, eventAt }) {
   await createUserNotification(userId, {
     eventKey: `verification:application:rejected:${eventAt}`,

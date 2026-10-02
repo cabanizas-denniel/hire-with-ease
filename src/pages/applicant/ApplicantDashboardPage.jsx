@@ -1,9 +1,9 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import PageHeader from '../../components/PageHeader.jsx';
+import PageSkeleton from '../../components/PageSkeleton.jsx';
 import StatCard from '../../components/StatCard.jsx';
 import JobCard from '../../components/JobCard.jsx';
-import StatusBadge from '../../components/StatusBadge.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import WorkerAccessGate, { useWorkerAccessGate } from '../../components/verification/WorkerAccessGate.jsx';
 import {
@@ -25,18 +25,22 @@ function ApplicantDashboardPage() {
 
   const shouldLoadData = !gate.blocked;
 
-  const { data: profile } = useWorkerProfile(shouldLoadData ? workerUid : null);
-  const { data: openJobs } = useOpenJobs();
-  const { data: myApps } = useApplicationsByWorker(shouldLoadData ? workerUid : null);
+  const { data: profile, loading: profileLoading } = useWorkerProfile(
+    shouldLoadData ? workerUid : null,
+  );
+  const { data: openJobs, loading: jobsLoading } = useOpenJobs();
+  const { data: myApps, loading: appsLoading } = useApplicationsByWorker(
+    shouldLoadData ? workerUid : null,
+  );
 
   const myActiveJobIds = useMemo(
     () =>
       new Set(
         (myApps || [])
           .filter((a) => ACTIVE_APPLICATION_STATUSES.has(a.status))
-          .map((a) => a.jobId)
+          .map((a) => a.jobId),
       ),
-    [myApps]
+    [myApps],
   );
 
   const dismissedJobIds = useMemo(
@@ -56,70 +60,79 @@ function ApplicantDashboardPage() {
   }, [profile, openJobs, myActiveJobIds, dismissedJobIds]);
 
   const completedCount = (myApps || []).filter(
-    (a) => a.status === APPLICATION_STATUS.COMPLETED
+    (a) => a.status === APPLICATION_STATUS.COMPLETED,
   ).length;
+
+  const loading = shouldLoadData && (profileLoading || jobsLoading || appsLoading);
 
   return (
     <div>
       <PageHeader
         title="Worker Dashboard"
-        subtitle="Jobs matched to your skills are pushed here automatically. Apply, chat with the homeowner, and only commit once both sides agree."
+        subtitle="Matched jobs are pushed here. Accept a job to open chat with the homeowner."
       />
 
       <WorkerAccessGate />
 
-      {gate.blocked ? null : (
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        <StatCard
-          label="New Matches"
-          value={newMatches.length}
-          helperText="Waiting for your response"
-        />
-        <StatCard
-          label="Jobs Completed"
-          value={profile?.jobsCompleted ?? completedCount}
-          helperText="All time"
-        />
-        <StatCard
-          label="Your Rating"
-          value={profile?.rating != null ? profile.rating : '—'}
-          helperText="Based on client feedback"
-        />
-      </div>
-      )}
-
-      {!gate.blocked ? (
-      <section className="mt-6">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-[#1F4E79]">New Matches For You</h2>
-          <Link to="/applicant/jobs" className="text-sm font-medium text-[#2E75B6]">
-            See all matches
-          </Link>
-        </div>
-        <p className="mb-3 text-sm text-gray-500">
-          The system matched these based on your skills, availability, and location.
-        </p>
-        <div className="grid gap-3">
-          {newMatches.map(({ job }) => (
-            <JobCard
-              key={job.docId || job.id}
-              job={{
-                ...job,
-                location: locationLabel(job),
-                clientName: job.postedByName || job.clientName,
-                schedule: job.schedule || (job.type === 'Rush' ? 'ASAP · Dispatch now' : ''),
-              }}
-              compact
+      {gate.blocked ? null : loading ? (
+        <PageSkeleton showHeader={false} variant="stats" />
+      ) : (
+        <>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <StatCard
+              label="New Matches"
+              value={newMatches.length}
+              helperText="Waiting for your response"
             />
-          ))}
-          {newMatches.length === 0 ? (
-            <p className="rounded-xl bg-white p-6 text-center text-sm text-gray-500 shadow-sm">
-              No new matches right now. Update your profile and availability to improve results.
+            <StatCard
+              label="Jobs Completed"
+              value={profile?.jobsCompleted ?? completedCount}
+              helperText="All time"
+            />
+            <StatCard
+              label="Your Rating"
+              value={profile?.rating != null ? profile.rating : '—'}
+              helperText="Based on client feedback"
+            />
+          </div>
+
+          <section className="mt-6">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="canvas-title text-lg font-semibold">New Matches For You</h2>
+              <Link
+                to="/applicant/jobs"
+                className="canvas-muted text-sm font-medium underline-offset-2 hover:underline"
+              >
+                See all matches
+              </Link>
+            </div>
+            <p className="canvas-muted mb-3 text-sm">
+              Based on your skills and location.
             </p>
-          ) : null}
-        </div>
-      </section>
-      ) : null}
+            <div className="grid gap-3">
+              {newMatches.map(({ job }) => (
+                <JobCard
+                  key={job.docId || job.id}
+                  job={{
+                    ...job,
+                    location: locationLabel(job),
+                    clientName: job.postedByName || job.clientName,
+                    schedule:
+                      job.schedule || (job.type === 'Rush' ? 'ASAP · Dispatch now' : ''),
+                  }}
+                  compact
+                />
+              ))}
+              {newMatches.length === 0 ? (
+                <p className="rounded-xl bg-white p-6 text-center text-sm text-gray-500 shadow-sm">
+                  No new matches right now. Update your skills and location to improve
+                  results.
+                </p>
+              ) : null}
+            </div>
+          </section>
+        </>
+      )}
     </div>
   );
 }

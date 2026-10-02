@@ -330,7 +330,6 @@ const WORKER_PROFILES_BY_EMAIL = {
   'rafael.worker@hwe.test': {
     skills: ['Plumbing', 'Pipe Fitting', 'Safety Compliance'],
     certifications: [{ label: 'TESDA NC II - Plumbing', type: 'tesda' }],
-    availability: ['Mon-AM', 'Tue-AM', 'Wed-AM', 'Thu-AM', 'Fri-AM'],
     preferredCategories: ['Plumbing', 'General Maintenance'],
     experienceLevel: 'Senior',
     yearsExperience: 6,
@@ -340,10 +339,9 @@ const WORKER_PROFILES_BY_EMAIL = {
     verified: true,
   },
   'jessa.worker@hwe.test': {
-    skills: ['Electrical', 'HVAC', 'Safety Compliance'],
+    skills: ['Electrical', 'HVAC', 'Safety Compliance', 'Plumbing'],
     certifications: [{ label: 'TESDA NC II - Electrical Installation', type: 'tesda' }],
-    availability: ['Mon-PM', 'Tue-PM', 'Wed-PM', 'Thu-PM', 'Sat-AM'],
-    preferredCategories: ['Electrical Work', 'HVAC & Cooling'],
+    preferredCategories: ['Electrical Work', 'HVAC & Cooling', 'Plumbing'],
     experienceLevel: 'Mid',
     yearsExperience: 4,
     rating: 4.6,
@@ -352,10 +350,9 @@ const WORKER_PROFILES_BY_EMAIL = {
     verified: false,
   },
   'mark.worker@hwe.test': {
-    skills: ['Welding', 'Metal Fabrication', 'General Labor'],
+    skills: ['Welding', 'Metal Fabrication', 'General Labor', 'Plumbing', 'Pipe Fitting'],
     certifications: [{ label: 'TESDA SMAW NC II', type: 'tesda' }],
-    availability: ['Tue-AM', 'Wed-AM', 'Thu-AM', 'Fri-AM', 'Sat-AM'],
-    preferredCategories: ['Welding & Fabrication', 'General Maintenance'],
+    preferredCategories: ['Welding & Fabrication', 'General Maintenance', 'Plumbing'],
     experienceLevel: 'Mid',
     yearsExperience: 3,
     rating: 4.5,

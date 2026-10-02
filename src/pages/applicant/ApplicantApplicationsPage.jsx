@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react';
-import AgreementCard from '../../components/matching/AgreementCard.jsx';
+import PaymentFulfillmentCard from '../../components/matching/PaymentFulfillmentCard.jsx';
 import ChatPanel from '../../components/matching/ChatPanel.jsx';
+import WorkerMyJobCard from '../../components/matching/WorkerMyJobCard.jsx';
 import JobIssueMedia from '../../components/JobIssueMedia.jsx';
 import HomeownerTrustRow from '../../components/HomeownerTrustRow.jsx';
 import PageHeader from '../../components/PageHeader.jsx';
+import PageSkeleton from '../../components/PageSkeleton.jsx';
 import StatusBadge from '../../components/StatusBadge.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import WorkerAccessGate, { useWorkerAccessGate } from '../../components/verification/WorkerAccessGate.jsx';
@@ -34,9 +36,6 @@ function ApplicantApplicationsPage() {
     [apps]
   );
 
-  // Derive the visible application from the user's pick (when valid)
-  // with a fallback to the first active row. Pure-render derivation
-  // avoids the "set-state-in-effect" warning React 19 surfaces.
   const [pickedAppId, setPickedAppId] = useState(null);
   const fallbackAppId = active[0]?.docId || active[0]?.id || null;
   const selectedAppId =
@@ -50,85 +49,65 @@ function ApplicantApplicationsPage() {
     <div>
       <PageHeader
         title="My Jobs"
-        subtitle="Applications and bookings you're involved in. Chat with the homeowner and finalise the agreement here."
+        subtitle="Jobs you've accepted. Tap a card to chat with the homeowner."
       />
 
       <WorkerAccessGate />
 
       {!gate.blocked && loading ? (
-        <p className="rounded-xl bg-white p-6 text-center text-sm text-gray-500 shadow-sm">
-          Loading…
-        </p>
+        <PageSkeleton showHeader={false} variant="cards" />
       ) : null}
 
       {!gate.blocked && !loading && active.length === 0 && completed.length === 0 ? (
         <p className="rounded-xl bg-white p-6 text-center text-sm text-gray-500 shadow-sm">
-          You haven't applied to any jobs yet. Open <span className="font-semibold">Matched Jobs</span> to find a fit.
+          You haven&apos;t accepted any jobs yet. Open{' '}
+          <span className="font-semibold">Matched Jobs</span> to find a fit.
         </p>
       ) : null}
 
       {!gate.blocked && active.length > 0 ? (
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
-          <aside className="space-y-2">
-            <h3 className="px-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
-              Active applications
-            </h3>
-            <ul className="space-y-2">
-              {active.map((app) => {
-                const id = app.docId || app.id;
-                const isSelected = id === selectedAppId;
-                return (
-                  <li key={id}>
-                    <button
-                      type="button"
-                      onClick={() => setPickedAppId(id)}
-                      className={`w-full rounded-xl border bg-white p-3 text-left shadow-sm transition ${
-                        isSelected
-                          ? 'border-[#1F4E79] ring-2 ring-[#1F4E79]/30'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-[#1F4E79]">
-                            {app.jobTitle || 'Job'}
-                          </p>
-                          <HomeownerTrustRow
-                            name={app.clientName || 'Homeowner'}
-                            trustTier={app.clientTrustTier}
-                            prefix=""
-                            className="mt-0.5"
-                          />
-                        </div>
-                        <StatusBadge status={prettyAppStatus(app.status)} />
-                      </div>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </aside>
-
-          <div className="space-y-4">
-            {selected ? (
-              <ApplicationWorkspace application={selected} />
-            ) : (
-              <div className="rounded-xl bg-white p-8 text-center text-sm text-gray-500 shadow-sm">
-                Select an application from the list to open the chat.
-              </div>
-            )}
+        <section className="mb-6 space-y-4">
+          <div className="panel-surface rounded-xl border border-emerald-200/80 bg-white p-4">
+            <h2 className="text-base font-semibold text-emerald-900">
+              {active.length} active job{active.length === 1 ? '' : 's'}
+            </h2>
+            <p className="mt-1 text-sm text-emerald-900/80">
+              Cards show the homeowner&apos;s issue photo. Tap one to open chat below.
+            </p>
           </div>
-        </div>
+
+          <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {active.map((app) => {
+              const id = app.docId || app.id;
+              return (
+                <li key={id} className="min-w-0">
+                  <WorkerMyJobCard
+                    application={app}
+                    selected={id === selectedAppId}
+                    statusLabel={prettyAppStatus(app.status)}
+                    onSelect={(a) => setPickedAppId(a.docId || a.id)}
+                  />
+                </li>
+              );
+            })}
+          </ul>
+
+          {selected ? (
+            <div className="space-y-4">
+              <ApplicationWorkspace application={selected} />
+            </div>
+          ) : null}
+        </section>
       ) : null}
 
       {!gate.blocked && completed.length > 0 ? (
         <section className={active.length > 0 ? 'mt-8' : 'mt-4'}>
-          <h2 className="mb-3 text-base font-semibold text-[#1F4E79]">Completed</h2>
+          <h2 className="canvas-title mb-3 text-base font-semibold">Completed</h2>
           <div className="space-y-3">
             {completed.map((item) => (
               <div
                 key={item.docId || item.id}
-                className="rounded-xl bg-white p-4 shadow-sm"
+                className="panel-surface rounded-xl bg-white p-4"
               >
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div>
@@ -153,15 +132,41 @@ function ApplicantApplicationsPage() {
 function ApplicationWorkspace({ application }) {
   const { user } = useAuth();
   const { data: job } = useJob(application.jobId);
+  const [declining, setDeclining] = useState(false);
 
   const address =
     [job?.location?.label, job?.location?.barangay && `${job.location.barangay}, Olongapo`]
       .filter(Boolean)
       .join(' · ') || '';
 
+  const canDecline =
+    application.status !== APPLICATION_STATUS.COMPLETED &&
+    application.status !== APPLICATION_STATUS.DECLINED &&
+    job?.status !== JOB_STATUS.COMPLETED &&
+    job?.status !== JOB_STATUS.CANCELLED;
+
+  const handleDecline = async () => {
+    const appId = application.docId || application.id;
+    if (!appId || !canDecline) return;
+    const locked = job?.confirmedWorkerId === application.workerId;
+    const msg = locked
+      ? 'Decline this hire? The booking will unlock for both you and the homeowner.'
+      : 'Decline / withdraw from this job? You will be removed from this request.';
+    if (!window.confirm(msg)) return;
+    setDeclining(true);
+    try {
+      const { withdrawApplication } = await import('../../lib/matching/applications.js');
+      await withdrawApplication(appId);
+    } catch (err) {
+      alert(err.message || 'Could not decline this job.');
+    } finally {
+      setDeclining(false);
+    }
+  };
+
   return (
     <>
-      <div className="overflow-hidden rounded-xl border border-blue-100 bg-blue-50/60">
+      <div className="panel-surface overflow-hidden rounded-xl border border-[#1F4E79]/15 bg-white">
         <JobIssueMedia
           job={job}
           variant="gallery"
@@ -172,6 +177,18 @@ function ApplicationWorkspace({ application }) {
             {application.jobTitle || 'Job'}{' '}
             <StatusBadge status={prettyAppStatus(application.status)} />
           </p>
+          {canDecline ? (
+            <div className="mt-3">
+              <button
+                type="button"
+                onClick={handleDecline}
+                disabled={declining}
+                className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {declining ? 'Declining…' : 'Decline job'}
+              </button>
+            </div>
+          ) : null}
           <div className="mt-2 grid gap-1 text-xs text-gray-700 sm:grid-cols-2">
             <div className="sm:col-span-2">
               <span className="font-semibold text-[#1F4E79]">Homeowner:</span>{' '}
@@ -240,20 +257,21 @@ function ApplicationWorkspace({ application }) {
         jobBudget={job?.budget}
         jobStatus={job?.status}
         applicationStatus={application.status}
+        application={application}
         compact
       />
 
-      <AgreementCard
-        application={application}
-        role="worker"
-        jobBudget={job?.budget}
-      />
+      {job?.status === JOB_STATUS.IN_PROGRESS ||
+      job?.status === JOB_STATUS.COMPLETED ||
+      application.status === APPLICATION_STATUS.COMPLETED ? (
+        <PaymentFulfillmentCard application={application} role="worker" />
+      ) : null}
 
       {job?.status === JOB_STATUS.IN_PROGRESS &&
       job?.confirmedWorkerId === application.workerId ? (
         <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-950">
           You are checked in. When you finish on site, send a check-out photo in chat.
-          The homeowner marks the job complete after they review the proof.
+          Confirm off-platform payment above, then the homeowner can mark the job complete.
         </p>
       ) : null}
     </>

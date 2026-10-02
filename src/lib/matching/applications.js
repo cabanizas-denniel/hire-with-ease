@@ -11,6 +11,7 @@
 import {
   collection,
   doc,
+  getDoc,
   getDocs,
   onSnapshot,
   query,
@@ -18,9 +19,13 @@ import {
   setDoc,
   updateDoc,
   where,
+  deleteField,
 } from 'firebase/firestore';
 import { db } from '../firebase.js';
-import { APPLICATION_STATUS } from './statuses.js';
+import { APPLICATION_STATUS, JOB_STATUS } from './statuses.js';
+import { recordMatchDecline } from './matchDeclines.js';
+import { sendMessage } from './threads.js';
+import { notifyHireDeclined } from '../notifications.js';
 
 export function buildApplicationId(jobId, workerId) {
   return `app-${jobId}-${workerId}`;
@@ -145,20 +150,121 @@ export async function moveToNegotiating(appId) {
   });
 }
 
-/** Client declines a specific applicant; their card disappears from the list. */
-export async function declineApplication(appId) {
-  await updateDoc(doc(db, 'applications', appId), {
-    status: APPLICATION_STATUS.DECLINED,
+/** Clear hire lock so the job can match / negotiate again. */
+export async function unlockConfirmedHire(jobId) {
+  if (!jobId) return;
+  await updateDoc(doc(db, 'jobs', jobId), {
+    confirmedWorkerId: deleteField(),
+    confirmedWorkerName: deleteField(),
+    agreement: deleteField(),
+    status: JOB_STATUS.MATCHED,
     updatedAt: serverTimestamp(),
   });
 }
 
-/** Worker withdraws their own application. */
-export async function withdrawApplication(appId) {
-  await updateDoc(doc(db, 'applications', appId), {
+/**
+ * Decline / withdraw a hire for either party.
+ * If this worker was the locked hire, clears the job lock for both sides.
+ */
+export async function declineApplication(appId, { byRole = 'client' } = {}) {
+  if (!appId) throw new Error('declineApplication: appId required');
+  if (byRole !== 'client' && byRole !== 'worker') {
+    throw new Error('declineApplication: byRole must be client or worker');
+  }
+
+  const appRef = doc(db, 'applications', appId);
+  const appSnap = await getDoc(appRef);
+  if (!appSnap.exists()) throw new Error('Application no longer exists.');
+  const app = appSnap.data();
+  const jobId = app.jobId;
+  const workerId = app.workerId;
+  const clientId = app.clientId;
+
+  await updateDoc(appRef, {
     status: APPLICATION_STATUS.DECLINED,
+    proposedAgreement: null,
+    proposedBy: null,
+    confirmedByClient: false,
+    confirmedByWorker: false,
+    declinedBy: byRole,
+    declinedAt: new Date().toISOString(),
     updatedAt: serverTimestamp(),
   });
+
+  let unlocked = false;
+  if (jobId) {
+    const jobSnap = await getDoc(doc(db, 'jobs', jobId));
+    const job = jobSnap.exists() ? jobSnap.data() : null;
+    const wasLockedToThisWorker =
+      Boolean(job?.confirmedWorkerId) && job.confirmedWorkerId === workerId;
+    if (wasLockedToThisWorker) {
+      await unlockConfirmedHire(jobId);
+      unlocked = true;
+    }
+  }
+
+  if (jobId && workerId) {
+    try {
+      await recordMatchDecline({ jobId, workerId });
+    } catch (err) {
+      console.warn('Could not record match decline', err);
+    }
+    try {
+      const { removeWorkerFromJobShortlist } = await import('./jobs.js');
+      await removeWorkerFromJobShortlist(jobId, workerId);
+    } catch (err) {
+      console.warn('Could not prune worker from shortlist', err);
+    }
+  }
+
+  const eventAt = new Date().toISOString();
+  try {
+    await notifyHireDeclined({
+      workerId,
+      clientId,
+      jobId,
+      jobTitle: app.jobTitle,
+      byRole,
+      unlocked,
+      eventAt,
+    });
+  } catch (err) {
+    console.warn('Could not create decline notifications', err);
+  }
+
+  if (jobId && workerId && clientId) {
+    try {
+      const text =
+        byRole === 'client'
+          ? unlocked
+            ? 'Homeowner declined this hire — booking unlocked.'
+            : 'Homeowner declined this worker.'
+          : unlocked
+            ? 'Worker declined this hire — booking unlocked.'
+            : 'Worker withdrew from this job.';
+      await sendMessage({
+        jobId,
+        workerId,
+        clientId,
+        jobTitle: app.jobTitle,
+        authorId: byRole === 'client' ? clientId : workerId,
+        authorName: byRole === 'client' ? app.clientName || 'Homeowner' : app.workerName || 'Worker',
+        authorRole: byRole,
+        text,
+        messageType: 'hire_declined',
+        replaceMessageTypes: ['schedule', 'agreement_confirmed', 'hire_declined'],
+      });
+    } catch (err) {
+      console.warn('Could not post decline message to chat', err);
+    }
+  }
+
+  return { unlocked };
+}
+
+/** Worker withdraws their own application (same unlock rules as client decline). */
+export async function withdrawApplication(appId) {
+  return declineApplication(appId, { byRole: 'worker' });
 }
 
 /** Mark an application as completed once the underlying job is finished. */
@@ -176,17 +282,40 @@ export async function markApplicationCompleted(appId) {
 export async function declineOtherApplicants(jobId, keepWorkerId) {
   const q = query(collection(db, 'applications'), where('jobId', '==', jobId));
   const snap = await getDocs(q);
+  const others = snap.docs.filter((d) => d.data().workerId !== keepWorkerId);
+
   await Promise.all(
-    snap.docs
-      .filter((d) => d.data().workerId !== keepWorkerId)
+    others
       .filter((d) => d.data().status !== APPLICATION_STATUS.DECLINED)
       .map((d) =>
         updateDoc(d.ref, {
           status: APPLICATION_STATUS.DECLINED,
+          declinedBy: 'system',
+          declinedAt: new Date().toISOString(),
           updatedAt: serverTimestamp(),
         })
       )
   );
+
+  // Keep them off rematch / shortlist permanently for this job.
+  await Promise.all(
+    others.map(async (d) => {
+      const workerId = d.data().workerId;
+      if (!workerId) return;
+      try {
+        await recordMatchDecline({ jobId, workerId });
+      } catch {
+        /* ignore */
+      }
+    }),
+  );
+
+  try {
+    const { keepOnlyWorkerOnJobShortlist } = await import('./jobs.js');
+    await keepOnlyWorkerOnJobShortlist(jobId, keepWorkerId);
+  } catch (err) {
+    console.warn('Could not prune shortlist to confirmed worker', err);
+  }
 }
 
 /** Employer withdrew the request — close out every non-terminal application. */

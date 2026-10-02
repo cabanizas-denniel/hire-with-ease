@@ -3,6 +3,7 @@ import { HiOutlineClipboardDocumentList, HiOutlinePlusCircle } from 'react-icons
 import { Link } from 'react-router-dom';
 import ActiveJobCard from '../../components/employer/ActiveJobCard.jsx';
 import PageHeader from '../../components/PageHeader.jsx';
+import PageSkeleton from '../../components/PageSkeleton.jsx';
 import StatCard from '../../components/StatCard.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import {
@@ -42,60 +43,62 @@ function EmployerDashboardPage() {
       />
 
       {loading ? (
-        <p className="rounded-xl bg-white p-6 text-center text-sm text-gray-500 shadow-sm">
-          Loading your requests…
-        </p>
-      ) : activeJob ? (
-        <ActiveJobCard job={activeJob} applicantsCount={applicantsCount} />
+        <PageSkeleton showHeader={false} variant="stats" />
       ) : (
-        <NoActiveJobCard />
-      )}
+        <>
+          {activeJob ? (
+            <ActiveJobCard job={activeJob} applicantsCount={applicantsCount} />
+          ) : (
+            <NoActiveJobCard />
+          )}
 
-      <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <StatCard
-          label="Jobs completed"
-          value={completed.length}
-          helperText="Lifetime"
-        />
-        <StatCard
-          label="Last completed"
-          value={lastCompleted?.postedAt || '—'}
-          helperText={lastCompleted ? lastCompleted.title : 'No past jobs yet'}
-        />
-      </div>
-
-      {!activeJob ? (
-        <section className="mt-5 rounded-xl bg-white p-4 shadow-sm sm:p-5">
-          <h2 className="text-lg font-semibold text-[#1F4E79]">Quick Actions</h2>
-          <p className="mt-1 text-sm text-gray-600">
-            Describe what you need and the system will find available,
-            qualified workers.
-          </p>
-          <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-            <Link
-              to="/employer/post-job"
-              className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#1F4E79] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:brightness-110"
-            >
-              <HiOutlinePlusCircle className="h-4 w-4" aria-hidden="true" />
-              Request a Service
-            </Link>
-            <Link
-              to="/employer/jobs"
-              className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-[#1F4E79] px-4 py-2.5 text-sm font-semibold text-[#1F4E79] hover:bg-blue-50"
-            >
-              <HiOutlineClipboardDocumentList className="h-4 w-4" aria-hidden="true" />
-              View Requests
-            </Link>
+          <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <StatCard
+              label="Jobs completed"
+              value={completed.length}
+              helperText="Lifetime"
+            />
+            <StatCard
+              label="Last completed"
+              value={lastCompleted?.postedAt || '—'}
+              helperText={lastCompleted ? lastCompleted.title : 'No past jobs yet'}
+            />
           </div>
-        </section>
-      ) : null}
+
+          {!activeJob ? (
+            <section className="panel-surface mt-5 rounded-xl bg-white p-4 sm:p-5">
+              <h2 className="text-lg font-semibold text-[#1F4E79]">Quick Actions</h2>
+              <p className="mt-1 text-sm text-gray-600">
+                Describe what you need and the system will find available,
+                qualified workers.
+              </p>
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                <Link
+                  to="/employer/post-job"
+                  className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#1F4E79] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:brightness-110"
+                >
+                  <HiOutlinePlusCircle className="h-4 w-4" aria-hidden="true" />
+                  Request a Service
+                </Link>
+                <Link
+                  to="/employer/jobs"
+                  className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-[#1F4E79] px-4 py-2.5 text-sm font-semibold text-[#1F4E79] hover:bg-blue-50"
+                >
+                  <HiOutlineClipboardDocumentList className="h-4 w-4" aria-hidden="true" />
+                  View Requests
+                </Link>
+              </div>
+            </section>
+          ) : null}
+        </>
+      )}
     </div>
   );
 }
 
 function NoActiveJobCard() {
   return (
-    <section className="rounded-2xl border border-dashed border-gray-200 bg-white p-6 text-center shadow-sm sm:p-8">
+    <section className="panel-surface rounded-2xl border border-dashed border-[#1F4E79]/25 bg-white p-6 text-center sm:p-8">
       <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#1F4E79]/10 text-[#1F4E79]">
         <HiOutlinePlusCircle className="h-6 w-6" aria-hidden="true" />
       </div>
@@ -103,7 +106,7 @@ function NoActiveJobCard() {
         No ongoing request
       </h2>
       <p className="mx-auto mt-1 max-w-md text-sm text-gray-600">
-        You can only have one active request at a time. When you're ready to
+        You can only have one active request at a time. When you&apos;re ready to
         book a new service, submit a request and the system will find the best
         worker for you.
       </p>

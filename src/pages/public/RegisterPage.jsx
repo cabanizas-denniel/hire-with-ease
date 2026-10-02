@@ -7,7 +7,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 
 const REGISTER_BENEFITS = [
   'Free to sign up — set your role and start in under a minute.',
-  'Workers: availability-first profile means no wasted applications.',
+  'Workers: skill-based matching means no wasted applications.',
   'Clients: one focused request at a time, workers come to you.',
 ];
 
@@ -37,6 +37,7 @@ function RegisterPage() {
   const [successEmail, setSuccessEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [captchaToken, setCaptchaToken] = useState('');
+  const [privacyConsent, setPrivacyConsent] = useState(false);
   const navigate = useNavigate();
   const { register } = useAuth();
 
@@ -51,6 +52,13 @@ function RegisterPage() {
     }
     if (form.password.length < 6) {
       setError('Password must be at least 6 characters.');
+      return;
+    }
+
+    if (!privacyConsent) {
+      setError(
+        'Please confirm you understand contact may be shared after a match for job coordination.',
+      );
       return;
     }
 
@@ -236,6 +244,23 @@ function RegisterPage() {
           </p>
         ) : null}
 
+        <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-xs text-gray-700">
+          <input
+            type="checkbox"
+            className="mt-0.5"
+            checked={privacyConsent}
+            onChange={(e) => setPrivacyConsent(e.target.checked)}
+          />
+          <span>
+            I understand that after a match, my contact details may be shared with the other
+            party for job coordination. Payment is off-platform and not processed by Hire With
+            Ease.{' '}
+            <Link to="/privacy" className="font-semibold text-[#2E75B6] hover:underline">
+              Privacy & data use
+            </Link>
+          </span>
+        </label>
+
         <Turnstile
           className="pt-1"
           onToken={(t) => setCaptchaToken(t || '')}
@@ -244,7 +269,7 @@ function RegisterPage() {
 
         <button
           type="submit"
-          disabled={submitting || !captchaToken}
+          disabled={submitting || !captchaToken || !privacyConsent}
           className="mt-2 w-full rounded-lg bg-[#2E75B6] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-110 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
         >
           {submitting ? 'Creating account…' : 'Create account'}

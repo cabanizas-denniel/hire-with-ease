@@ -3,6 +3,7 @@ import { HiOutlineArchiveBox, HiOutlinePlusCircle } from 'react-icons/hi2';
 import { Link } from 'react-router-dom';
 import ActiveJobCard from '../../components/employer/ActiveJobCard.jsx';
 import PageHeader from '../../components/PageHeader.jsx';
+import PageSkeleton from '../../components/PageSkeleton.jsx';
 import StatusBadge from '../../components/StatusBadge.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import {
@@ -40,13 +41,11 @@ function EmployerJobsPage() {
       />
 
       <section>
-        <h2 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
+        <h2 className="canvas-muted mb-2 px-1 text-xs font-semibold uppercase tracking-wide">
           Ongoing
         </h2>
         {loading ? (
-          <p className="rounded-xl bg-white p-6 text-center text-sm text-gray-500 shadow-sm">
-            Loading…
-          </p>
+          <PageSkeleton showHeader={false} variant="cards" />
         ) : activeJob ? (
           <ActiveJobCard job={activeJob} applicantsCount={applicants?.length || 0} />
         ) : (
@@ -71,10 +70,10 @@ function EmployerJobsPage() {
 
       <section className="mt-6">
         <div className="mb-2 flex items-end justify-between px-1">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+          <h2 className="canvas-muted text-xs font-semibold uppercase tracking-wide">
             Past Requests
           </h2>
-          <span className="text-[11px] text-gray-400">
+          <span className="canvas-muted text-[11px]">
             {completed.length} total
           </span>
         </div>
@@ -127,8 +126,7 @@ function HistoryRow({ job }) {
             {isCompleted && job.completedAt
               ? `Completed ${new Date(job.completedAt).toLocaleDateString()}`
               : `Posted ${job.postedAt || '—'}`}
-            {' · '}
-            {job.type || 'Scheduled'}
+            {job.schedule ? ` · ${job.schedule}` : ''}
           </p>
         </div>
         <StatusBadge status={job.status} />

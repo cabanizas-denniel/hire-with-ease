@@ -107,6 +107,9 @@ function Navbar({ links = [], onMenuClick }) {
                 <NotificationBell
                   to={NOTIFICATION_ROUTE[role]}
                   unread={unreadCount}
+                  items={notifications?.items || []}
+                  loading={notifications?.loading}
+                  onMarkAsRead={notifications?.markAsRead}
                 />
               ) : null}
               {role === 'admin' ? (
@@ -170,33 +173,120 @@ function AdminProfileButton({ onOpenAccount }) {
   );
 }
 
-function NotificationBell({ to, unread = 0 }) {
+function NotificationBell({
+  to,
+  unread = 0,
+  items = [],
+  loading = false,
+  onMarkAsRead,
+}) {
   const hasUnread = unread > 0;
   const badge = unread > 9 ? '9+' : String(unread);
+  const preview = items.slice(0, 5);
+
   return (
-    <NavLink
-      to={to}
-      end
-      aria-label={hasUnread ? `Notifications, ${unread} unread` : 'Notifications'}
-      title="Notifications"
-      className={({ isActive }) =>
-        `relative ${navIconButtonClass} ${
-          isActive
-            ? 'border-[#1F4E79]/30 bg-[#1F4E79]/10 text-[#1F4E79]'
-            : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:text-[#1F4E79]'
-        }`
-      }
-    >
-      <HiOutlineBell className="h-5 w-5" aria-hidden="true" />
-      {hasUnread ? (
-        <span
-          className="absolute -right-1 -top-1 inline-flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-white"
-          aria-hidden="true"
-        >
-          {badge}
-        </span>
-      ) : null}
-    </NavLink>
+    <div className="group relative">
+      <NavLink
+        to={to}
+        end
+        aria-label={hasUnread ? `Notifications, ${unread} unread` : 'Notifications'}
+        title="Notifications"
+        className={({ isActive }) =>
+          `relative ${navIconButtonClass} ${
+            isActive
+              ? 'border-[#1F4E79]/30 bg-[#1F4E79]/10 text-[#1F4E79]'
+              : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:text-[#1F4E79]'
+          }`
+        }
+      >
+        <HiOutlineBell className="h-5 w-5" aria-hidden="true" />
+        {hasUnread ? (
+          <span
+            className="absolute -right-1 -top-1 inline-flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-white"
+            aria-hidden="true"
+          >
+            {badge}
+          </span>
+        ) : null}
+      </NavLink>
+
+      <div
+        className="invisible absolute right-0 z-50 w-[min(22rem,calc(100vw-1.5rem))] pt-2 opacity-0 transition duration-150 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100"
+        role="menu"
+        aria-label="Notifications preview"
+      >
+        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg ring-1 ring-black/5">
+          <div className="border-b border-gray-100 px-3 py-2">
+            <p className="text-xs font-semibold text-[#1F4E79]">Notifications</p>
+          </div>
+
+          <div className="max-h-72 overflow-y-auto">
+            {loading ? (
+              <p className="px-3 py-4 text-center text-xs text-gray-500">Loading…</p>
+            ) : preview.length === 0 ? (
+              <p className="px-3 py-4 text-center text-xs text-gray-500">No notifications yet.</p>
+            ) : (
+              <ul className="divide-y divide-gray-100">
+                {preview.map((item) => (
+                  <li key={item.id}>
+                    {item.linkTo ? (
+                      <Link
+                        to={item.linkTo}
+                        onClick={() => {
+                          if (item.unread && onMarkAsRead) void onMarkAsRead(item.id);
+                        }}
+                        className="block cursor-pointer px-3 py-2.5 text-left hover:bg-gray-50"
+                        role="menuitem"
+                      >
+                        <NotificationPreviewRow item={item} />
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (item.unread && onMarkAsRead) void onMarkAsRead(item.id);
+                        }}
+                        className="block w-full cursor-pointer px-3 py-2.5 text-left hover:bg-gray-50"
+                        role="menuitem"
+                      >
+                        <NotificationPreviewRow item={item} />
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div className="border-t border-gray-100 bg-gray-50">
+            <Link
+              to={to}
+              className="block cursor-pointer px-3 py-2.5 text-center text-xs font-semibold text-[#1F4E79] hover:bg-gray-100"
+              role="menuitem"
+            >
+              View History
+            </Link>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function NotificationPreviewRow({ item }) {
+  return (
+    <div className="flex items-start gap-2">
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5">
+          <p className="truncate text-xs font-semibold text-gray-900">{item.title}</p>
+          {item.unread ? (
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#2E75B6]" aria-hidden="true" />
+          ) : null}
+        </div>
+        <p className="mt-0.5 line-clamp-2 text-[11px] text-gray-600">{item.message}</p>
+      </div>
+      <span className="shrink-0 text-[10px] text-gray-400">{item.time}</span>
+    </div>
   );
 }
 

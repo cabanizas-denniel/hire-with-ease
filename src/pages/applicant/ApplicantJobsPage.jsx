@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import JobCard from '../../components/JobCard.jsx';
 import Modal from '../../components/Modal.jsx';
 import PageHeader from '../../components/PageHeader.jsx';
+import PageSkeleton from '../../components/PageSkeleton.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import WorkerAccessGate, { useWorkerAccessGate } from '../../components/verification/WorkerAccessGate.jsx';
 import { applyToJob } from '../../lib/matching/applications.js';
@@ -18,6 +20,7 @@ import { locationLabel } from '../../utils/clientJobs.js';
 function ApplicantJobsPage() {
   const gate = useWorkerAccessGate();
   const auth = useAuth();
+  const navigate = useNavigate();
   const workerUid = auth?.user?.uid || null;
   const shouldLoadData = !gate.blocked;
 
@@ -80,8 +83,9 @@ function ApplicantJobsPage() {
         jobTitle: applyEntry.job.title,
       });
       closeApplyModal();
+      navigate('/applicant/applications');
     } catch (err) {
-      setError(err.message || 'Could not submit your application.');
+      setError(err.message || 'Could not accept this job.');
     } finally {
       setBusy(false);
     }
@@ -110,28 +114,17 @@ function ApplicantJobsPage() {
     <div>
       <PageHeader
         title="Matched Jobs"
-        subtitle="These jobs were matched to your profile by the system. Apply to express interest, then chat with the homeowner to negotiate."
+        subtitle="Jobs matched to your skills. Accept to open a chat with the homeowner."
       />
 
       <WorkerAccessGate />
-
-      {gate.blocked ? null : (
-      <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4 text-sm text-[#1F4E79]">
-        <p className="font-medium font-semibold">How matching works</p>
-        <p className="mt-1 text-gray-600">
-          Rule-based matching: jobs appear here when you share at least one required
-          skill. Same barangay in Olongapo ranks higher. Apply to open a chat with
-          the homeowner and agree on price and schedule.
-        </p>
-      </div>
-      )}
 
       {!gate.blocked && !loading && (!profile || (profile.skills || []).length === 0) ? (
         <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
           <p className="font-semibold">Add your skills to start receiving matches.</p>
           <p className="mt-1">
             Open <span className="font-semibold">My Profile</span> and pick at least
-            one skill, that's how the matching engine knows which jobs to surface.
+            one skill so matching knows which jobs to surface.
           </p>
         </div>
       ) : null}
@@ -139,30 +132,24 @@ function ApplicantJobsPage() {
       {gate.blocked ? null : (
       <div className="mt-5 grid gap-3">
         {loading ? (
-          <p className="rounded-xl bg-white p-6 text-center text-sm text-gray-500 shadow-sm">
-            Loading matches…
-          </p>
+          <PageSkeleton variant="cards" title="Matched Jobs" subtitle="Loading matches…" />
         ) : null}
 
         {!loading && matched.length === 0 ? (
           <p className="rounded-xl bg-white p-6 text-center text-sm text-gray-500 shadow-sm">
-            No matched jobs right now. Keep your availability and skills up to date for better results.
+            No matched jobs right now. Keep your skills and location up to date for better results.
           </p>
         ) : null}
 
-        {matched.map(({ job, reasons }) => {
+        {!loading
+          ? matched.map(({ job, reasons }) => {
           const alreadyApplied = myActiveJobIds.has(job.docId || job.id);
           const handleApplyClick = alreadyApplied
             ? undefined
             : (j) => setApplyEntry({ job: j, reasons });
 
           return (
-            <div key={job.docId || job.id} className="relative">
-              {alreadyApplied ? (
-                <span className="absolute right-3 top-3 z-10 rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-semibold text-emerald-800">
-                  Applied
-                </span>
-              ) : null}
+            <div key={job.docId || job.id}>
               <JobCard
                 job={{
                   ...job,
@@ -173,28 +160,30 @@ function ApplicantJobsPage() {
                 matchReasons={reasons}
                 showDescription
                 showFullMedia
-                declineLabel="Decline Job"
+                declineLabel="Decline"
+                acceptLabel="Accept"
+                statusTag={alreadyApplied ? 'Accepted' : null}
                 onDecline={alreadyApplied ? undefined : handleDecline}
                 onAccept={handleApplyClick}
               />
             </div>
           );
-        })}
+        })
+          : null}
       </div>
       )}
 
       <Modal
         isOpen={Boolean(applyEntry)}
-        title={`Apply to "${applyEntry?.job?.title}"?`}
+        title={`Accept "${applyEntry?.job?.title}"?`}
         onClose={closeApplyModal}
         onConfirm={handleApply}
-        confirmText={busy ? 'Submitting…' : 'Submit application'}
+        confirmText={busy ? 'Accepting…' : 'Accept'}
       >
         <p>
-          You'll let {applyEntry?.job?.postedByName || 'the homeowner'} know
-          you're interested. They can chat with you to negotiate the price
-          and schedule. Applying is not yet a commitment — you only commit
-          when both sides confirm a final agreement.
+          You&apos;ll let {applyEntry?.job?.postedByName || 'the homeowner'} know
+          you&apos;re interested. After you accept, you can chat about price and
+          schedule. You only commit when both sides confirm a final agreement.
         </p>
         {error ? (
           <p className="mt-2 rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700">

@@ -10,6 +10,7 @@
 import {
   collection,
   doc,
+  getDoc,
   onSnapshot,
   query,
   serverTimestamp,
@@ -235,6 +236,46 @@ export async function setJobStatus(jobId, status, extra = {}) {
 export async function setMatchedWorkers(jobId, count) {
   await updateDoc(doc(db, 'jobs', jobId), {
     matchedWorkers: count,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+/**
+ * Remove a worker from the job's persisted engine shortlist immediately.
+ */
+export async function removeWorkerFromJobShortlist(jobId, workerId) {
+  if (!db || !jobId || !workerId) return;
+  const jobRef = doc(db, 'jobs', jobId);
+  const snap = await getDoc(jobRef);
+  if (!snap.exists()) return;
+  const job = snap.data();
+  const prev = Array.isArray(job.engineMatches) ? job.engineMatches : [];
+  if (!prev.some((row) => row?.workerId === workerId)) return;
+
+  const engineMatches = prev.filter((row) => row?.workerId !== workerId);
+  await updateDoc(jobRef, {
+    engineMatches,
+    engineMatchedWorkerIds: engineMatches.map((m) => m.workerId),
+    matchedWorkers: engineMatches.length,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+/** Keep only the hired worker on the persisted shortlist. */
+export async function keepOnlyWorkerOnJobShortlist(jobId, workerId) {
+  if (!db || !jobId || !workerId) return;
+  const jobRef = doc(db, 'jobs', jobId);
+  const snap = await getDoc(jobRef);
+  if (!snap.exists()) return;
+  const job = snap.data();
+  const prev = Array.isArray(job.engineMatches) ? job.engineMatches : [];
+  const engineMatches = prev.filter((row) => row?.workerId === workerId);
+  if (engineMatches.length === prev.length && prev.length <= 1) return;
+
+  await updateDoc(jobRef, {
+    engineMatches,
+    engineMatchedWorkerIds: engineMatches.map((m) => m.workerId),
+    matchedWorkers: engineMatches.length,
     updatedAt: serverTimestamp(),
   });
 }

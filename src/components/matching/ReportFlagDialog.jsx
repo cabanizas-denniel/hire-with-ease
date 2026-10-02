@@ -55,10 +55,10 @@ function ReportFlagDialog({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2 py-1 text-[11px] font-semibold text-red-700 hover:bg-red-100"
+        className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-100 sm:text-sm"
         title="Report to PESO admin"
       >
-        <HiOutlineFlag className="h-3.5 w-3.5" aria-hidden="true" />
+        <HiOutlineFlag className="h-4 w-4" aria-hidden="true" />
         Report
       </button>
       {open ? (
@@ -66,7 +66,7 @@ function ReportFlagDialog({
           <div className="w-full max-w-sm rounded-xl bg-white p-4 shadow-xl">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold text-[#1F4E79]">Report {reportedLabel}</h3>
-              <button type="button" onClick={() => setOpen(false)} aria-label="Close">
+              <button type="button" onClick={() => setOpen(false)} aria-label="Close" className="cursor-pointer">
                 <HiOutlineXMark className="h-5 w-5 text-gray-500" />
               </button>
             </div>
@@ -101,7 +101,7 @@ function ReportFlagDialog({
                   type="button"
                   onClick={handleSubmit}
                   disabled={busy}
-                  className="w-full rounded-lg bg-red-600 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                  className="w-full cursor-pointer rounded-lg bg-red-600 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {busy ? 'Sending…' : 'Submit report'}
                 </button>

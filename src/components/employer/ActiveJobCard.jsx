@@ -19,6 +19,7 @@ import {
   declineAllApplicationsForJob,
   markApplicationCompleted,
 } from '../../lib/matching/applications.js';
+import { useApplication } from '../../lib/matching/hooks.js';
 
 /**
  * Central "ongoing job" card for the client. Dominates the dashboard and
@@ -26,17 +27,31 @@ import {
  * can only manage one request at a time.
  */
 function ActiveJobCard({ job, variant = 'full', applicantsCount = 0 }) {
+  const compact = variant === 'compact';
+  const jobId = job?.docId || job?.id || null;
+  const appId =
+    jobId && job?.confirmedWorkerId
+      ? buildApplicationId(jobId, job.confirmedWorkerId)
+      : null;
+  const { data: application } = useApplication(appId);
+
   if (!job) return null;
 
-  const compact = variant === 'compact';
   const currentStep = getStatusStepIndex(job.status);
   const statusCopy = getStatusCopy(job.status);
   const action = getPrimaryAction(job, applicantsCount);
-
-  const jobId = job.docId || job.id;
+  const paymentSettled =
+    !!application?.paymentAcknowledgedByClient &&
+    !!application?.paymentAcknowledgedByWorker;
 
   const handleMarkComplete = async () => {
     if (!jobId) return;
+    if (!paymentSettled) {
+      alert(
+        'Open Matched workers to confirm off-platform payment with the worker before marking the job complete.',
+      );
+      return;
+    }
     if (!window.confirm('Mark this job as completed? This cannot be undone.')) return;
     try {
       await setJobStatus(jobId, JOB_STATUS.COMPLETED, {
@@ -74,7 +89,7 @@ function ActiveJobCard({ job, variant = 'full', applicantsCount = 0 }) {
   };
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-[#1F4E79]/15 bg-white shadow-sm">
+    <section className="panel-surface overflow-hidden rounded-2xl border border-[#1F4E79]/25 bg-white shadow-sm">
       <header className="flex flex-col gap-3 border-b border-gray-100 bg-[#1F4E79] p-4 text-white sm:flex-row sm:items-start sm:justify-between sm:p-5">
         <div className="min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-white/75">
@@ -105,8 +120,8 @@ function ActiveJobCard({ job, variant = 'full', applicantsCount = 0 }) {
           <Fact icon={HiOutlineMapPin} label="Location" value={locationLabel(job) || '—'} />
           <Fact
             icon={HiOutlineCalendarDays}
-            label="Schedule"
-            value={`${job.type || 'Scheduled'} · ${job.schedule || '—'}`}
+            label="Preferred start"
+            value={job.schedule || '—'}
           />
           <Fact icon={HiOutlineBanknotes} label="Budget" value={job.budget || '—'} />
           <Fact
@@ -150,7 +165,13 @@ function ActiveJobCard({ job, variant = 'full', applicantsCount = 0 }) {
             <button
               type="button"
               onClick={handleMarkComplete}
-              className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-800 hover:bg-emerald-100 sm:w-auto cursor-pointer"
+              disabled={!paymentSettled}
+              title={
+                paymentSettled
+                  ? undefined
+                  : 'Confirm off-platform payment on Matched workers first'
+              }
+              className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-800 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto cursor-pointer"
             >
               <HiOutlineCheckCircle className="h-4 w-4" aria-hidden="true" />
               Mark as completed
@@ -243,7 +264,7 @@ function getStatusCopy(status) {
       return {
         title: "We're finding the right worker for you",
         detail:
-          "The system pushed your request to qualified, verified workers nearby. Workers can now Apply and start a chat with you.",
+          "The system pushed your request to qualified workers nearby. They must Accept before you can chat.",
       };
     case JOB_STATUS.MATCHED:
       return {
@@ -261,7 +282,7 @@ function getStatusCopy(status) {
       return {
         title: 'Your worker is on-site',
         detail:
-          'Be present at the location while work is ongoing. Mark the job complete once the work is finished so you can rate the worker.',
+          'Be present while work is ongoing. After check-out, confirm you paid off-platform (cash / GCash / bank), then mark the job complete.',
       };
     default:
       return { title: status, detail: '' };

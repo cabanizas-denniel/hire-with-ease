@@ -3,7 +3,7 @@
  *
  * /worker_profiles/{uid} is keyed by the worker's auth UID. The
  * profile carries the data the matching engine reads:
- *   skills, availability, location, preferredCategories, ratings, etc.
+ *   skills, location, preferredCategories, ratings, etc.
  *
  * Workers have to have a profile for jobs to ever surface to them on
  * the matched-jobs screen. We bootstrap a minimal one on first login.
@@ -22,7 +22,6 @@ import { db } from '../firebase.js';
 const DEFAULT_PROFILE = {
   skills: [],
   certifications: [],
-  availability: [],
   preferredCategories: [],
   experienceLevel: 'Junior',
   yearsExperience: 0,

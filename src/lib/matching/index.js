@@ -7,7 +7,6 @@ export * from './workerProfile.js';
 export {
   MATCH_LIMITS,
   GREEDY_POOL_SIZE,
-  availabilitySlotForInstant,
   scoreWorkerFactors,
   greedyBestFirstNarrow,
   astarSelectShortlist,

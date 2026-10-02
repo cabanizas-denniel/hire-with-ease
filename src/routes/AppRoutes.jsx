@@ -1,12 +1,17 @@
 import { lazy, Suspense } from 'react';
 import { Navigate, Outlet, Route, Routes } from 'react-router-dom';
 import DashboardLayout from '../components/DashboardLayout.jsx';
+import {
+  DashboardRouteFallback,
+  PageSkeleton,
+} from '../components/PageSkeleton.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import ProtectedRoute from './ProtectedRoute.jsx';
 
 const LandingPage = lazy(() => import('../pages/public/LandingPage.jsx'));
 const LoginPage = lazy(() => import('../pages/public/LoginPage.jsx'));
 const RegisterPage = lazy(() => import('../pages/public/RegisterPage.jsx'));
+const PrivacyPage = lazy(() => import('../pages/public/PrivacyPage.jsx'));
 const NotFoundPage = lazy(() => import('../pages/shared/NotFoundPage.jsx'));
 
 const ApplicantDashboardPage = lazy(() => import('../pages/applicant/ApplicantDashboardPage.jsx'));
@@ -31,7 +36,17 @@ const AdminNotificationsPage = lazy(() => import('../pages/admin/AdminNotificati
 function RoleLayout({ role }) {
   return (
     <DashboardLayout role={role}>
-      <Outlet />
+      <Suspense
+        fallback={
+          <PageSkeleton
+            variant="stats"
+            title="Loading"
+            subtitle="Preparing this page…"
+          />
+        }
+      >
+        <Outlet />
+      </Suspense>
     </DashboardLayout>
   );
 }
@@ -40,13 +55,13 @@ function AppRoutes() {
   const { isAuthenticated, loading, getDefaultRoute } = useAuth();
 
   return (
-    <Suspense fallback={<div className="min-h-screen bg-gray-50"></div>}>
+    <Suspense fallback={<DashboardRouteFallback />}>
       <Routes>
         <Route
           path="/"
           element={
             loading ? (
-              <div className="min-h-screen bg-gray-50" />
+              <DashboardRouteFallback />
             ) : isAuthenticated ? (
               <Navigate to={getDefaultRoute()} replace />
             ) : (
@@ -56,6 +71,7 @@ function AppRoutes() {
         />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
 
         <Route element={<ProtectedRoute allowedRole="applicant" />}>
           <Route path="/applicant" element={<RoleLayout role="applicant" />}>

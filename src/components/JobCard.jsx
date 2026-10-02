@@ -1,4 +1,4 @@
-import { HiOutlineMapPin } from 'react-icons/hi2';
+import { HiOutlineCheck, HiOutlineMapPin } from 'react-icons/hi2';
 import { getJobMediaEntries } from '../utils/jobMedia.js';
 import HomeownerTrustRow from './HomeownerTrustRow.jsx';
 import JobIssueMedia from './JobIssueMedia.jsx';
@@ -14,6 +14,8 @@ function JobCard({
   showDescription = false,
   showFullMedia = false,
   declineLabel = 'Not Interested',
+  acceptLabel = 'Accept',
+  statusTag = null,
   clientTrustTier = null,
   matchReasons,
 }) {
@@ -23,7 +25,11 @@ function JobCard({
   const hasMedia = getJobMediaEntries(job).length > 0;
 
   return (
-    <article className={`overflow-hidden rounded-xl bg-white shadow-sm ${isRush ? 'ring-2 ring-amber-300' : ''}`}>
+    <article
+      className={`panel-surface overflow-hidden rounded-xl border border-[#1F4E79]/20 bg-white ${
+        isRush ? 'ring-2 ring-amber-300' : ''
+      }`}
+    >
       {hasMedia ? (
         <JobIssueMedia
           job={job}
@@ -41,15 +47,18 @@ function JobCard({
               <HomeownerTrustRow name={job.clientName} trustTier={trustTier} />
             ) : null}
           </div>
-          <span
-            className={`shrink-0 rounded-md px-2 py-1 text-xs font-medium ${
-              isRush
-                ? 'bg-amber-100 text-amber-800'
-                : 'bg-[#2E75B6]/10 text-[#1F4E79]'
-            }`}
-          >
-            {job.type}
-          </span>
+          <div className="flex max-w-[45%] flex-col items-end gap-1.5 sm:max-w-none sm:flex-row sm:flex-wrap sm:justify-end">
+            {statusTag ? (
+              <span className="shrink-0 rounded-md bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-800">
+                {statusTag}
+              </span>
+            ) : null}
+            {isRush ? (
+              <span className="shrink-0 rounded-md bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800">
+                Rush
+              </span>
+            ) : null}
+          </div>
         </div>
 
         <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600">
@@ -76,9 +85,9 @@ function JobCard({
         ) : null}
 
         {matchReasons ? (
-          <div className="mt-3 rounded-lg bg-green-50 px-3 py-2">
-            <p className="text-xs font-medium text-green-800">Why you were matched</p>
-            <ul className="mt-1 space-y-0.5 text-xs text-green-700">
+          <div className="mt-3 rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2">
+            <p className="text-xs font-medium text-emerald-900">Why you were matched</p>
+            <ul className="mt-1 space-y-0.5 text-xs text-emerald-800">
               {matchReasons.map((reason) => (
                 <li key={reason}>&#x2022; {reason}</li>
               ))}
@@ -87,32 +96,33 @@ function JobCard({
         ) : null}
 
         {!compact ? (
-          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-            {onDecline ? (
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row-reverse">
+            {onAccept ? (
               <button
                 type="button"
-                onClick={() => onDecline(job)}
-                className="cursor-pointer w-full rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+                onClick={() => onAccept(job)}
+                className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-[#2E75B6] to-[#1F4E79] px-4 py-3 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(31,78,121,0.35)] transition hover:brightness-110 active:translate-y-px"
               >
-                {declineLabel}
+                <HiOutlineCheck className="h-5 w-5" aria-hidden="true" strokeWidth={2.5} />
+                {acceptLabel}
               </button>
             ) : null}
             {onViewDetails ? (
               <button
                 type="button"
                 onClick={() => onViewDetails(job)}
-                className="cursor-pointer w-full rounded-lg border border-[#1F4E79] px-4 py-2 text-sm font-medium text-[#1F4E79]"
+                className="cursor-pointer w-full rounded-xl border border-[#1F4E79] px-4 py-3 text-sm font-medium text-[#1F4E79]"
               >
                 View Details
               </button>
             ) : null}
-            {onAccept ? (
+            {onDecline ? (
               <button
                 type="button"
-                onClick={() => onAccept(job)}
-                className="cursor-pointer w-full rounded-lg bg-[#1F4E79] px-4 py-2 text-sm font-medium text-white"
+                onClick={() => onDecline(job)}
+                className="cursor-pointer w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50"
               >
-                Accept Job
+                {declineLabel}
               </button>
             ) : null}
           </div>

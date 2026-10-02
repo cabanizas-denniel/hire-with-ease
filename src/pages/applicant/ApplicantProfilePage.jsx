@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { HiOutlineArrowLeft, HiOutlineArrowRight, HiOutlineCheckCircle } from 'react-icons/hi2';
 import { Link } from 'react-router-dom';
-import AvailabilityPicker from '../../components/AvailabilityPicker.jsx';
 import FormStepper from '../../components/FormStepper.jsx';
 import PageHeader from '../../components/PageHeader.jsx';
 import VerificationCenter from '../../components/verification/VerificationCenter.jsx';
@@ -17,7 +16,7 @@ import {
 import { useWorkerProfile } from '../../lib/matching/hooks.js';
 import { saveWorkerProfile } from '../../lib/matching/workerProfile.js';
 
-const WIZARD_STEPS = ['Skills', 'Availability', 'Location & details', 'Review & save'];
+const WIZARD_STEPS = ['Skills', 'Location & details', 'Review & save'];
 
 function readAsDataUrl(file) {
   return new Promise((resolve, reject) => {
@@ -33,9 +32,6 @@ function validateStep(stepIndex, form) {
     if (!form.selectedSkills?.length) return 'Select at least one skill you can perform.';
   }
   if (stepIndex === 1) {
-    if (!form.availability?.length) return 'Select at least one availability time slot.';
-  }
-  if (stepIndex === 2) {
     if (!form.homePin?.lat || !form.homePin?.lng) {
       return 'Pin your home on the map (tap the map or use current location).';
     }
@@ -59,7 +55,6 @@ function ApplicantProfilePage() {
     addressDetails: '',
     certifications: [],
     selectedSkills: [],
-    availability: [],
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -91,7 +86,6 @@ function ApplicantProfilePage() {
             }
       ),
       selectedSkills: profile.skills || [],
-      availability: profile.availability || [],
     });
   }, [profile, auth?.user?.fullName]);
 
@@ -163,13 +157,10 @@ function ApplicantProfilePage() {
 
   const handleSave = async (event) => {
     event.preventDefault();
-    const msg =
-      validateStep(0, form) || validateStep(1, form) || validateStep(2, form);
+    const msg = validateStep(0, form) || validateStep(1, form);
     if (msg) {
       setError(msg);
-      setStep(
-        validateStep(0, form) ? 0 : validateStep(1, form) ? 1 : 2
-      );
+      setStep(validateStep(0, form) ? 0 : 1);
       return;
     }
     if (!workerUid) return;
@@ -187,7 +178,6 @@ function ApplicantProfilePage() {
       await saveWorkerProfile(workerUid, {
         name: form.fullName || auth?.user?.fullName,
         skills: form.selectedSkills,
-        availability: form.availability,
         certifications: (form.certifications || []).map((c) => ({
           label: c?.label || 'Certification',
           fileData: c?.fileData ?? null,
@@ -222,9 +212,9 @@ function ApplicantProfilePage() {
       <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4 text-sm text-[#1F4E79]">
         <p className="font-medium">Why this matters</p>
         <p className="mt-1 text-gray-600">
-          Clients never browse worker lists. The system uses your <strong>skills</strong>,{' '}
-          <strong>availability</strong>, and <strong>map pin (latitude & longitude)</strong> to push relevant
-          jobs. Complete every step and save on the last step.
+          Clients never browse worker lists. The system uses your <strong>skills</strong> and{' '}
+          <strong>map pin (latitude & longitude)</strong> to push relevant jobs. Final start time and
+          price are agreed in chat after you accept. Complete every step and save on the last step.
         </p>
       </div>
 
@@ -254,13 +244,6 @@ function ApplicantProfilePage() {
           ) : null}
 
           {step === 1 ? (
-            <AvailabilityStep
-              value={form.availability}
-              onChange={(availability) => setForm((prev) => ({ ...prev, availability }))}
-            />
-          ) : null}
-
-          {step === 2 ? (
             <LocationDetailsStep
               auth={auth}
               form={form}
@@ -271,7 +254,7 @@ function ApplicantProfilePage() {
             />
           ) : null}
 
-          {step === 3 ? (
+          {step === 2 ? (
             <ReviewStep
               auth={auth}
               form={form}
@@ -359,23 +342,6 @@ function SkillsStep({ sortedSkills, selectedSkills, onToggleSkill }) {
   );
 }
 
-function AvailabilityStep({ value, onChange }) {
-  return (
-    <section>
-      <h2 className="text-sm font-semibold text-[#1F4E79]">Step 2 — Availability</h2>
-      <p className="mt-1 text-xs text-gray-500">
-        This is the most important part for matching. Jobs are checked against your open time slots first.
-      </p>
-      <div className="mt-3">
-        <AvailabilityPicker value={value} onChange={onChange} />
-      </div>
-      <p className="mt-3 text-xs text-gray-500">
-        {value.length} time slot{value.length === 1 ? '' : 's'} selected
-      </p>
-    </section>
-  );
-}
-
 function LocationDetailsStep({
   auth,
   form,
@@ -387,7 +353,7 @@ function LocationDetailsStep({
   return (
     <section className="space-y-5">
       <div>
-        <h2 className="text-sm font-semibold text-[#1F4E79]">Step 3 — Location &amp; details</h2>
+        <h2 className="text-sm font-semibold text-[#1F4E79]">Step 2 — Location &amp; details</h2>
         <p className="mt-1 text-xs text-gray-500">
           Pin where you are based and confirm your barangay for matching.
         </p>
@@ -406,7 +372,7 @@ function LocationDetailsStep({
             {auth?.user?.fullName || '—'}
           </p>
         </div>
- 
+
         <div className="sm:col-span-2">
           <ProfileHomeLocation
             idPrefix="worker-home"
@@ -424,11 +390,11 @@ function LocationDetailsStep({
         </div>
       </div>
 
-
       <div className="rounded-xl border border-gray-100 bg-gray-50/80 p-4">
         <h3 className="text-sm font-semibold text-[#1F4E79]">Certifications</h3>
         <p className="mt-1 text-xs text-gray-500">
-          Optional — upload proof of training or clearance. Saved with your profile when you finish step 4.
+          Optional — upload proof of training or clearance. Saved with your profile when you finish the
+          last step.
         </p>
         <div className="mt-3">
           <CertificationUploadPanel
@@ -462,8 +428,8 @@ function ProfileFormStatus({ error, success, form, onEditStep }) {
           <div className="min-w-0 flex-1">
             <p className="text-base font-semibold text-emerald-900">Profile saved</p>
             <p className="mt-1 text-sm text-emerald-800">
-              Your skills, availability, barangay, and map location are stored. The matching engine can
-              now push relevant jobs to you.
+              Your skills, barangay, and map location are stored. The matching engine can now push
+              relevant jobs to you.
             </p>
             {coordsText ? (
               <p className="mt-2 text-xs text-emerald-700">
@@ -497,7 +463,7 @@ function ProfileFormStatus({ error, success, form, onEditStep }) {
 function ReviewStep({ auth, form, homeLabel, saved = false }) {
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-semibold text-[#1F4E79]">Step 4 — Review &amp; save</h2>
+      <h2 className="text-sm font-semibold text-[#1F4E79]">Step 3 — Review &amp; save</h2>
       <p className="text-xs text-gray-500">
         Check everything below, then press <strong>Save profile</strong>. Confirmation appears right
         below this summary.
@@ -508,16 +474,6 @@ function ReviewStep({ auth, form, homeLabel, saved = false }) {
         }`}
       >
         <ReviewRow label="Skills" value={form.selectedSkills.join(', ') || '—'} />
-        <ReviewRow
-          label="Availability"
-          value={
-            form.availability.length
-              ? `${form.availability.length} slot(s): ${form.availability.slice(0, 6).join(', ')}${
-                  form.availability.length > 6 ? '…' : ''
-                }`
-              : '—'
-          }
-        />
         <ReviewRow label="Email" value={auth?.user?.email} />
         <ReviewRow label="Name" value={auth?.user?.fullName} />
         <ReviewRow label="Home area" value={homeLabel} />

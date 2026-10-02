@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import { HiOutlineArrowUturnLeft, HiOutlineFlag, HiOutlineNoSymbol } from 'react-icons/hi2';
-import AvailabilityGrid from '../../components/AvailabilityGrid.jsx';
 import PageHeader from '../../components/PageHeader.jsx';
 import SkillBadge from '../../components/SkillBadge.jsx';
 import { useWorkerModeration } from '../../context/WorkerModerationContext.jsx';
@@ -80,7 +79,7 @@ function ModerationActions({ worker, onFlag, onBan, onRestore }) {
 
 function AdminWorkersPage() {
   const { workers, setModerationStatus } = useWorkerModeration();
-  const [filters, setFilters] = useState({ skill: '', location: '', availability: '', status: '' });
+  const [filters, setFilters] = useState({ skill: '', location: '', status: '' });
   const [page, setPage] = useState(1);
 
   const filteredWorkers = useMemo(
@@ -90,13 +89,10 @@ function AdminWorkersPage() {
         const byLocation = filters.location
           ? worker.location.toLowerCase().includes(filters.location.toLowerCase())
           : true;
-        const byAvailability = filters.availability
-          ? worker.availability.some((slot) => slot.toLowerCase().includes(filters.availability.toLowerCase()))
-          : true;
         const st = worker.moderationStatus || 'active';
         const byStatus = filters.status ? st === filters.status : true;
 
-        return bySkill && byLocation && byAvailability && byStatus;
+        return bySkill && byLocation && byStatus;
       }),
     [workers, filters]
   );
@@ -106,7 +102,7 @@ function AdminWorkersPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [filters.skill, filters.location, filters.availability, filters.status]);
+  }, [filters.skill, filters.location, filters.status]);
 
   useEffect(() => {
     if (page > totalPages) setPage(totalPages);
@@ -128,7 +124,7 @@ function AdminWorkersPage() {
         subtitle="LGU-PESO validation, moderation, and workforce registry. Flag accounts for review; banned workers are removed from employer matching."
       />
 
-      <div className="mb-4 grid grid-cols-1 gap-2 rounded-xl bg-white p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-4 grid grid-cols-1 gap-2 rounded-xl bg-white p-4 shadow-sm sm:grid-cols-3">
         <input
           className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
           placeholder="Filter by skill"
@@ -140,12 +136,6 @@ function AdminWorkersPage() {
           placeholder="Filter by location"
           value={filters.location}
           onChange={(event) => setFilters((prev) => ({ ...prev, location: event.target.value }))}
-        />
-        <input
-          className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
-          placeholder="Filter by availability (Mon/AM)"
-          value={filters.availability}
-          onChange={(event) => setFilters((prev) => ({ ...prev, availability: event.target.value }))}
         />
         <select
           className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base"
@@ -214,12 +204,6 @@ function AdminWorkersPage() {
                 <SkillBadge key={skill} skill={skill} />
               ))}
             </div>
-            <div className="mt-3">
-              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                Availability
-              </p>
-              <AvailabilityGrid availability={worker.availability} size="md" />
-            </div>
             <div className="mt-3 border-t border-gray-100 pt-3">
               <ModerationActions worker={worker} onFlag={handleFlag} onBan={handleBan} onRestore={handleRestore} />
             </div>
@@ -236,7 +220,6 @@ function AdminWorkersPage() {
               <th className="px-4 py-3">Location</th>
               <th className="px-4 py-3">Rating</th>
               <th className="px-4 py-3">Skills</th>
-              <th className="px-4 py-3">Availability</th>
               <th className="px-4 py-3">Actions</th>
             </tr>
           </thead>
@@ -257,9 +240,6 @@ function AdminWorkersPage() {
                       <SkillBadge key={skill} skill={skill} />
                     ))}
                   </div>
-                </td>
-                <td className="px-4 py-3">
-                  <AvailabilityGrid availability={worker.availability} size="sm" />
                 </td>
                 <td className="px-4 py-3">
                   <ModerationActions worker={worker} onFlag={handleFlag} onBan={handleBan} onRestore={handleRestore} />

@@ -32,23 +32,37 @@ import { APPLICATION_STATUS, JOB_STATUS } from './statuses.js';
  * @param {object} params
  * @param {string} params.appId
  * @param {'client'|'worker'} params.proposerRole
- * @param {object} params.agreement  - { price, schedule, scope }
+ * @param {object} params.agreement  - { price, schedule, scope, startDate, startTime, ... }
  */
 export async function proposeAgreement({ appId, proposerRole, agreement }) {
   if (!appId) throw new Error('proposeAgreement: appId required');
-  if (proposerRole !== 'client' && proposerRole !== 'worker') {
-    throw new Error('proposeAgreement: proposerRole must be client or worker');
+  if (proposerRole !== 'worker') {
+    throw new Error('Only the worker can propose the schedule.');
   }
   if (!agreement || typeof agreement !== 'object') {
     throw new Error('proposeAgreement: agreement object required');
   }
-  const { price, schedule, scope } = agreement;
+  const {
+    price,
+    schedule,
+    scope,
+    startDate,
+    startTime,
+    scheduledStartAt,
+    scopeIncluded,
+    scopeExcluded,
+  } = agreement;
   await updateDoc(doc(db, 'applications', appId), {
     status: APPLICATION_STATUS.PROPOSED,
     proposedAgreement: {
       price: price || null,
       schedule: schedule || null,
       scope: scope || null,
+      startDate: startDate || null,
+      startTime: startTime || null,
+      scheduledStartAt: scheduledStartAt || null,
+      scopeIncluded: scopeIncluded || null,
+      scopeExcluded: scopeExcluded || null,
       proposedAt: new Date().toISOString(),
     },
     proposedBy: proposerRole,
@@ -100,6 +114,42 @@ export async function confirmAgreement({ appId, role }) {
   }
 
   return { bothAgree };
+}
+
+/**
+ * Off-platform payment acknowledgment (cash / GCash / bank).
+ * Does not move money — both parties confirm the deal was paid.
+ */
+export async function acknowledgePayment({ appId, role, methodNote = 'Cash / off-platform' }) {
+  if (!appId) throw new Error('acknowledgePayment: appId required');
+  if (role !== 'client' && role !== 'worker') {
+    throw new Error('acknowledgePayment: role must be client or worker');
+  }
+
+  const appRef = doc(db, 'applications', appId);
+  const appSnap = await getDoc(appRef);
+  if (!appSnap.exists()) throw new Error('Application no longer exists.');
+  const app = appSnap.data();
+
+  const paymentAcknowledgedByClient =
+    role === 'client' ? true : !!app.paymentAcknowledgedByClient;
+  const paymentAcknowledgedByWorker =
+    role === 'worker' ? true : !!app.paymentAcknowledgedByWorker;
+  const bothPaid = paymentAcknowledgedByClient && paymentAcknowledgedByWorker;
+  const nowIso = new Date().toISOString();
+
+  const patch = {
+    paymentAcknowledgedByClient,
+    paymentAcknowledgedByWorker,
+    paymentMethodNote: methodNote || app.paymentMethodNote || 'Cash / off-platform',
+    updatedAt: serverTimestamp(),
+  };
+  if (role === 'client') patch.paymentAckedByClientAt = nowIso;
+  if (role === 'worker') patch.paymentAckedByWorkerAt = nowIso;
+  if (bothPaid) patch.paymentSettledAt = nowIso;
+
+  await updateDoc(appRef, patch);
+  return { bothPaid };
 }
 
 /** Convenience: build the canonical app id without importing applications.js */

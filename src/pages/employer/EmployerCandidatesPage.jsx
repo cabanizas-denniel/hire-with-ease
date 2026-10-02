@@ -1,12 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import {
-  HiOutlineArrowLeft,
-  HiOutlineCheckBadge,
-  HiOutlineXMark,
-} from 'react-icons/hi2';
+import { HiOutlineArrowLeft } from 'react-icons/hi2';
 import FindingWorkersPanel from '../../components/employer/FindingWorkersPanel.jsx';
 import ChatPanel from '../../components/matching/ChatPanel.jsx';
+import PaymentFulfillmentCard from '../../components/matching/PaymentFulfillmentCard.jsx';
 import JobIssueMedia from '../../components/JobIssueMedia.jsx';
 import PageHeader from '../../components/PageHeader.jsx';
 import SkillBadge from '../../components/SkillBadge.jsx';
@@ -42,15 +39,32 @@ function EmployerCandidatesPage() {
   const ownerUid = auth?.user?.uid || null;
 
   const { data: job, loading: jobLoading } = useJob(jobId);
-  const { data: applicants, loading: appsLoading } = useApplicationsForJob(jobId);
+  const { data: applicants } = useApplicationsForJob(jobId);
   const { data: workerProfiles, loading: profilesLoading } = useWorkerProfiles();
   const { data: matchDeclines } = useMatchDeclines(jobId);
   const [engineRunning, setEngineRunning] = useState(false);
+  const lastMatchPassRef = useRef('');
 
   const declinedWorkerIds = useMemo(
     () => collectDeclinedWorkerIds(jobId, workerProfiles, matchDeclines || []),
     [jobId, workerProfiles, matchDeclines],
   );
+
+  const declinedFromApplications = useMemo(
+    () =>
+      new Set(
+        (applicants || [])
+          .filter((a) => a.status === APPLICATION_STATUS.DECLINED && a.workerId)
+          .map((a) => a.workerId),
+      ),
+    [applicants],
+  );
+
+  const excludedWorkerIds = useMemo(() => {
+    const ids = new Set(declinedWorkerIds);
+    declinedFromApplications.forEach((id) => ids.add(id));
+    return ids;
+  }, [declinedWorkerIds, declinedFromApplications]);
 
   const [findingWorkers, setFindingWorkers] = useState(() =>
     Boolean(jobId && sessionStorage.getItem(`hwe-finding-workers-${jobId}`))
@@ -66,11 +80,91 @@ function EmployerCandidatesPage() {
     return () => window.clearTimeout(timer);
   }, [jobId, findingWorkers]);
 
-  const matchedWorkers = useMemo(
+  const engineMatches = useMemo(
     () =>
-      job ? hydrateEngineMatches(job, workerProfiles, declinedWorkerIds) : [],
-    [job, workerProfiles, declinedWorkerIds],
+      job ? hydrateEngineMatches(job, workerProfiles, excludedWorkerIds) : [],
+    [job, workerProfiles, excludedWorkerIds],
   );
+
+  const activeApplicants = useMemo(
+    () =>
+      filterRealApplications(applicants).filter((a) =>
+        ACTIVE_APPLICATION_STATUSES.has(a.status)
+      ),
+    [applicants]
+  );
+
+  const applicantsByWorkerId = useMemo(() => {
+    const map = new Map();
+    activeApplicants.forEach((app) => {
+      if (app.workerId) map.set(app.workerId, app);
+    });
+    return map;
+  }, [activeApplicants]);
+
+  /** Shortlist cards + any accepted worker missing from engine output. */
+  const matchedWorkers = useMemo(() => {
+    const byId = new Map();
+    engineMatches.forEach((entry) => {
+      const id = entry.profile?.docId || entry.profile?.uid;
+      if (!id || excludedWorkerIds.has(id)) return;
+      byId.set(id, entry);
+    });
+
+    activeApplicants.forEach((app) => {
+      const id = app.workerId;
+      if (!id || byId.has(id) || excludedWorkerIds.has(id)) return;
+      const profile =
+        workerProfiles.find((p) => (p.docId || p.uid) === id) || {
+          docId: id,
+          uid: id,
+          name: app.workerName || 'Worker',
+          skills: app.workerSkills || [],
+        };
+      byId.set(id, {
+        profile,
+        score: 70,
+        reasons: ['Accepted your request'],
+        matchedSkills: app.workerSkills || [],
+      });
+    });
+
+    const list = Array.from(byId.values()).filter((entry) => {
+      const id = entry.profile?.docId || entry.profile?.uid;
+      if (!id || excludedWorkerIds.has(id)) return false;
+      // Once a hire is confirmed, only that worker remains visible.
+      if (job?.confirmedWorkerId) return id === job.confirmedWorkerId;
+      return true;
+    });
+    list.sort((a, b) => {
+      const aId = a.profile?.docId || a.profile?.uid;
+      const bId = b.profile?.docId || b.profile?.uid;
+      const aAcc = applicantsByWorkerId.has(aId) ? 1 : 0;
+      const bAcc = applicantsByWorkerId.has(bId) ? 1 : 0;
+      if (aAcc !== bAcc) return bAcc - aAcc;
+      return (b.score || 0) - (a.score || 0);
+    });
+    return list;
+  }, [
+    engineMatches,
+    activeApplicants,
+    workerProfiles,
+    applicantsByWorkerId,
+    excludedWorkerIds,
+    job?.confirmedWorkerId,
+  ]);
+
+  useEffect(() => {
+    if (!job || !ownerUid || job.postedBy !== ownerUid) return;
+    if (!job.confirmedWorkerId || !jobId) return;
+    const lockedApp = (applicants || []).find(
+      (a) => a.workerId === job.confirmedWorkerId,
+    );
+    if (!lockedApp || lockedApp.status !== APPLICATION_STATUS.DECLINED) return;
+    import('../../lib/matching/applications.js')
+      .then(({ unlockConfirmedHire }) => unlockConfirmedHire(jobId))
+      .catch(() => {});
+  }, [job, ownerUid, jobId, applicants]);
 
   useEffect(() => {
     if (!job || !ownerUid || job.postedBy !== ownerUid || profilesLoading) return;
@@ -83,65 +177,86 @@ function EmployerCandidatesPage() {
   }, [job, ownerUid, profilesLoading, workerProfiles, matchDeclines]);
 
   useEffect(() => {
-    if (!job || !ownerUid || job.postedBy !== ownerUid) return;
-    if (job.engineRanAt || profilesLoading) return;
+    if (!job || !ownerUid || job.postedBy !== ownerUid || profilesLoading) return;
+    const id = job.docId || job.id;
+    if (!id) return;
+
+    const passKey = `${id}|${workerProfiles.length}|${job.scheduledStartAt || ''}|${(job.requiredSkills || []).join(',')}`;
+    if (lastMatchPassRef.current === passKey) return;
+    lastMatchPassRef.current = passKey;
+
     let cancelled = false;
-    setEngineRunning(true);
-    runJobMatching(job)
-      .catch(() => {})
+    const firstRun = !job.engineRanAt;
+    if (firstRun) setEngineRunning(true);
+
+    runJobMatching(job, { notify: firstRun })
+      .catch(() => {
+        lastMatchPassRef.current = '';
+      })
       .finally(() => {
-        if (!cancelled) setEngineRunning(false);
+        if (!cancelled && firstRun) setEngineRunning(false);
       });
+
     return () => {
       cancelled = true;
     };
-  }, [job, ownerUid, profilesLoading]);
+  }, [job, ownerUid, profilesLoading, workerProfiles.length]);
 
   const showFindingUi = findingWorkers || engineRunning;
 
-  const activeApplicants = useMemo(
-    () =>
-      filterRealApplications(applicants).filter((a) =>
-        ACTIVE_APPLICATION_STATUSES.has(a.status)
-      ),
-    [applicants]
+  const [pickedWorkerId, setPickedWorkerId] = useState(null);
+  const selected =
+    (pickedWorkerId && applicantsByWorkerId.get(pickedWorkerId)) ||
+    activeApplicants[0] ||
+    null;
+
+  const activeWorkerId = selected?.workerId || null;
+  const activeWorkerName = selected?.workerName || null;
+
+  const appliedWorkerIds = useMemo(
+    () => new Set(activeApplicants.map((a) => a.workerId).filter(Boolean)),
+    [activeApplicants],
   );
 
-  const [chatWorkerId, setChatWorkerId] = useState(null);
-  const [chatWorkerName, setChatWorkerName] = useState(null);
-  const [pickedAppId, setPickedAppId] = useState(null);
-  const fallbackAppId = activeApplicants[0]?.docId || activeApplicants[0]?.id || null;
-  const selectedAppId =
-    pickedAppId && activeApplicants.some((a) => (a.docId || a.id) === pickedAppId)
-      ? pickedAppId
-      : fallbackAppId;
-
-  const selected = activeApplicants.find(
-    (a) => (a.docId || a.id) === selectedAppId
-  );
-
-  const activeWorkerId = selected?.workerId || chatWorkerId;
-  const activeWorkerName = selected?.workerName || chatWorkerName;
-
-  const handleChatWithMatch = (entry) => {
+  const handleChatWithCard = async (entry) => {
     const id = entry.profile?.docId || entry.profile?.uid;
     if (!id) return;
-    setChatWorkerId(id);
-    setChatWorkerName(entry.profile?.name || 'Worker');
-    setPickedAppId(null);
-  };
-
-  const handleSelectApplicant = async (app) => {
-    const id = app.docId || app.id;
-    setPickedAppId(id);
-    setChatWorkerId(app.workerId);
-    setChatWorkerName(app.workerName || 'Worker');
+    const app = applicantsByWorkerId.get(id);
+    if (!app) return;
+    setPickedWorkerId(id);
     if (app.status === APPLICATION_STATUS.PENDING) {
       try {
-        await moveToNegotiating(id);
+        await moveToNegotiating(app.docId || app.id);
       } catch {
-        /* worker may have already advanced */
+        /* already advanced */
       }
+    }
+  };
+
+  const handleDeclineCard = async (entry) => {
+    const id = entry.profile?.docId || entry.profile?.uid;
+    if (!id || !jobId) return;
+    const app = applicantsByWorkerId.get(id);
+    const name = entry.profile?.name || app?.workerName || 'this worker';
+    if (
+      !window.confirm(
+        `Decline ${name}? They will be removed from this request and won’t be rematched.`,
+      )
+    ) {
+      return;
+    }
+    try {
+      if (app) {
+        await declineApplication(app.docId || app.id, { byRole: 'client' });
+      } else {
+        const { recordMatchDecline } = await import('../../lib/matching/matchDeclines.js');
+        const { removeWorkerFromJobShortlist } = await import('../../lib/matching/jobs.js');
+        await recordMatchDecline({ jobId, workerId: id });
+        await removeWorkerFromJobShortlist(jobId, id);
+      }
+      if (pickedWorkerId === id) setPickedWorkerId(null);
+    } catch (err) {
+      alert(err.message || 'Could not decline worker.');
     }
   };
 
@@ -169,22 +284,13 @@ function EmployerCandidatesPage() {
     setJobStatus(job.docId || job.id, JOB_STATUS.MATCHED).catch(() => {});
   }, [activeApplicants.length, job, ownerUid]);
 
-  const handleDecline = async (app) => {
-    if (!window.confirm(`Decline ${app.workerName || 'this applicant'}?`)) return;
-    try {
-      await declineApplication(app.docId || app.id);
-    } catch (err) {
-      alert(err.message || 'Could not decline applicant.');
-    }
-  };
-
-  const pageTitle = showFindingUi ? 'Finding workers' : 'Applicants';
+  const pageTitle = showFindingUi ? 'Finding workers' : 'Matched workers';
   const pageSubtitle = showFindingUi
     ? job
       ? `Matching workers for "${job.title}"`
       : 'Loading your request…'
     : job
-      ? `Workers who responded to "${job.title}"`
+      ? `Shortlist for "${job.title}"`
       : jobLoading
         ? 'Loading job…'
         : 'Job not found.';
@@ -210,13 +316,17 @@ function EmployerCandidatesPage() {
           searching={showFindingUi}
           matches={matchedWorkers}
           jobTitle={job.title}
-          onChatWithMatch={showFindingUi ? undefined : handleChatWithMatch}
-          chatWorkerId={chatWorkerId}
+          appliedWorkerIds={appliedWorkerIds}
+          acceptedCount={activeApplicants.length}
+          chatWorkerId={activeWorkerId}
+          onChat={handleChatWithCard}
+          onDecline={job.confirmedWorkerId ? undefined : handleDeclineCard}
+          hireLocked={Boolean(job.confirmedWorkerId)}
         />
       ) : null}
 
-      {job && activeWorkerId && !showFindingUi ? (
-        <section className="mb-5">
+      {job && selected && activeWorkerId && !showFindingUi ? (
+        <section className="mb-5 space-y-4">
           <ChatPanel
             jobId={job.docId || job.id}
             jobTitle={job.title}
@@ -230,116 +340,16 @@ function EmployerCandidatesPage() {
             jobBudget={job.budget}
             jobStatus={job.status}
             applicationStatus={selected?.status}
+            application={selected}
             compact
           />
+          {(job.status === JOB_STATUS.CONFIRMED ||
+            job.status === JOB_STATUS.IN_PROGRESS ||
+            selected?.status === APPLICATION_STATUS.CONFIRMED) &&
+          job.confirmedWorkerId === activeWorkerId ? (
+            <PaymentFulfillmentCard application={selected} role="client" />
+          ) : null}
         </section>
-      ) : null}
-
-      {!showFindingUi ? (
-        <>
-          <h3 className="mb-3 px-1 text-sm font-semibold text-[#1F4E79]">
-            Applicants who applied
-          </h3>
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,280px)_minmax(0,1fr)]">
-            <aside className="space-y-2">
-              <p className="px-1 text-xs text-gray-500">
-                Applicants ({activeApplicants.length})
-              </p>
-
-              {appsLoading ? (
-                <p className="rounded-xl bg-white p-4 text-sm text-gray-500 shadow-sm">
-                  Loading…
-                </p>
-              ) : null}
-
-              {!appsLoading && activeApplicants.length === 0 ? (
-                <p className="rounded-xl bg-white p-4 text-sm text-gray-500 shadow-sm">
-                  No one has applied yet. Matched workers above can see your request — they
-                  will appear here once they apply.
-                </p>
-              ) : null}
-
-              <ul className="space-y-2">
-                {activeApplicants.map((app) => {
-                  const id = app.docId || app.id;
-                  const isSelected = id === selectedAppId;
-                  return (
-                    <li key={id}>
-                      <button
-                        type="button"
-                        onClick={() => handleSelectApplicant(app)}
-                        className={`w-full rounded-xl border bg-white p-3 text-left shadow-sm transition ${
-                          isSelected
-                            ? 'border-[#1F4E79] ring-2 ring-[#1F4E79]/30'
-                            : 'border-gray-200 hover:border-gray-300'
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-[#1F4E79]">
-                              {app.workerName || 'Worker'}
-                            </p>
-                            <p className="mt-0.5 text-[11px] text-gray-500">
-                              Applied {formatDate(app.appliedAt)}
-                            </p>
-                          </div>
-                          <ApplicationStatusPill status={app.status} />
-                        </div>
-                        {app.workerSkills?.length ? (
-                          <div className="mt-2 flex flex-wrap gap-1">
-                            {app.workerSkills.slice(0, 4).map((s) => (
-                              <span
-                                key={s}
-                                className="rounded-full bg-[#2E75B6]/10 px-2 py-0.5 text-[10px] font-medium text-[#1F4E79]"
-                              >
-                                {s}
-                              </span>
-                            ))}
-                          </div>
-                        ) : null}
-                        <div className="mt-3 flex items-center gap-2">
-                          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600">
-                            {isSelected ? 'Open chat' : 'Chat'}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDecline(app);
-                            }}
-                            className="ml-auto inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-700 hover:bg-red-100"
-                          >
-                            <HiOutlineXMark className="h-3 w-3" aria-hidden="true" />
-                            Decline
-                          </button>
-                        </div>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            </aside>
-
-            <div className="space-y-3">
-              {!activeWorkerId ? (
-                <div className="rounded-xl bg-white p-6 text-center text-sm text-gray-500 shadow-sm">
-                  {activeApplicants.length === 0
-                    ? 'Click Chat & negotiate on a matched worker above.'
-                    : 'Select an applicant, or chat with a matched worker above.'}
-                </div>
-              ) : null}
-              {job?.confirmedWorkerId ? (
-                <p className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900">
-                  <HiOutlineCheckBadge
-                    className="mr-1 inline h-4 w-4 align-text-bottom"
-                    aria-hidden="true"
-                  />
-                  This job is locked to {job.confirmedWorkerName || 'the chosen worker'}.
-                </p>
-              ) : null}
-            </div>
-          </div>
-        </>
       ) : null}
     </div>
   );
@@ -377,36 +387,6 @@ function JobSummaryCard({ job }) {
       </div>
     </section>
   );
-}
-
-function ApplicationStatusPill({ status }) {
-  const styles = {
-    [APPLICATION_STATUS.PENDING]: 'bg-amber-100 text-amber-800',
-    [APPLICATION_STATUS.NEGOTIATING]: 'bg-blue-100 text-blue-800',
-    [APPLICATION_STATUS.PROPOSED]: 'bg-purple-100 text-purple-800',
-    [APPLICATION_STATUS.CONFIRMED]: 'bg-emerald-100 text-emerald-800',
-    [APPLICATION_STATUS.DECLINED]: 'bg-gray-100 text-gray-500',
-    [APPLICATION_STATUS.COMPLETED]: 'bg-emerald-50 text-emerald-700',
-  };
-  return (
-    <span
-      className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-        styles[status] || 'bg-gray-100 text-gray-700'
-      }`}
-    >
-      {status}
-    </span>
-  );
-}
-
-function formatDate(value) {
-  if (!value) return '—';
-  if (value?.toDate) return value.toDate().toLocaleDateString();
-  try {
-    return new Date(value).toLocaleDateString();
-  } catch {
-    return '—';
-  }
 }
 
 export default EmployerCandidatesPage;

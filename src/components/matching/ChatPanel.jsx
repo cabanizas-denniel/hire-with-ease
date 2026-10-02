@@ -45,6 +45,7 @@ function ChatPanel({
   jobBudget = '',
   jobStatus = null,
   applicationStatus = null,
+  application = null,
   className = '',
   compact = true,
 }) {
@@ -78,6 +79,26 @@ function ChatPanel({
     jobStatus === JOB_STATUS.CONFIRMED ||
     jobStatus === JOB_STATUS.IN_PROGRESS ||
     applicationStatus === APPLICATION_STATUS.CONFIRMED;
+
+  // Only the most recent agreement card (proposal or confirmation) should show.
+  const visibleMessages = useMemo(() => {
+    const list = messages || [];
+    let lastAgreementId = null;
+    for (let i = list.length - 1; i >= 0; i -= 1) {
+      const t = list[i]?.messageType;
+      if (t === 'schedule' || t === 'agreement_confirmed' || t === 'hire_declined') {
+        lastAgreementId = list[i].id;
+        break;
+      }
+    }
+    if (!lastAgreementId) return list;
+    return list.filter((m) => {
+      if (m.messageType !== 'schedule' && m.messageType !== 'agreement_confirmed' && m.messageType !== 'hire_declined') {
+        return true;
+      }
+      return m.id === lastAgreementId;
+    });
+  }, [messages]);
   const showCheckIn = role === 'worker' && bookingLocked && !hasCheckIn && !expired;
   const showCheckOut =
     role === 'worker' &&
@@ -229,7 +250,10 @@ function ChatPanel({
           ) : null}
           {schedule ? (
             <p className="mt-0.5 text-[10px] text-emerald-800">
-              Agreed: {schedule.startDate} → {schedule.endDate} · {schedule.price}
+              Scheduled:{' '}
+              {schedule.scheduleLabel ||
+                `${schedule.startDate}${schedule.startTime ? ` · ${schedule.startTime}` : ''}`}
+              {schedule.price ? ` · ${schedule.price}` : ''}
             </p>
           ) : null}
           {role === 'worker' && shouldShowClientTrustBadge(clientTrustTier) ? (
@@ -238,16 +262,30 @@ function ChatPanel({
             </div>
           ) : null}
         </div>
-        <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
-          {role === 'client' && !expired ? (
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          {application && !expired && role === 'worker' ? (
             <button
               type="button"
               onClick={() => setScheduleOpen(true)}
-              className="inline-flex items-center gap-1 rounded-lg border border-[#1F4E79]/30 bg-blue-50 px-2 py-1 text-[10px] font-semibold text-[#1F4E79] hover:bg-blue-100"
-              title="Set agreed dates and price"
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-[#1F4E79]/30 bg-blue-50 px-3 py-2 text-xs font-semibold text-[#1F4E79] hover:bg-blue-100 sm:text-sm"
+              title="Propose start, price, and scope"
             >
-              <HiOutlineCalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
+              <HiOutlineCalendarDays className="h-4 w-4" aria-hidden="true" />
               Schedule
+            </button>
+          ) : null}
+          {application &&
+          !expired &&
+          role === 'client' &&
+          application?.proposedAgreement ? (
+            <button
+              type="button"
+              onClick={() => setScheduleOpen(true)}
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-emerald-600/30 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 sm:text-sm"
+              title="Review and confirm the worker’s schedule proposal"
+            >
+              <HiOutlineCalendarDays className="h-4 w-4" aria-hidden="true" />
+              Review schedule
             </button>
           ) : null}
           {user?.uid ? (
@@ -268,7 +306,7 @@ function ChatPanel({
           <button
             type="button"
             onClick={() => setContactOpen((o) => !o)}
-            className="flex w-full items-center justify-between text-[10px] font-medium text-gray-500"
+            className="flex w-full cursor-pointer items-center justify-between text-[10px] font-medium text-gray-500"
           >
             Contact details
             {contactOpen ? (
@@ -293,7 +331,7 @@ function ChatPanel({
       >
         {loading ? (
           <p className="text-center text-[11px] text-gray-500">Loading…</p>
-        ) : (messages?.length ?? 0) === 0 ? (
+        ) : (visibleMessages?.length ?? 0) === 0 ? (
           <p className="text-center text-[11px] text-gray-500">
             {role === 'client'
               ? 'Use a suggested message below or type your own.'
@@ -301,10 +339,45 @@ function ChatPanel({
           </p>
         ) : (
           <ul className="space-y-1.5">
-            {messages.map((m) => {
+            {visibleMessages.map((m) => {
               const mine = m.authorId === user?.uid;
               const isProof =
                 m.messageType === 'check_in' || m.messageType === 'check_out';
+              const isSchedule = m.messageType === 'schedule';
+              const isAgreementConfirmed = m.messageType === 'agreement_confirmed';
+              const isHireDeclined = m.messageType === 'hire_declined';
+              const isAgreementDivider =
+                isSchedule || isAgreementConfirmed || isHireDeclined;
+
+              if (isAgreementDivider) {
+                const lineClass = isAgreementConfirmed
+                  ? 'bg-emerald-300'
+                  : isHireDeclined
+                    ? 'bg-red-200'
+                    : 'bg-gray-200';
+                const textClass = isAgreementConfirmed
+                  ? 'text-emerald-700'
+                  : isHireDeclined
+                    ? 'text-red-700'
+                    : 'text-gray-500';
+                return (
+                  <li key={m.id} className="flex items-center gap-2 py-1.5">
+                    <span className={`h-px flex-1 ${lineClass}`} aria-hidden="true" />
+                    <p
+                      className={`max-w-[75%] shrink-0 text-center text-[10px] font-medium leading-snug ${textClass}`}
+                    >
+                      {m.text ||
+                        (isAgreementConfirmed
+                          ? 'Agreement confirmed — booking locked.'
+                          : isHireDeclined
+                            ? 'Hire declined — booking unlocked.'
+                            : 'Schedule agreement submitted — open Review schedule.')}
+                    </p>
+                    <span className={`h-px flex-1 ${lineClass}`} aria-hidden="true" />
+                  </li>
+                );
+              }
+
               return (
                 <li
                   key={m.id}
@@ -373,7 +446,7 @@ function ChatPanel({
                 type="button"
                 disabled={sending || expired}
                 onClick={() => handleSuggestion(s)}
-                className="rounded-full border border-[#1F4E79]/30 bg-white px-2.5 py-1 text-[11px] font-medium text-[#1F4E79] hover:bg-blue-100 disabled:opacity-50"
+                className="cursor-pointer rounded-full border border-[#1F4E79]/30 bg-white px-2.5 py-1 text-[11px] font-medium text-[#1F4E79] hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {s.label}
               </button>
@@ -398,7 +471,7 @@ function ChatPanel({
                 setProofMode('check_in');
                 fileInputRef.current?.click();
               }}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-amber-400 px-3 py-2 text-xs font-bold text-[#1F4E79] shadow-sm hover:bg-amber-300"
+              className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-amber-400 px-3 py-2 text-xs font-bold text-[#1F4E79] shadow-sm hover:bg-amber-300 disabled:cursor-not-allowed"
             >
               <HiOutlineCamera className="h-4 w-4" aria-hidden="true" />
               Check in with a photo
@@ -416,7 +489,7 @@ function ChatPanel({
                   setProofMode('check_out');
                   fileInputRef.current?.click();
                 }}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white shadow-sm hover:bg-emerald-500"
+                className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white shadow-sm hover:bg-emerald-500 disabled:cursor-not-allowed"
               >
                 <HiOutlineCamera className="h-4 w-4" aria-hidden="true" />
                 Check out with a photo
@@ -448,22 +521,26 @@ function ChatPanel({
         <button
           type="submit"
           disabled={sending || expired || !draft.trim()}
-          className="inline-flex shrink-0 items-center justify-center rounded-lg bg-[#1F4E79] p-2 text-white disabled:opacity-50"
+          className="inline-flex shrink-0 cursor-pointer items-center justify-center rounded-lg bg-[#1F4E79] p-2 text-white disabled:cursor-not-allowed disabled:opacity-50"
           aria-label="Send"
         >
           <HiOutlinePaperAirplane className="h-4 w-4" aria-hidden="true" />
         </button>
       </form>
 
-      {role === 'client' ? (
-        <ScheduleAgreementModal
-          isOpen={scheduleOpen}
-          onClose={() => setScheduleOpen(false)}
-          jobId={jobId}
-          workerId={workerId}
-          initialPrice={schedule?.price || jobBudget}
-        />
-      ) : null}
+      <ScheduleAgreementModal
+        isOpen={scheduleOpen}
+        onClose={() => setScheduleOpen(false)}
+        jobId={jobId}
+        workerId={workerId}
+        clientId={clientId}
+        jobTitle={jobTitle}
+        application={application}
+        role={role === 'client' ? 'client' : 'worker'}
+        initialPrice={
+          application?.proposedAgreement?.price || schedule?.price || jobBudget
+        }
+      />
     </div>
   );
 }

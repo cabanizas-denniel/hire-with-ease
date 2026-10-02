@@ -16,12 +16,12 @@ const features = [
   {
     k: '01',
     title: 'Push-based matching',
-    description: 'Workers don\'t scroll job boards. The system evaluates skills, availability, and location — then pushes relevant jobs directly to qualified workers.',
+    description: 'Workers don\'t scroll job boards. The system evaluates skills, location, and reputation — then pushes relevant jobs directly to qualified workers.',
   },
   {
     k: '02',
-    title: 'Availability-first',
-    description: 'Time slots drive matching. If a worker isn\'t free when the job needs doing, there\'s no match — regardless of skill fit.',
+    title: 'Agree the schedule in chat',
+    description: 'After a match, both sides lock a final start date & time, agreed price, and what is / isn\'t included — no calendar slots to maintain up front.',
   },
   {
     k: '03',
@@ -49,17 +49,17 @@ const howItWorks = [
   {
     step: '1',
     title: 'Workers set up a service profile',
-    description: 'Skills, certifications, location, and — critically — an availability schedule. This is what the system matches against.',
+    description: 'Skills, certifications, and home location. This is what the system matches against.',
   },
   {
     step: '2',
     title: 'Clients describe what they need',
-    description: 'A structured service request: category, title, budget, schedule, location, and photos or video of the issue. No vague postings.',
+    description: 'A structured service request: category, title, budget, preferred start, location, and photos or video of the issue. No vague postings.',
   },
   {
     step: '3',
     title: 'The system matches automatically',
-    description: 'Skill fit, schedule overlap, proximity, and worker reliability are evaluated. Qualified workers get notified instantly.',
+    description: 'Skill fit, proximity, category preference, and worker reliability are evaluated. Qualified workers get notified instantly.',
   },
   {
     step: '4',
@@ -81,19 +81,19 @@ const howItWorks = [
 const faqs = [
   {
     q: 'What is Hire With Ease?',
-    a: 'A project-based service marketplace that connects homeowners and clients with skilled informal workers — plumbers, electricians, carpenters, and more — using predictive matching instead of manual search.',
+    a: 'A project-based service marketplace that connects homeowners and clients with skilled informal workers — plumbers, electricians, carpenters, and more — using ranked matching (scored shortlists) instead of manual search.',
   },
   {
     q: 'How is this different from a job board?',
-    a: 'Job boards rely on workers scrolling and applying. Here, the system pushes matched jobs to workers based on skills and availability. Workers accept — they don\'t apply. Think Grab for skilled services, not LinkedIn.',
+    a: 'Job boards rely on workers scrolling and applying. Here, the system pushes matched jobs to workers based on skills and location. Workers accept — they don\'t apply. Think Grab for skilled services, not LinkedIn.',
   },
   {
-    q: 'What role does availability play?',
-    a: 'Availability is first-class. A plumber who\'s free Tuesday morning gets matched to Tuesday jobs. Skills alone aren\'t enough — timing has to align.',
+    q: 'How do start times get set?',
+    a: 'In chat, either side opens Schedule and proposes a final start date & time, agreed price, and scope (included / not included). Both sides confirm to lock the hire.',
   },
   {
     q: 'Who is the admin / LGU-PESO role?',
-    a: 'A dashboard for local employment officers to monitor demand signals, skill shortages, and workforce availability trends — data that supports evidence-based workforce planning.',
+    a: 'A dashboard for local employment officers to monitor demand signals, skill shortages, and workforce trends — data that supports evidence-based workforce planning.',
   },
   {
     q: 'Can I try it without a real account?',
@@ -454,8 +454,15 @@ function LandingPage() {
             <div>
               <p className="text-lg font-bold text-[#1F4E79]">Hire With Ease</p>
               <p className="mt-2 max-w-sm text-sm text-gray-600">
-                On-demand skilled worker matching — connecting clients with qualified workers through predictive analytics for informal labor markets.
+                On-demand skilled worker matching — connecting clients with qualified workers through
+                scored shortlists for informal labor markets in Olongapo.
               </p>
+              <Link
+                to="/privacy"
+                className="mt-3 inline-block text-sm font-semibold text-[#2E75B6] hover:underline"
+              >
+                Privacy & data use
+              </Link>
             </div>
             <div className="text-sm text-gray-600">
               <p className="font-semibold text-[#1F4E79]">Contact</p>

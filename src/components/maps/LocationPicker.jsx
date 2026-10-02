@@ -86,7 +86,8 @@ function LocationPicker({ value, onChange, height = 260, inferBarangay = true })
     if (!navigator.geolocation) {
       setGeoState({
         status: 'error',
-        error: 'Your browser does not support location sharing.',
+        error:
+          'Your browser does not support location sharing. Use the demo Olongapo pin or drop a pin on the map.',
       });
       return;
     }
@@ -95,13 +96,11 @@ function LocationPicker({ value, onChange, height = 260, inferBarangay = true })
       (pos) => {
         const { latitude, longitude, accuracy } = pos.coords;
 
-        // Desktop browsers often return an IP/Wi‑Fi based fix that can be far off.
-        // Only overwrite the pin when the reading is reasonably accurate.
         if (!isWithinBounds(latitude, longitude)) {
           setGeoState({
             status: 'error',
             error:
-              'Your current location appears outside Olongapo City. Please drop the pin manually on the map.',
+              'Your GPS is outside Olongapo City (e.g. testing from elsewhere). Use “Demo Olongapo pin” below, or drop a pin manually on the map. Product scope remains Olongapo.',
           });
           return;
         }
@@ -112,10 +111,8 @@ function LocationPicker({ value, onChange, height = 260, inferBarangay = true })
             status: 'error',
             error: `Location isn’t accurate enough yet (±${Math.round(
               accuracy
-            )}m). Try again, or place the pin manually.`,
+            )}m). Try again, place the pin manually, or use the demo Olongapo pin.`,
           });
-          // Still pan the map to roughly where the device thinks it is,
-          // but don't overwrite a user's chosen pin with a low-confidence fix.
           setPendingFly({ lat: latitude, lng: longitude });
           return;
         }
@@ -129,15 +126,23 @@ function LocationPicker({ value, onChange, height = 260, inferBarangay = true })
           status: 'error',
           error:
             err?.message ||
-            'Could not get your current location. Please pick on the map instead.',
+            'Could not get your current location. Use the demo Olongapo pin or pick on the map.',
         });
       },
       {
         enableHighAccuracy: true,
         timeout: 15000,
-        maximumAge: 0, // avoid cached (possibly far away) readings
+        maximumAge: 0,
       }
     );
+  };
+
+  const handleDemoPin = () => {
+    const lat = OLONGAPO_CENTER.lat;
+    const lng = OLONGAPO_CENTER.lng;
+    setPin(lat, lng);
+    setPendingFly({ lat, lng });
+    setGeoState({ status: 'idle', error: null });
   };
 
   const center = value
@@ -185,17 +190,26 @@ function LocationPicker({ value, onChange, height = 260, inferBarangay = true })
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <button
-          type="button"
-          onClick={handleUseMyLocation}
-          disabled={geoState.status === 'loading'}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-[#1F4E79] bg-white px-3 py-1.5 text-xs font-semibold text-[#1F4E79] hover:bg-blue-50 disabled:opacity-60"
-        >
-          <HiOutlineMapPin className="h-4 w-4" aria-hidden="true" />
-          {geoState.status === 'loading'
-            ? 'Locating…'
-            : 'Use my current location'}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={handleUseMyLocation}
+            disabled={geoState.status === 'loading'}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-[#1F4E79] bg-white px-3 py-1.5 text-xs font-semibold text-[#1F4E79] hover:bg-blue-50 disabled:opacity-60"
+          >
+            <HiOutlineMapPin className="h-4 w-4" aria-hidden="true" />
+            {geoState.status === 'loading'
+              ? 'Locating…'
+              : 'Use my current location'}
+          </button>
+          <button
+            type="button"
+            onClick={handleDemoPin}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-amber-400 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-950 hover:bg-amber-100"
+          >
+            Use demo Olongapo pin
+          </button>
+        </div>
         {value ? (
           <p className="text-[11px] text-gray-600">
             {inferBarangay ? (
@@ -216,9 +230,16 @@ function LocationPicker({ value, onChange, height = 260, inferBarangay = true })
       </div>
 
       {geoState.status === 'error' ? (
-        <p className="rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800">
-          {geoState.error}
-        </p>
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900">
+          <p>{geoState.error}</p>
+          <button
+            type="button"
+            onClick={handleDemoPin}
+            className="mt-2 font-semibold text-[#1F4E79] underline"
+          >
+            Place demo Olongapo pin
+          </button>
+        </div>
       ) : null}
     </div>
   );
