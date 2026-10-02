@@ -51,18 +51,26 @@ function getAdminAuthIfAvailable() {
 
   const serviceJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
   const servicePath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
+  const projectId = process.env.VITE_FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT;
   try {
     const existing = getApps();
     const app =
       existing.length > 0
         ? existing[0]
         : serviceJson && serviceJson.trim()
-          ? initializeAdminApp({ credential: cert(JSON.parse(serviceJson)) })
+          ? initializeAdminApp({
+              credential: cert(JSON.parse(serviceJson)),
+              projectId,
+            })
           : servicePath && servicePath.trim()
             ? initializeAdminApp({
                 credential: cert(JSON.parse(fs.readFileSync(servicePath, 'utf8'))),
+                projectId,
               })
-            : initializeAdminApp({ credential: applicationDefault() });
+            : initializeAdminApp({
+                credential: applicationDefault(),
+                projectId,
+              });
     _adminAuth = getAdminAuth(app);
     return _adminAuth;
   } catch {
@@ -140,7 +148,7 @@ function buildVerification({ role, email, verificationLevel }) {
 //   none     - Tier 0, brand-new account, nothing started.
 const ACCOUNTS = [
   {
-    email: 'admin@hwe.test',
+    email: 'cabanizasdenniel@gmail.com',
     password: 'Admin123!',
     role: 'admin',
     fullName: 'PESO Olongapo Admin',
@@ -282,39 +290,47 @@ async function ensureAccount(auth, db, account) {
   }
 
   const ref = doc(db, 'users', uid);
-  const snap = await getDoc(ref);
-  const point = resolveLocation(location);
-  const locationRecord = point
-    ? {
-        lat: point.lat,
-        lng: point.lng,
-        barangay: point.barangay,
-        label: location,
-      }
-    : null;
-  const payload = {
-    uid,
-    email,
-    fullName,
-    role,
-    location: locationRecord || location || null,
-    coords: point ? { lat: point.lat, lng: point.lng } : null,
-    barangay: point ? point.barangay : null,
-    locationDetails: location || null,
-    verificationLevel: verificationLevel || 'none',
-    verification: buildVerification({ role, email, verificationLevel }),
-    isSeed: true,
-  };
-  if (snap.exists()) {
-    await setDoc(ref, payload, { merge: true });
-    console.log(`  = Profile updated -> ${email} (role=${role})`);
-  } else {
-    await setDoc(ref, {
-      ...payload,
-      createdAt: serverTimestamp(),
-    });
-    console.log(
-      `  + Profile wrote  -> ${email} (role=${role}, verification=${verificationLevel || 'none'})`
+  try {
+    const snap = await getDoc(ref);
+    const point = resolveLocation(location);
+    const locationRecord = point
+      ? {
+          lat: point.lat,
+          lng: point.lng,
+          barangay: point.barangay,
+          label: location,
+        }
+      : null;
+    const payload = {
+      uid,
+      email,
+      fullName,
+      role,
+      location: locationRecord || location || null,
+      coords: point ? { lat: point.lat, lng: point.lng } : null,
+      barangay: point ? point.barangay : null,
+      locationDetails: location || null,
+      verificationLevel: verificationLevel || 'none',
+      verification: buildVerification({ role, email, verificationLevel }),
+      isSeed: true,
+    };
+    if (snap.exists()) {
+      await setDoc(ref, payload, { merge: true });
+      console.log(`  = Profile updated -> ${email} (role=${role})`);
+    } else {
+      await setDoc(ref, {
+        ...payload,
+        createdAt: serverTimestamp(),
+      });
+      console.log(
+        `  + Profile wrote  -> ${email} (role=${role}, verification=${verificationLevel || 'none'})`
+      );
+    }
+  } catch (err) {
+    console.error(
+      `  ! Profile write failed -> ${email}: ${err.code || err.message}\n` +
+        `    If this is the admin account: deploy firestore.rules, mark Email verified=true in Console,\n` +
+        `    then run: node --env-file=.env scripts/ensureAdminProfile.mjs`,
     );
   }
 

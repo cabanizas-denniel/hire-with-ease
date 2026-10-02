@@ -5,7 +5,7 @@ import PasswordInput from '../../components/PasswordInput.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 
 const DEMO_LOGINS = [
-  { label: 'PESO admin', email: 'admin@hwe.test', password: 'Admin123!' },
+  { label: 'PESO admin', email: 'cabanizasdenniel@gmail.com', password: 'Admin123!' },
   { label: 'Worker (activated)', email: 'rafael.worker@hwe.test', password: 'Worker123!' },
   { label: 'Homeowner (trusted)', email: 'maria.home@hwe.test', password: 'Home123!' },
 ];
