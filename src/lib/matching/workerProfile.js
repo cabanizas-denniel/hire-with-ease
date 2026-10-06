@@ -20,6 +20,8 @@ import {
 import { db } from '../firebase.js';
 
 const DEFAULT_PROFILE = {
+  primarySkill: null,
+  secondarySkills: [],
   skills: [],
   certifications: [],
   preferredCategories: [],

@@ -6,9 +6,11 @@
  * 2. Greedy Best-First — keep top candidates by score for search efficiency.
  * 3. A* — pick 1–5 workers maximizing total shortlist score (subset selection).
  *
+ * Skills: primary skill outranks secondary skills when scoring.
  * Availability is not used — schedule is negotiated in chat after accept.
  */
 
+import { normalizeWorkerSkills } from '../../data/skills.js';
 import { collectDeclinedWorkerIds } from './matchDeclines.js';
 import { filterRealWorkerProfiles } from './seedFilters.js';
 
@@ -52,10 +54,13 @@ function haversineKm(a, b) {
 
 /**
  * WSM factor scores for one worker against one job.
+ *
+ * Primary skill match ranks above secondary-only overlap so a plumber
+ * with HVAC as secondary loses to an HVAC primary on HVAC jobs.
  */
 export function scoreWorkerFactors(job, profile) {
   const reasons = [];
-  const skills = profile.skills || [];
+  const { primarySkill, secondarySkills, skills } = normalizeWorkerSkills(profile);
   const required = job.requiredSkills || [];
   const matchedSkills = required.filter((s) => skills.includes(s));
 
@@ -69,9 +74,28 @@ export function scoreWorkerFactors(job, profile) {
     };
   }
 
-  reasons.push(`Skills: ${matchedSkills.join(', ')}`);
+  const primaryMatches = Boolean(primarySkill && required.includes(primarySkill));
+  const secondaryMatched = required.filter((s) => secondarySkills.includes(s));
   const skillRatio = matchedSkills.length / Math.max(required.length, 1);
-  const skillsScore = clamp100(skillRatio * 100);
+
+  let skillsScore;
+  if (primaryMatches) {
+    // Primary specialty for this job — strong base, slight boost for overlap.
+    skillsScore = clamp100(82 + skillRatio * 18);
+    reasons.push(`Primary skill: ${primarySkill}`);
+  } else {
+    // Qualifies via secondary skills only — eligible but lower weight.
+    skillsScore = clamp100(38 + skillRatio * 32);
+    reasons.push(
+      secondaryMatched.length
+        ? `Additional skills: ${secondaryMatched.join(', ')}`
+        : `Skills: ${matchedSkills.join(', ')}`,
+    );
+  }
+  if (matchedSkills.length > 1 || (primaryMatches && secondaryMatched.length)) {
+    const extras = matchedSkills.filter((s) => s !== primarySkill);
+    if (extras.length) reasons.push(`Also: ${extras.join(', ')}`);
+  }
 
   let locationScore = 40;
   if (job.location?.barangay && profile.location?.barangay) {
@@ -105,6 +129,25 @@ export function scoreWorkerFactors(job, profile) {
     if (rating >= 4) reasons.push(`Rating ${rating.toFixed(1)}`);
   } else if (jobsCompleted > 0) {
     reputationScore = clamp100(40 + Math.min(jobsCompleted, 20) * 3);
+  }
+
+  // Optional job-level certification requirements (forward-compatible).
+  const requiredCerts = [
+    ...(job.requiredCertifications || []),
+    ...(job.requiredLicenses || []),
+  ].filter((c) => typeof c === 'string' && c.trim());
+  if (requiredCerts.length) {
+    const workerCertLabels = (profile.certifications || [])
+      .map((c) => (typeof c === 'string' ? c : c?.label || c?.name || ''))
+      .filter(Boolean)
+      .map((s) => s.toLowerCase());
+    const certHits = requiredCerts.filter((req) =>
+      workerCertLabels.some((label) => label.includes(req.toLowerCase())),
+    );
+    if (certHits.length) {
+      skillsScore = clamp100(skillsScore + Math.min(12, certHits.length * 6));
+      reasons.push(`Certification match: ${certHits.join(', ')}`);
+    }
   }
 
   const factors = {

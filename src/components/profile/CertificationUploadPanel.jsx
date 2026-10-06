@@ -51,7 +51,7 @@ function CertificationUploadPanel({ certifications = [], onAddFiles, onRemoveAt,
           </span>
           <span className="text-sm font-semibold text-[#1F4E79]">Upload certification</span>
           <span className="max-w-xs text-xs text-gray-600">
-            Tap to choose a photo (JPG, PNG) or PDF — TESDA, barangay clearance, etc.
+            Add any certifications or licenses relevant to your work (JPG, PNG, or PDF).
           </span>
           <span className="rounded-full bg-white px-3 py-1 text-[11px] font-medium text-gray-500 ring-1 ring-gray-200">
             Optional · up to {MAX_CERT_MB} MB per file

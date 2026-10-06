@@ -19,8 +19,21 @@ function WorkerMatchDetailCard({
   const { profile, score, reasons, matchedSkills } = entry;
   const name = profile?.name || 'Worker';
   const accepted = status === 'accepted';
-  const skills = profile?.skills || [];
-  const highlightSkills = (matchedSkills?.length ? matchedSkills : skills).slice(0, 3);
+  const primarySkill = profile?.primarySkill || (profile?.skills || [])[0] || null;
+  const secondarySkills = Array.isArray(profile?.secondarySkills)
+    ? profile.secondarySkills
+    : (profile?.skills || []).slice(1);
+  const skills = primarySkill
+    ? [primarySkill, ...secondarySkills.filter((s) => s !== primarySkill)]
+    : profile?.skills || [];
+  const highlightSkills = (
+    matchedSkills?.length
+      ? [
+          ...(primarySkill && matchedSkills.includes(primarySkill) ? [primarySkill] : []),
+          ...matchedSkills.filter((s) => s !== primarySkill),
+        ]
+      : skills
+  ).slice(0, 3);
   const extraSkills = Math.max(0, skills.length - highlightSkills.length);
   const experienceLine = [
     profile?.experienceLevel,
@@ -122,14 +135,21 @@ function WorkerMatchDetailCard({
         </div>
 
         <div className="mt-1.5 flex flex-wrap gap-1">
-          {highlightSkills.map((s) => (
-            <span
-              key={s}
-              className="rounded-md bg-[#2E75B6]/12 px-2 py-0.5 text-[10px] font-semibold text-[#1F4E79]"
-            >
-              {s}
+          {primarySkill ? (
+            <span className="rounded-md bg-[#1F4E79] px-2 py-0.5 text-[10px] font-semibold text-white">
+              {primarySkill}
             </span>
-          ))}
+          ) : null}
+          {highlightSkills
+            .filter((s) => s !== primarySkill)
+            .map((s) => (
+              <span
+                key={s}
+                className="rounded-md bg-[#2E75B6]/12 px-2 py-0.5 text-[10px] font-semibold text-[#1F4E79]"
+              >
+                {s}
+              </span>
+            ))}
           {extraSkills > 0 ? (
             <span className="rounded-md bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600">
               +{extraSkills}

@@ -40,18 +40,26 @@ function WorkerCard({
       </div>
 
       <div className="mt-3 flex flex-wrap gap-2">
-        {applicant.skills.map((skill) => (
-          <span
-            key={skill}
-            className={`rounded-full px-3 py-1 text-xs font-medium ${
-              matchedSkills.includes(skill)
-                ? 'bg-[#1F4E79] text-white'
-                : 'bg-[#2E75B6]/10 text-[#1F4E79]'
-            }`}
-          >
-            {skill}
-          </span>
-        ))}
+        {(applicant.skills || []).map((skill) => {
+          const isPrimary =
+            applicant.primarySkill === skill ||
+            (!applicant.primarySkill && skill === applicant.skills?.[0]);
+          return (
+            <span
+              key={skill}
+              className={`rounded-full px-3 py-1 text-xs font-medium ${
+                isPrimary
+                  ? 'bg-[#1F4E79] text-white'
+                  : matchedSkills.includes(skill)
+                    ? 'bg-[#2E75B6] text-white'
+                    : 'bg-[#2E75B6]/10 text-[#1F4E79]'
+              }`}
+              title={isPrimary ? 'Primary skill' : 'Additional skill'}
+            >
+              {isPrimary ? `${skill} · Primary` : skill}
+            </span>
+          );
+        })}
       </div>
 
       {applicant.completionRate != null ? (

@@ -119,12 +119,12 @@ function ApplicantJobsPage() {
 
       <WorkerAccessGate />
 
-      {!gate.blocked && !loading && (!profile || (profile.skills || []).length === 0) ? (
+      {!gate.blocked && !loading && (!profile || (!profile.primarySkill && !(profile.skills || []).length)) ? (
         <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          <p className="font-semibold">Add your skills to start receiving matches.</p>
+          <p className="font-semibold">Add your primary skill to start receiving matches.</p>
           <p className="mt-1">
-            Open <span className="font-semibold">My Profile</span> and pick at least
-            one skill so matching knows which jobs to surface.
+            Open <span className="font-semibold">My Profile</span> and choose the one skill that
+            best represents your work so matching knows which jobs to surface.
           </p>
         </div>
       ) : null}

@@ -3,6 +3,7 @@ import { HiOutlineArrowUturnLeft, HiOutlineFlag, HiOutlineNoSymbol } from 'react
 import PageHeader from '../../components/PageHeader.jsx';
 import SkillBadge from '../../components/SkillBadge.jsx';
 import { useWorkerModeration } from '../../context/WorkerModerationContext.jsx';
+import { normalizeWorkerSkills } from '../../data/skills.js';
 
 const PAGE_SIZE = 10;
 
@@ -32,6 +33,16 @@ const ACTION_VARIANTS = {
   restore:
     'border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 hover:border-emerald-300 focus-visible:ring-emerald-400',
 };
+
+function WorkerSkillBadges({ worker }) {
+  const { primarySkill, skills: skillList } = normalizeWorkerSkills(worker);
+  return skillList.map((skill) => (
+    <SkillBadge
+      key={skill}
+      skill={skill === primarySkill ? `${skill} · Primary` : skill}
+    />
+  ));
+}
 
 function ModerationActions({ worker, onFlag, onBan, onRestore }) {
   const s = worker.moderationStatus || 'active';
@@ -85,7 +96,12 @@ function AdminWorkersPage() {
   const filteredWorkers = useMemo(
     () =>
       workers.filter((worker) => {
-        const bySkill = filters.skill ? worker.skills.includes(filters.skill) : true;
+        const workerSkills = [
+          worker.primarySkill,
+          ...(Array.isArray(worker.secondarySkills) ? worker.secondarySkills : []),
+          ...(Array.isArray(worker.skills) ? worker.skills : []),
+        ].filter(Boolean);
+        const bySkill = filters.skill ? workerSkills.includes(filters.skill) : true;
         const byLocation = filters.location
           ? worker.location.toLowerCase().includes(filters.location.toLowerCase())
           : true;
@@ -200,9 +216,7 @@ function AdminWorkersPage() {
               <StatusBadge status={worker.moderationStatus || 'active'} />
             </div>
             <div className="mt-2 flex flex-wrap gap-2">
-              {worker.skills.map((skill) => (
-                <SkillBadge key={skill} skill={skill} />
-              ))}
+              <WorkerSkillBadges worker={worker} />
             </div>
             <div className="mt-3 border-t border-gray-100 pt-3">
               <ModerationActions worker={worker} onFlag={handleFlag} onBan={handleBan} onRestore={handleRestore} />
@@ -236,9 +250,7 @@ function AdminWorkersPage() {
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex flex-wrap gap-1">
-                    {worker.skills.map((skill) => (
-                      <SkillBadge key={skill} skill={skill} />
-                    ))}
+                    <WorkerSkillBadges worker={worker} />
                   </div>
                 </td>
                 <td className="px-4 py-3">
