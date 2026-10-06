@@ -1,3 +1,4 @@
+import { useEffect, useId, useState } from 'react';
 import {
   HiOutlineClock,
   HiOutlineMapPin,
@@ -5,8 +6,32 @@ import {
   HiOutlineXMark,
 } from 'react-icons/hi2';
 
+const FACTOR_STYLES = {
+  skills: {
+    bar: 'bg-[#1F4E79]',
+    chip: 'bg-[#1F4E79]/10 text-[#1F4E79]',
+  },
+  location: {
+    bar: 'bg-[#2E75B6]',
+    chip: 'bg-[#2E75B6]/10 text-[#1F4E79]',
+  },
+  category: {
+    bar: 'bg-teal-500',
+    chip: 'bg-teal-50 text-teal-800',
+  },
+  reputation: {
+    bar: 'bg-amber-500',
+    chip: 'bg-amber-50 text-amber-800',
+  },
+  accepted: {
+    bar: 'bg-emerald-500',
+    chip: 'bg-emerald-50 text-emerald-800',
+  },
+};
+
 /**
  * Instagram-style 4:5 match card for the employer shortlist.
+ * Match % badge toggles a friendly breakdown panel.
  * Accepted: whole card opens chat; Decline fills the bottom action strip.
  */
 function WorkerMatchDetailCard({
@@ -16,9 +41,12 @@ function WorkerMatchDetailCard({
   onChat,
   onDecline,
 }) {
-  const { profile, score, reasons, matchedSkills } = entry;
+  const { profile, score, reasons, matchedSkills, breakdown } = entry;
   const name = profile?.name || 'Worker';
   const accepted = status === 'accepted';
+  const panelId = useId();
+  const [showBreakdown, setShowBreakdown] = useState(false);
+
   const primarySkill = profile?.primarySkill || (profile?.skills || [])[0] || null;
   const secondarySkills = Array.isArray(profile?.secondarySkills)
     ? profile.secondarySkills
@@ -41,20 +69,36 @@ function WorkerMatchDetailCard({
   ]
     .filter(Boolean)
     .join(' · ');
-  const reasonLine = reasons?.length
-    ? reasons.slice(0, 2).join(' · ')
-    : 'Skill overlap';
+
+  const breakdownItems = (breakdown?.length
+    ? breakdown
+    : (reasons || []).map((label, i) => ({
+        key: `reason-${i}`,
+        label,
+        percent: null,
+      }))
+  ).slice(0, 4);
+
+  useEffect(() => {
+    setShowBreakdown(false);
+  }, [profile?.docId || profile?.uid, score]);
 
   const handleCardActivate = () => {
-    if (accepted) onChat?.(entry);
+    if (accepted && !showBreakdown) onChat?.(entry);
   };
 
   const handleCardKeyDown = (e) => {
-    if (!accepted) return;
+    if (!accepted || showBreakdown) return;
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       onChat?.(entry);
     }
+  };
+
+  const toggleBreakdown = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setShowBreakdown((open) => !open);
   };
 
   return (
@@ -90,10 +134,21 @@ function WorkerMatchDetailCard({
           }}
           aria-hidden="true"
         />
-        <div className="absolute left-3 top-3 z-10 flex flex-wrap gap-1.5">
-          <span className="rounded-md bg-white/95 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-[#1F4E79] shadow-sm">
+        <div className="absolute left-3 top-3 z-20 flex flex-wrap gap-1.5">
+          <button
+            type="button"
+            onClick={toggleBreakdown}
+            aria-expanded={showBreakdown}
+            aria-controls={panelId}
+            title={showBreakdown ? 'Hide match breakdown' : 'See why they matched'}
+            className={`cursor-pointer rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-wide shadow-sm transition ${
+              showBreakdown
+                ? 'bg-[#1F4E79] text-white ring-2 ring-white/70'
+                : 'bg-white/95 text-[#1F4E79] hover:bg-white'
+            }`}
+          >
             {Math.round(score)}% match
-          </span>
+          </button>
           {accepted ? (
             <span className="rounded-md bg-emerald-500 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm">
               {selected ? 'Chatting' : 'Accepted'}
@@ -119,6 +174,73 @@ function WorkerMatchDetailCard({
             <span className="truncate">{formatLocation(profile)}</span>
           </p>
         </div>
+
+        {showBreakdown ? (
+          <div
+            id={panelId}
+            role="dialog"
+            aria-label={`Why ${name} matched`}
+            className="absolute inset-0 z-30 flex flex-col bg-[#0d2a44]/55 p-3 backdrop-blur-[2px]"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+          >
+            <div className="mt-auto overflow-hidden rounded-2xl border border-white/40 bg-white/95 shadow-[0_12px_28px_rgba(8,45,90,0.35)]">
+              <div className="flex items-start justify-between gap-2 border-b border-[#1F4E79]/10 px-3 py-2.5">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-[#2E75B6]">
+                    Why they matched
+                  </p>
+                  <p className="mt-0.5 text-sm font-semibold text-[#1F4E79]">
+                    {Math.round(score)}% overall match
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={toggleBreakdown}
+                  className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-gray-100 text-gray-600 transition hover:bg-gray-200"
+                  aria-label="Close match breakdown"
+                >
+                  <HiOutlineXMark className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </div>
+
+              <ul className="space-y-2.5 px-3 py-3">
+                {breakdownItems.map((item) => {
+                  const style = FACTOR_STYLES[item.key] || FACTOR_STYLES.skills;
+                  const pct = typeof item.percent === 'number' ? item.percent : null;
+                  return (
+                    <li key={`${item.key}-${item.label}`}>
+                      <div className="flex items-center justify-between gap-2">
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${style.chip}`}
+                        >
+                          {item.label}
+                        </span>
+                        {pct != null ? (
+                          <span className="shrink-0 text-xs font-bold tabular-nums text-[#1F4E79]">
+                            {pct}%
+                          </span>
+                        ) : null}
+                      </div>
+                      {pct != null ? (
+                        <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-gray-100">
+                          <div
+                            className={`h-full rounded-full transition-all duration-300 ${style.bar}`}
+                            style={{ width: `${Math.min(100, Math.max(4, pct * 2))}%` }}
+                          />
+                        </div>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
+
+              <p className="border-t border-gray-100 px-3 py-2 text-[10px] leading-snug text-gray-500">
+                Tap the match % again to close. Higher bars mean a stronger fit for that part.
+              </p>
+            </div>
+          </div>
+        ) : null}
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col px-3 pb-3 pt-2.5">
@@ -157,8 +279,9 @@ function WorkerMatchDetailCard({
           ) : null}
         </div>
 
-        <p className="mt-1.5 line-clamp-2 text-[11px] leading-snug text-gray-500">
-          {reasonLine}
+        <p className="mt-2 text-[10px] text-gray-400">
+          Tap <span className="font-semibold text-[#1F4E79]">{Math.round(score)}% match</span> to see
+          why
         </p>
 
         <div className="mt-auto space-y-2 pt-2">

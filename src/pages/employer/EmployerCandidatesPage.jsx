@@ -126,6 +126,7 @@ function EmployerCandidatesPage() {
         score: 70,
         reasons: ['Accepted your request'],
         matchedSkills: app.workerSkills || [],
+        breakdown: [{ key: 'accepted', label: 'Accepted your request', percent: 70 }],
       });
     });
 

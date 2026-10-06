@@ -7,7 +7,10 @@ export * from './workerProfile.js';
 export {
   MATCH_LIMITS,
   GREEDY_POOL_SIZE,
+  WEIGHTS,
   scoreWorkerFactors,
+  buildMatchBreakdown,
+  formatMatchBreakdownLines,
   greedyBestFirstNarrow,
   astarSelectShortlist,
   runMatchingEngine,

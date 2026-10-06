@@ -84,11 +84,11 @@ function JobCard({
           </div>
         ) : null}
 
-        {matchReasons ? (
+        {matchReasons?.length ? (
           <div className="mt-3 rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2">
             <p className="text-xs font-medium text-emerald-900">Why you were matched</p>
             <ul className="mt-1 space-y-0.5 text-xs text-emerald-800">
-              {matchReasons.map((reason) => (
+              {matchReasons.slice(0, 4).map((reason) => (
                 <li key={reason}>&#x2022; {reason}</li>
               ))}
             </ul>

@@ -12,7 +12,13 @@ import {
   useOpenJobs,
   useWorkerProfile,
 } from '../../lib/matching/hooks.js';
-import { scoreMatch, workerMatchesJob } from '../../lib/matching/index.js';
+import {
+  buildMatchBreakdown,
+  formatMatchBreakdownLines,
+  scoreWorkerFactors,
+  workerMatchesJob,
+} from '../../lib/matching/index.js';
+import { normalizeWorkerSkills } from '../../data/skills.js';
 import { ACTIVE_APPLICATION_STATUSES } from '../../lib/matching/statuses.js';
 import { dismissMatchedJob } from '../../lib/matching/workerProfile.js';
 import { locationLabel } from '../../utils/clientJobs.js';
@@ -44,12 +50,23 @@ function ApplicantJobsPage() {
   );
 
   const matched = useMemo(() => {
-    const skills = profile?.skills || [];
+    const { skills } = normalizeWorkerSkills(profile || {});
     if (!profile || skills.length === 0) return [];
     return openJobs
       .map((job) => {
-        const { score, reasons, matchedSkills } = scoreMatch(job, profile);
-        return { job, score, reasons, matchedSkills };
+        const result = scoreWorkerFactors(job, profile);
+        const breakdown = buildMatchBreakdown({
+          factors: result.factors,
+          primaryMatches: result.primaryMatches,
+          rating: profile.rating,
+          audience: 'worker',
+        });
+        return {
+          job,
+          score: result.total,
+          reasons: formatMatchBreakdownLines(breakdown),
+          matchedSkills: result.matchedSkills,
+        };
       })
       .filter((entry) => workerMatchesJob(entry.job, profile))
       .filter((entry) => !dismissedJobIds.has(entry.job.docId || entry.job.id))

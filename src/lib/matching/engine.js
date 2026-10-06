@@ -19,7 +19,7 @@ export const MATCH_LIMITS = Object.freeze({ min: 1, max: 5 });
 /** Greedy pool size before A* (best-first narrowing). */
 export const GREEDY_POOL_SIZE = 18;
 
-const WEIGHTS = Object.freeze({
+export const WEIGHTS = Object.freeze({
   skills: 0.45,
   location: 0.25,
   category: 0.15,
@@ -28,6 +28,85 @@ const WEIGHTS = Object.freeze({
 
 function clamp100(n) {
   return Math.max(0, Math.min(100, n));
+}
+
+function contributionPercent(factorScore, weight) {
+  return Math.max(0, Math.round((Number(factorScore) || 0) * weight));
+}
+
+function locationBreakdownLabel(locationScore, audience = 'employer') {
+  const forWorker = audience === 'worker';
+  if (locationScore >= 95) {
+    return forWorker ? 'Same barangay as the job' : 'Lives in your barangay';
+  }
+  if (locationScore >= 70) {
+    return forWorker ? 'Close to the job site' : 'Close to your place';
+  }
+  if (locationScore >= 45) {
+    return forWorker ? 'Somewhat near the job site' : 'Somewhat near your place';
+  }
+  if (locationScore >= 25) {
+    return forWorker ? 'A bit farther from the job' : 'A bit farther from your place';
+  }
+  return forWorker ? 'Farther from the job site' : 'Farther from your place';
+}
+
+function reputationBreakdownLabel(reputationScore, rating) {
+  if (typeof rating === 'number' && rating >= 4.5) return 'Excellent rating';
+  if (typeof rating === 'number' && rating >= 4) return 'Strong rating';
+  if (reputationScore >= 70) return 'Solid work history';
+  if (reputationScore >= 40) return 'Some job experience';
+  return 'New on the platform';
+}
+
+/**
+ * Plain-language breakdown of how much each factor added to the match %.
+ * Example: "Primary skill matches — 41%"
+ *
+ * @param {'employer'|'worker'} audience — tweaks location wording
+ */
+export function buildMatchBreakdown({
+  factors = {},
+  primaryMatches = false,
+  rating = null,
+  audience = 'employer',
+} = {}) {
+  const skillsPts = contributionPercent(factors.skills, WEIGHTS.skills);
+  const locationPts = contributionPercent(factors.location, WEIGHTS.location);
+  const categoryPts = contributionPercent(factors.category, WEIGHTS.category);
+  const reputationPts = contributionPercent(factors.reputation, WEIGHTS.reputation);
+
+  const items = [
+    {
+      key: 'skills',
+      label: primaryMatches ? 'Primary skill matches' : 'Additional skills match',
+      percent: skillsPts,
+    },
+    {
+      key: 'location',
+      label: locationBreakdownLabel(factors.location ?? 0, audience),
+      percent: locationPts,
+    },
+    {
+      key: 'category',
+      label: 'Fits this job category',
+      percent: categoryPts,
+    },
+    {
+      key: 'reputation',
+      label: reputationBreakdownLabel(factors.reputation ?? 0, rating),
+      percent: reputationPts,
+    },
+  ];
+
+  return items
+    .filter((item) => item.percent > 0)
+    .sort((a, b) => b.percent - a.percent);
+}
+
+/** Format breakdown rows for UI lists. */
+export function formatMatchBreakdownLines(breakdown = []) {
+  return breakdown.map((item) => `${item.label} — ${item.percent}%`);
 }
 
 function haversineKm(a, b) {
@@ -164,6 +243,13 @@ export function scoreWorkerFactors(job, profile) {
       factors.reputation * WEIGHTS.reputation,
   );
 
+  const breakdown = buildMatchBreakdown({
+    factors,
+    primaryMatches,
+    rating,
+    audience: 'employer',
+  });
+
   const eligible =
     matchedSkills.length > 0 &&
     (profile.moderationStatus || 'active') === 'active';
@@ -174,6 +260,8 @@ export function scoreWorkerFactors(job, profile) {
     reasons,
     matchedSkills,
     factors,
+    breakdown,
+    primaryMatches,
   };
 }
 
@@ -256,14 +344,25 @@ export function runMatchingEngine(job, workerProfiles = []) {
  * Serialize engine output for Firestore on the job document.
  */
 export function serializeEngineMatches(matches) {
-  return matches.map((entry) => ({
-    workerId: entry.profile.docId || entry.profile.uid,
-    workerName: entry.profile.name || 'Worker',
-    score: Math.round(entry.score * 10) / 10,
-    reasons: entry.reasons || [],
-    matchedSkills: entry.matchedSkills || [],
-    rank: entry.rank,
-  }));
+  return matches.map((entry) => {
+    const breakdown =
+      entry.breakdown ||
+      buildMatchBreakdown({
+        factors: entry.factors,
+        primaryMatches: entry.primaryMatches,
+        rating: entry.profile?.rating,
+      });
+    return {
+      workerId: entry.profile.docId || entry.profile.uid,
+      workerName: entry.profile.name || 'Worker',
+      score: Math.round(entry.score * 10) / 10,
+      reasons: entry.reasons || [],
+      matchedSkills: entry.matchedSkills || [],
+      factors: entry.factors || null,
+      breakdown,
+      rank: entry.rank,
+    };
+  });
 }
 
 /**
@@ -299,11 +398,26 @@ export function hydrateEngineMatches(
           name: m.workerName || 'Worker',
           skills: m.matchedSkills || [],
         };
+      const breakdown =
+        Array.isArray(m.breakdown) && m.breakdown.length
+          ? m.breakdown
+          : m.factors
+            ? buildMatchBreakdown({
+                factors: m.factors,
+                primaryMatches: (m.matchedSkills || []).includes(
+                  profile.primarySkill || (profile.skills || [])[0],
+                ),
+                rating: profile.rating,
+              })
+            : [];
+
       return {
         profile,
         score: m.score ?? 0,
         reasons: m.reasons || [],
         matchedSkills: m.matchedSkills || [],
+        factors: m.factors || null,
+        breakdown,
         rank: m.rank,
       };
     });
