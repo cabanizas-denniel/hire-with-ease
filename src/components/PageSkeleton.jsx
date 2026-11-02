@@ -117,4 +117,13 @@ export function DashboardRouteFallback() {
   );
 }
 
+/** Lightweight fallback for public routes (login, register, privacy, terms). */
+export function PublicRouteFallback() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-[#f0f3f7]">
+      <p className="text-sm font-medium text-[#1F4E79]">Loading…</p>
+    </div>
+  );
+}
+
 export default PageSkeleton;

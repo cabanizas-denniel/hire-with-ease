@@ -457,12 +457,20 @@ function LandingPage() {
                 On-demand skilled worker matching — connecting clients with qualified workers through
                 scored shortlists for informal labor markets in Olongapo.
               </p>
-              <Link
-                to="/privacy"
-                className="mt-3 inline-block text-sm font-semibold text-[#2E75B6] hover:underline"
-              >
-                Privacy & data use
-              </Link>
+              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
+                <Link
+                  to="/privacy"
+                  className="text-sm font-semibold text-[#2E75B6] hover:underline"
+                >
+                  Privacy Policy
+                </Link>
+                <Link
+                  to="/terms"
+                  className="text-sm font-semibold text-[#2E75B6] hover:underline"
+                >
+                  Terms & Conditions
+                </Link>
+              </div>
             </div>
             <div className="text-sm text-gray-600">
               <p className="font-semibold text-[#1F4E79]">Contact</p>

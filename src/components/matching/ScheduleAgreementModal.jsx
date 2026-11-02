@@ -12,6 +12,7 @@ import {
   notifyScheduleConfirmed,
   notifyScheduleProposed,
 } from '../../lib/notifications.js';
+import ScheduleTimeSelect from '../ScheduleTimeSelect.jsx';
 import { formatScheduledStart } from '../../lib/scheduleFormat.js';
 
 function scopeText(proposed) {
@@ -421,14 +422,11 @@ function ScheduleAgreementModal({
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
                   />
-                  <input
-                    type="time"
+                  <ScheduleTimeSelect
                     required
-                    aria-label="Start time"
-                    step={900}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
                     value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
+                    onChange={setStartTime}
+                    className="py-2 text-sm"
                   />
                 </div>
               </div>

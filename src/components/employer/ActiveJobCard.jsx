@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   HiOutlineBanknotes,
   HiOutlineCalendarDays,
@@ -17,9 +18,11 @@ import { setJobStatus } from '../../lib/matching/jobs.js';
 import {
   buildApplicationId,
   declineAllApplicationsForJob,
+  declineApplication,
   markApplicationCompleted,
 } from '../../lib/matching/applications.js';
 import { useApplication } from '../../lib/matching/hooks.js';
+import Modal from '../Modal.jsx';
 
 /**
  * Central "ongoing job" card for the client. Dominates the dashboard and
@@ -34,6 +37,9 @@ function ActiveJobCard({ job, variant = 'full', applicantsCount = 0 }) {
       ? buildApplicationId(jobId, job.confirmedWorkerId)
       : null;
   const { data: application } = useApplication(appId);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelBusy, setCancelBusy] = useState(false);
+  const [cancelError, setCancelError] = useState(null);
 
   if (!job) return null;
 
@@ -70,25 +76,51 @@ function ActiveJobCard({ job, variant = 'full', applicantsCount = 0 }) {
 
   const canCancelMatching =
     job.status === JOB_STATUS.MATCHING || job.status === JOB_STATUS.MATCHED;
+  const canStopContract =
+    job.status === JOB_STATUS.CONFIRMED || job.status === JOB_STATUS.IN_PROGRESS;
 
-  const handleCancelMatching = async () => {
+  const cancelTitle = canStopContract
+    ? 'Stop this contract?'
+    : job.status === JOB_STATUS.MATCHING
+      ? 'Cancel this request?'
+      : 'Cancel matching for this request?';
+  const cancelBody = canStopContract
+    ? 'This ends the agreed hire with the worker, unlocks the booking, and cancels the request. Reporting a worker does not do this — only Stop contract does.'
+    : job.status === JOB_STATUS.MATCHING
+      ? 'Workers will stop seeing it and you can post a new job later.'
+      : 'All current applicants will be closed out and you can post a new job later.';
+  const cancelConfirmLabel = canStopContract ? 'Stop contract' : 'Cancel matching';
+
+  const closeCancelModal = () => {
+    if (cancelBusy) return;
+    setCancelOpen(false);
+    setCancelError(null);
+  };
+
+  const confirmCancelOrStop = async () => {
     if (!jobId) return;
-    const msg =
-      job.status === JOB_STATUS.MATCHING
-        ? 'Cancel this request? Workers will stop seeing it and you can post a new job later.'
-        : 'Cancel matching for this request? All current applicants will be closed out and you can post a new job later.';
-    if (!window.confirm(msg)) return;
+    setCancelBusy(true);
+    setCancelError(null);
     try {
+      if (canStopContract && job.confirmedWorkerId) {
+        await declineApplication(buildApplicationId(jobId, job.confirmedWorkerId), {
+          byRole: 'client',
+        });
+      }
       await declineAllApplicationsForJob(jobId);
       await setJobStatus(jobId, JOB_STATUS.CANCELLED, {
         cancelledAt: new Date().toISOString(),
       });
+      setCancelOpen(false);
     } catch (err) {
-      alert(err.message || 'Could not cancel. Please try again.');
+      setCancelError(err.message || 'Could not cancel. Please try again.');
+    } finally {
+      setCancelBusy(false);
     }
   };
 
   return (
+    <>
     <section className="panel-surface overflow-hidden rounded-2xl border border-[#1F4E79]/25 bg-white shadow-sm">
       <header className="flex flex-col gap-3 border-b border-gray-100 bg-[#1F4E79] p-4 text-white sm:flex-row sm:items-start sm:justify-between sm:p-5">
         <div className="min-w-0">
@@ -154,11 +186,27 @@ function ActiveJobCard({ job, variant = 'full', applicantsCount = 0 }) {
           {canCancelMatching ? (
             <button
               type="button"
-              onClick={handleCancelMatching}
+              onClick={() => {
+                setCancelError(null);
+                setCancelOpen(true);
+              }}
               className="inline-flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-red-200 bg-white px-4 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-50 sm:w-auto"
             >
               <HiOutlineStopCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
               Cancel matching
+            </button>
+          ) : null}
+          {canStopContract ? (
+            <button
+              type="button"
+              onClick={() => {
+                setCancelError(null);
+                setCancelOpen(true);
+              }}
+              className="inline-flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-red-200 bg-white px-4 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-50 sm:w-auto"
+            >
+              <HiOutlineStopCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
+              Stop contract
             </button>
           ) : null}
           {!compact && (job.status === JOB_STATUS.IN_PROGRESS || job.status === JOB_STATUS.CONFIRMED) ? (
@@ -180,6 +228,28 @@ function ActiveJobCard({ job, variant = 'full', applicantsCount = 0 }) {
         </div>
       </div>
     </section>
+
+    <Modal
+      isOpen={cancelOpen}
+      title={cancelTitle}
+      onClose={closeCancelModal}
+      onConfirm={confirmCancelOrStop}
+      confirmText={
+        cancelBusy
+          ? canStopContract
+            ? 'Stopping…'
+            : 'Cancelling…'
+          : cancelConfirmLabel
+      }
+    >
+      <p>{cancelBody}</p>
+      {cancelError ? (
+        <p className="mt-2 rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700">
+          {cancelError}
+        </p>
+      ) : null}
+    </Modal>
+    </>
   );
 }
 

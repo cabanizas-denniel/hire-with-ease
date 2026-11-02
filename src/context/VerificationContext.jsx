@@ -102,6 +102,27 @@ function isDocumentPendingForReview(doc) {
   return false;
 }
 
+function isDocumentApproved(doc) {
+  if (!doc) return false;
+  if (doc.reviewStatus) return doc.reviewStatus === 'reviewed';
+  return doc.reviewed === true;
+}
+
+function isWorkerRole(rec) {
+  return rec?.role !== 'client';
+}
+
+/** Identity + at least one approved supporting document — ready to match. */
+function workerMeetsActivationRequirements(rec) {
+  if (!isWorkerRole(rec)) return false;
+  const identityOk =
+    normalizeStage2ReviewStatus(rec?.stage2?.reviewStatus) === 'reviewed';
+  const docsOk =
+    Boolean(rec?.stage3?.documentBacked) ||
+    (rec?.stage3?.documents || []).some(isDocumentApproved);
+  return identityOk && docsOk;
+}
+
 function defaultRecordForRole(role) {
   return {
     role: role === 'client' ? 'client' : 'service-provider',
@@ -205,27 +226,40 @@ export function VerificationProvider({ children }) {
     [persistToFirestore, user?.uid, appRole]
   );
 
-  // Backfill employer trust upgrade for accounts approved before auto-activation existed.
+  // Backfill auto-activation for accounts approved before this rule existed.
   useEffect(() => {
     const isClientRecord = (userId, rec) =>
       rec?.role === 'client' || (userId === user?.uid && appRole === 'employer');
-    const needsBackfill = Object.entries(records).filter(
-      ([userId, rec]) =>
-        isClientRecord(userId, rec) &&
-        normalizeStage2ReviewStatus(rec.stage2?.reviewStatus) === 'reviewed' &&
-        !rec.stage4?.activatedAt
-    );
+    const needsBackfill = Object.entries(records).filter(([userId, rec]) => {
+      if (rec?.stage4?.activatedAt) return false;
+      if (isClientRecord(userId, rec)) {
+        return normalizeStage2ReviewStatus(rec.stage2?.reviewStatus) === 'reviewed';
+      }
+      // Workers: activate once identity + supporting docs are already approved.
+      return workerMeetsActivationRequirements(rec);
+    });
     if (!needsBackfill.length) return;
     for (const [userId] of needsBackfill) {
-      void update(userId, (r) => ({
-        ...r,
-        stage4: {
-          activatedAt: r.stage2?.reviewedAt || new Date().toISOString(),
-          activatedBy: r.stage2?.reviewedBy || 'PESO',
-        },
-      }));
+      void update(userId, (r) => {
+        const docsOk =
+          Boolean(r?.stage3?.documentBacked) ||
+          (r?.stage3?.documents || []).some(isDocumentApproved);
+        return {
+          ...r,
+          stage3: {
+            ...(r.stage3 || { documents: [] }),
+            documents: r.stage3?.documents || [],
+            // Keep rules (documentBacked == true) in sync with approved docs.
+            documentBacked: Boolean(r.stage3?.documentBacked) || docsOk,
+          },
+          stage4: {
+            activatedAt: r.stage2?.reviewedAt || new Date().toISOString(),
+            activatedBy: r.stage2?.reviewedBy || 'PESO',
+          },
+        };
+      });
     }
-  }, [records, update]);
+  }, [records, update, user?.uid, appRole]);
 
   const confirmOtp = useCallback(
     (userId, { email } = {}) => {
@@ -331,6 +365,7 @@ export function VerificationProvider({ children }) {
     async (userId, { approve, reviewer, note = '' }) => {
       const nowIso = new Date().toISOString();
       let verificationRole = 'service-provider';
+      let workerActivated = false;
       await update(
         userId,
         (rec) => {
@@ -346,7 +381,8 @@ export function VerificationProvider({ children }) {
               reviewNote: note,
             },
           };
-          // Employers: trust upgrade (stage 4) is automatic once PESO approves identity.
+          // Employers: trust upgrade once identity is approved.
+          // Workers: activate once identity + supporting documents are both approved.
           if (isClient) {
             next.stage4 = approve
               ? {
@@ -354,6 +390,17 @@ export function VerificationProvider({ children }) {
                   activatedBy: reviewer || 'PESO',
                 }
               : { activatedAt: null, activatedBy: null };
+          } else if (approve && workerMeetsActivationRequirements(next) && !next.stage4?.activatedAt) {
+            next.stage3 = {
+              ...(next.stage3 || { documents: [] }),
+              documents: next.stage3?.documents || [],
+              documentBacked: true,
+            };
+            next.stage4 = {
+              activatedAt: nowIso,
+              activatedBy: reviewer || 'PESO',
+            };
+            workerActivated = true;
           }
           return next;
         },
@@ -367,6 +414,13 @@ export function VerificationProvider({ children }) {
         });
       } catch (err) {
         console.warn('Could not create identity review notification', err);
+      }
+      if (workerActivated) {
+        try {
+          await notifyWorkerActivation(userId, { eventAt: nowIso });
+        } catch (err) {
+          console.warn('Could not create activation notification', err);
+        }
       }
     },
     [update]
@@ -451,6 +505,7 @@ export function VerificationProvider({ children }) {
       const nowIso = new Date().toISOString();
       let verificationRole = 'service-provider';
       let docLabel = 'supporting document';
+      let workerActivated = false;
       await update(
         userId,
         (rec) => {
@@ -469,13 +524,24 @@ export function VerificationProvider({ children }) {
                 }
               : d
           );
-          const documentBacked = documents.some(
-            (d) => d?.reviewStatus === 'reviewed' || d?.reviewed === true
-          );
-          return {
+          const documentBacked = documents.some(isDocumentApproved);
+          const next = {
             ...rec,
             stage3: { ...rec.stage3, documents, documentBacked },
           };
+          if (
+            approve &&
+            isWorkerRole(next) &&
+            workerMeetsActivationRequirements(next) &&
+            !next.stage4?.activatedAt
+          ) {
+            next.stage4 = {
+              activatedAt: nowIso,
+              activatedBy: reviewer || 'PESO',
+            };
+            workerActivated = true;
+          }
+          return next;
         },
         { awaitPersist: true }
       );
@@ -489,6 +555,13 @@ export function VerificationProvider({ children }) {
         });
       } catch (err) {
         console.warn('Could not create document review notification', err);
+      }
+      if (workerActivated) {
+        try {
+          await notifyWorkerActivation(userId, { eventAt: nowIso });
+        } catch (err) {
+          console.warn('Could not create activation notification', err);
+        }
       }
     },
     [update]
@@ -669,12 +742,7 @@ export function VerificationProvider({ children }) {
   const pendingActivations = useMemo(
     () =>
       Object.entries(records)
-        .filter(
-          ([, rec]) =>
-            rec.role === 'service-provider' &&
-            rec.stage2?.reviewStatus === 'reviewed' &&
-            !rec.stage4?.activatedAt
-        )
+        .filter(([, rec]) => workerMeetsActivationRequirements(rec) && !rec.stage4?.activatedAt)
         .map(([id, rec]) => ({ id, record: rec })),
     [records]
   );

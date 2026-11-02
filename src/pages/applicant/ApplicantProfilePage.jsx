@@ -551,7 +551,7 @@ function ProfileFormStatus({ error, success, form, onEditStep }) {
                 to="/applicant/jobs"
                 className="inline-flex rounded-lg bg-[#1F4E79] px-4 py-2 text-sm font-semibold text-white hover:brightness-110"
               >
-                View matched jobs
+                View jobs
               </Link>
               <button
                 type="button"

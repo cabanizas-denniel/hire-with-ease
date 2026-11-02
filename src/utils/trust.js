@@ -6,7 +6,7 @@
  *   Tier 1 — Email verified (Stage 1 OTP done)
  *   Tier 2 — Identity Reviewed (Stage 1 + Stage 2 reviewed by admin)
  *   Tier 3 — Document-Backed (Tier 2 + Stage 3 has >=1 admin-reviewed doc)
- *   Tier 4 — Fully Verified (Tier 2 + Stage 4 admin activation; Stage 3 optional but strong)
+ *   Tier 4 — Fully Verified (Tier 2 + Stage 3 docs + Stage 4 admin activation for workers)
  *
  * The "Verified" badge across the app displays only at Tier 4 for service providers.
  * Clients have the same tier semantics but the activation rule is relaxed (see below).

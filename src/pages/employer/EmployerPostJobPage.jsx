@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   HiOutlineArrowLeft,
   HiOutlineArrowRight,
-  HiOutlineExclamationTriangle,
   HiOutlinePhoto,
   HiOutlineTrash,
   HiOutlineXMark,
@@ -23,6 +22,7 @@ import {
 } from '../../lib/jobIssueMediaUpload.js';
 import { createJob, findActiveJob, newJobId } from '../../lib/matching/jobs.js';
 import { useJobsByOwner } from '../../lib/matching/hooks.js';
+import ScheduleTimeSelect from '../../components/ScheduleTimeSelect.jsx';
 import {
   formatScheduledStart,
   scheduledStartAtIso,
@@ -30,7 +30,6 @@ import {
   validateScheduledStart,
 } from '../../lib/scheduleFormat.js';
 import { clientTrustTierFromUserDoc } from '../../lib/employerTrust.js';
-import { formatHomeAddress } from '../../utils/clientJobs.js';
 
 const WIZARD_STEPS = ['Identify the issue', 'Budget & schedule', 'Review & submit'];
 
@@ -443,14 +442,11 @@ function BudgetScheduleStep({ form, setForm, minScheduleDate }) {
             <label htmlFor="job-schedule-time" className="mb-1 block text-xs font-medium text-gray-600">
               Time
             </label>
-            <input
+            <ScheduleTimeSelect
               id="job-schedule-time"
-              type="time"
-              step={900}
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-base"
               value={form.scheduleTime}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, scheduleTime: e.target.value }))
+              onChange={(scheduleTime) =>
+                setForm((prev) => ({ ...prev, scheduleTime }))
               }
             />
           </div>
@@ -608,53 +604,27 @@ function BlockedByActiveJob({ activeJob }) {
   return (
     <div>
       <PageHeader
-        title="One Job at a Time"
-        subtitle="You already have an ongoing request. Finish it before posting a new one."
+        title="Request Service"
+        subtitle="You have an active request. Complete it to post another."
       />
-
-      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 sm:p-5">
-        <div className="flex items-start gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700">
-            <HiOutlineExclamationTriangle className="h-5 w-5" aria-hidden="true" />
-          </div>
-          <div className="min-w-0">
-            <h3 className="text-sm font-semibold text-amber-900 sm:text-base">
-              Why can't I post another request right now?
-            </h3>
-            <p className="mt-1 text-sm text-amber-900/90">
-              Workers expect you at{' '}
-              <strong>
-                {formatHomeAddress(activeJob.location) || 'your home address'}
-              </strong>{' '}
-              until this job is done.
-            </p>
-          </div>
-        </div>
-      </div>
 
       <div className="mt-5">
         <ActiveJobCard job={activeJob} />
       </div>
 
-      <div className="mt-5 rounded-xl border border-gray-100 bg-white p-4 text-sm text-gray-600 shadow-sm sm:p-5">
-        <p>
-          Once this job is marked <span className="font-semibold">Completed</span>, you can post a
-          new request.
-        </p>
-        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-          <Link
-            to="/employer/jobs"
-            className="inline-flex w-full items-center justify-center rounded-lg bg-[#1F4E79] px-4 py-2.5 text-sm font-semibold text-white sm:w-auto"
-          >
-            Go to My Requests
-          </Link>
-          <Link
-            to="/employer/dashboard"
-            className="inline-flex w-full items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 sm:w-auto"
-          >
-            Back to Dashboard
-          </Link>
-        </div>
+      <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+        <Link
+          to="/employer/jobs"
+          className="inline-flex w-full items-center justify-center rounded-lg bg-[#1F4E79] px-4 py-2.5 text-sm font-semibold text-white sm:w-auto"
+        >
+          View request
+        </Link>
+        <Link
+          to="/employer/dashboard"
+          className="inline-flex w-full items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 sm:w-auto"
+        >
+          Home
+        </Link>
       </div>
     </div>
   );

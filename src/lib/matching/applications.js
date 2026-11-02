@@ -22,7 +22,11 @@ import {
   deleteField,
 } from 'firebase/firestore';
 import { db } from '../firebase.js';
-import { APPLICATION_STATUS, JOB_STATUS } from './statuses.js';
+import {
+  ACTIVE_APPLICATION_STATUSES,
+  APPLICATION_STATUS,
+  JOB_STATUS,
+} from './statuses.js';
 import { recordMatchDecline } from './matchDeclines.js';
 import { sendMessage } from './threads.js';
 import { notifyHireDeclined } from '../notifications.js';
@@ -31,9 +35,49 @@ export function buildApplicationId(jobId, workerId) {
   return `app-${jobId}-${workerId}`;
 }
 
+/** True when the worker already has a non-terminal accepted job. */
+export function hasActiveApplication(applications) {
+  return (applications || []).some((a) =>
+    ACTIVE_APPLICATION_STATUSES.has(a.status),
+  );
+}
+
+export function findActiveApplication(applications) {
+  return (
+    (applications || []).find((a) => ACTIVE_APPLICATION_STATUSES.has(a.status)) ||
+    null
+  );
+}
+
+/**
+ * Load any active application for this worker, optionally ignoring one job
+ * (so re-accepting the same job stays idempotent).
+ */
+export async function getActiveApplicationForWorker(
+  workerId,
+  { exceptJobId = null } = {},
+) {
+  if (!workerId) return null;
+  const q = query(
+    collection(db, 'applications'),
+    where('workerId', '==', workerId),
+  );
+  const snap = await getDocs(q);
+  return (
+    snap.docs
+      .map((d) => ({ docId: d.id, ...d.data() }))
+      .find(
+        (a) =>
+          ACTIVE_APPLICATION_STATUSES.has(a.status) &&
+          a.jobId !== exceptJobId,
+      ) || null
+  );
+}
+
 /**
  * Worker applies to a job. Idempotent: re-applying just refreshes the
  * timestamp and bumps any declined application back to pending.
+ * Workers may only hold one active job at a time.
  */
 export async function applyToJob({
   jobId,
@@ -48,35 +92,75 @@ export async function applyToJob({
   jobTitle,
   message,
 }) {
+  if (!jobId || !workerId) {
+    throw new Error('applyToJob: jobId and workerId are required');
+  }
+
   const id = buildApplicationId(jobId, workerId);
   const ref = doc(db, 'applications', id);
-  await setDoc(
-    ref,
-    {
-      id,
-      jobId,
-      workerId,
-      workerName: workerName || null,
-      workerSkills,
-      clientId: clientId || null,
-      clientName: clientName || null,
-      clientEmail: clientEmail || null,
-      clientMobile: clientMobile || null,
-      clientTrustTier:
-        typeof clientTrustTier === 'number' ? clientTrustTier : null,
-      jobTitle: jobTitle || null,
-      status: APPLICATION_STATUS.PENDING,
-      message: message || null,
-      proposedAgreement: null,
-      proposedBy: null,
-      confirmedByClient: false,
-      confirmedByWorker: false,
-      appliedAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true }
-  );
-  return id;
+
+  try {
+    const existingActive = await getActiveApplicationForWorker(workerId, {
+      exceptJobId: jobId,
+    });
+    if (existingActive) {
+      throw new Error(
+        'You already have an active job. Finish or withdraw from it before accepting another.',
+      );
+    }
+  } catch (err) {
+    const code = err?.code || '';
+    const msg = String(err?.message || '');
+    // Don't block Accept on a list-permission glitch; create/update rules still enforce access.
+    if (
+      code !== 'permission-denied' &&
+      !/missing or insufficient permissions/i.test(msg)
+    ) {
+      throw err;
+    }
+  }
+
+  try {
+    await setDoc(
+      ref,
+      {
+        id,
+        jobId,
+        workerId,
+        workerName: workerName || null,
+        workerSkills,
+        clientId: clientId || null,
+        clientName: clientName || null,
+        clientEmail: clientEmail || null,
+        clientMobile: clientMobile || null,
+        clientTrustTier:
+          typeof clientTrustTier === 'number' ? clientTrustTier : null,
+        jobTitle: jobTitle || null,
+        status: APPLICATION_STATUS.PENDING,
+        message: message || null,
+        proposedAgreement: null,
+        proposedBy: null,
+        confirmedByClient: false,
+        confirmedByWorker: false,
+        appliedAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
+    return id;
+  } catch (err) {
+    const code = err?.code || '';
+    const msg = String(err?.message || '');
+    if (
+      code === 'permission-denied' ||
+      /missing or insufficient permissions/i.test(msg)
+    ) {
+      throw new Error(
+        'Could not accept this job (permission denied). Open Profile → Verification and confirm Stage 2 is approved and Stage 4 shows activated, then refresh and try again.',
+      );
+    }
+    throw err;
+  }
 }
 
 export function subscribeApplicationsForJob(jobId, onData, onError) {
@@ -208,6 +292,15 @@ export async function declineApplication(appId, { byRole = 'client' } = {}) {
       await recordMatchDecline({ jobId, workerId });
     } catch (err) {
       console.warn('Could not record match decline', err);
+    }
+    // Keep the job out of this worker's Jobs feed after they withdraw / are declined.
+    try {
+      const { getWorkerProfile, saveWorkerProfile } = await import('./workerProfile.js');
+      const profile = await getWorkerProfile(workerId);
+      const dismissed = [...new Set([...(profile?.dismissedJobIds || []), jobId])];
+      await saveWorkerProfile(workerId, { dismissedJobIds: dismissed });
+    } catch (err) {
+      console.warn('Could not dismiss job from worker feed', err);
     }
     try {
       const { removeWorkerFromJobShortlist } = await import('./jobs.js');

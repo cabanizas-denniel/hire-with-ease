@@ -165,7 +165,7 @@ export async function notifyScheduleProposed({
     message: detail
       ? `Your schedule for "${jobLabel}" was submitted (${detail}). Waiting for the homeowner to confirm.`
       : `Your schedule for "${jobLabel}" was submitted. Waiting for the homeowner to confirm.`,
-    linkTo: '/applicant/applications',
+    linkTo: '/applicant/jobs',
   });
 }
 
@@ -193,7 +193,7 @@ export async function notifyScheduleConfirmed({
     message: detail
       ? `The homeowner approved your agreement for "${jobLabel}" (${detail}). The booking is locked.`
       : `The homeowner approved your agreement for "${jobLabel}". The booking is locked.`,
-    linkTo: '/applicant/applications',
+    linkTo: '/applicant/jobs',
   });
 
   await createUserNotification(clientId, {
@@ -232,7 +232,7 @@ export async function notifyHireDeclined({
     message: byHomeowner
       ? `The homeowner declined you for "${jobLabel}".${unlockNote}`
       : `You withdrew from "${jobLabel}".${unlockNote}`,
-    linkTo: '/applicant/applications',
+    linkTo: '/applicant/jobs',
   });
 
   await createUserNotification(clientId, {

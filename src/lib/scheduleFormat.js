@@ -1,3 +1,34 @@
+/** Format a job's posting date for UI (from `postedAt` and/or `createdAt`). */
+export function formatPostedDate(postedAt, createdAt = null) {
+  let dt = null;
+  if (typeof postedAt === 'string') {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(postedAt)) {
+      const [y, m, d] = postedAt.split('-').map(Number);
+      dt = new Date(y, m - 1, d);
+    } else {
+      const parsed = new Date(postedAt);
+      if (!Number.isNaN(parsed.getTime())) dt = parsed;
+    }
+  } else if (postedAt && typeof postedAt.toDate === 'function') {
+    dt = postedAt.toDate();
+  } else if (postedAt?.seconds != null) {
+    dt = new Date(postedAt.seconds * 1000);
+  } else if (createdAt && typeof createdAt.toDate === 'function') {
+    dt = createdAt.toDate();
+  } else if (createdAt?.seconds != null) {
+    dt = new Date(createdAt.seconds * 1000);
+  } else if (typeof createdAt === 'string') {
+    const parsed = new Date(createdAt);
+    if (!Number.isNaN(parsed.getTime())) dt = parsed;
+  }
+  if (!dt || Number.isNaN(dt.getTime())) return null;
+  return dt.toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
 /** Today's date as `YYYY-MM-DD` for `<input type="date" min="...">`. */
 export function todayDateInputValue() {
   const now = new Date();

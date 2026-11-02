@@ -4,10 +4,22 @@ import AuthLayout from '../../components/auth/AuthLayout.jsx';
 import PasswordInput from '../../components/PasswordInput.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 
-const DEMO_LOGINS = [
-  { label: 'PESO admin', email: 'cabanizasdenniel@gmail.com', password: 'Admin123!' },
-  { label: 'Worker (activated)', email: 'rafael.worker@hwe.test', password: 'Worker123!' },
-  { label: 'Homeowner (trusted)', email: 'maria.home@hwe.test', password: 'Home123!' },
+const DEMO_ADMIN = {
+  label: 'PESO Admin',
+  email: 'cabanizasdenniel@gmail.com',
+  password: 'Admin123!',
+};
+
+const DEMO_HOMEOWNERS = [
+  { label: 'Maria Santos', email: 'maria.home@hwe.test', password: 'Home123!' },
+  { label: 'JR Properties', email: 'jr.home@hwe.test', password: 'Home123!' },
+  { label: 'GreenVille HOA', email: 'greenville.home@hwe.test', password: 'Home123!' },
+];
+
+const DEMO_APPLICANTS = [
+  { label: 'Rafael Santos', email: 'rafael.worker@hwe.test', password: 'Worker123!' },
+  { label: 'Jessa Villanueva', email: 'jessa.worker@hwe.test', password: 'Worker123!' },
+  { label: 'Mark Dela Cruz', email: 'mark.worker@hwe.test', password: 'Worker123!' },
 ];
 
 const LOGIN_BENEFITS = [
@@ -45,6 +57,8 @@ function LoginPage() {
   const [resetBusy, setResetBusy] = useState(false);
   const [resetNotice, setResetNotice] = useState('');
   const [tick, setTick] = useState(0);
+  const [demoHomeowner, setDemoHomeowner] = useState('');
+  const [demoApplicant, setDemoApplicant] = useState('');
 
   const { login, resendVerificationEmail, sendPasswordReset, getDefaultRoute, isAuthenticated, role } = useAuth();
   const navigate = useNavigate();
@@ -168,6 +182,15 @@ function LoginPage() {
     }
   };
 
+  const fillDemoAccount = (account) => {
+    if (!account) return;
+    setForm({ email: account.email, password: account.password });
+    setError('');
+    setNeedsVerification(false);
+    setResendNotice('');
+    setResetNotice('');
+  };
+
   const handleSendPasswordReset = async () => {
     setError('');
     setResendNotice('');
@@ -199,9 +222,6 @@ function LoginPage() {
       title="Welcome back"
       subtitle="Sign in to your Hire With Ease account."
       tagline="Sign in and get matched to the right people quickly and easily."
- 
- 
- 
       benefits={LOGIN_BENEFITS}
       footer={
         <p className="text-sm text-gray-600">
@@ -317,31 +337,60 @@ function LoginPage() {
           </div>
         ) : null}
 
-        <div className="rounded-xl border border-[#1F4E79]/15 bg-[#1F4E79]/5 p-3">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-[#1F4E79]">
-            Thesis demo accounts
-          </p>
-          <p className="mt-0.5 text-[11px] text-gray-600">
-            Run <code className="rounded bg-white px-1">npm run seed</code> once, then tap a row to fill the form.
-          </p>
-          <ul className="mt-2 space-y-1">
-            {DEMO_LOGINS.map((row) => (
-              <li key={row.email}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setForm({ email: row.email, password: row.password });
-                    setError('');
-                    setNeedsVerification(false);
-                  }}
-                  className="w-full rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-left text-[11px] hover:border-[#1F4E79]/40"
-                >
-                  <span className="font-semibold text-[#1F4E79]">{row.label}</span>
-                  <span className="mt-0.5 block truncate text-gray-500">{row.email}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <label className="block min-w-0">
+            <span className="mb-1 block text-xs font-semibold text-gray-700">Homeowner</span>
+            <select
+              value={demoHomeowner}
+              onChange={(e) => {
+                const email = e.target.value;
+                setDemoHomeowner(email);
+                setDemoApplicant('');
+                fillDemoAccount(DEMO_HOMEOWNERS.find((a) => a.email === email));
+              }}
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-800 focus:border-[#1F4E79] focus:outline-none focus:ring-2 focus:ring-[#1F4E79]/20"
+            >
+              <option value="">Select account</option>
+              {DEMO_HOMEOWNERS.map((account) => (
+                <option key={account.email} value={account.email}>
+                  {account.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block min-w-0">
+            <span className="mb-1 block text-xs font-semibold text-gray-700">Applicant</span>
+            <select
+              value={demoApplicant}
+              onChange={(e) => {
+                const email = e.target.value;
+                setDemoApplicant(email);
+                setDemoHomeowner('');
+                fillDemoAccount(DEMO_APPLICANTS.find((a) => a.email === email));
+              }}
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-800 focus:border-[#1F4E79] focus:outline-none focus:ring-2 focus:ring-[#1F4E79]/20"
+            >
+              <option value="">Select account</option>
+              {DEMO_APPLICANTS.map((account) => (
+                <option key={account.email} value={account.email}>
+                  {account.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <button
+            type="button"
+            onClick={() => {
+              setDemoHomeowner('');
+              setDemoApplicant('');
+              fillDemoAccount(DEMO_ADMIN);
+            }}
+            className="sm:col-span-2 cursor-pointer rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-left text-sm font-semibold text-[#1F4E79] hover:border-[#1F4E79]/50"
+          >
+            {DEMO_ADMIN.label}
+          </button>
         </div>
 
         {error ? (

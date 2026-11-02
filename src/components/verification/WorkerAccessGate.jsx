@@ -22,25 +22,32 @@ function GateCard({ title, body, actionTo = '/applicant/profile', actionLabel = 
 
 function computeWorkerGate(record) {
   const stage2Reviewed = record?.stage2?.reviewStatus === 'reviewed';
-  const documentBacked = Boolean(record?.stage3?.documentBacked);
+  const documentBacked =
+    Boolean(record?.stage3?.documentBacked) ||
+    (record?.stage3?.documents || []).some(
+      (d) => d?.reviewStatus === 'reviewed' || d?.reviewed === true,
+    );
   const activated = Boolean(record?.stage4?.activatedAt);
+  // Match firestore.rules workerIsActivated(): identity + activation.
+  // Docs remain required before activation is granted; gate still nudges if docs missing.
+  const canAct = stage2Reviewed && activated;
 
-  // Per your UI request: keep one PESO activation prompt (shown whenever access is locked).
-  if (!activated) {
+  if (!canAct) {
     const missing =
       !stage2Reviewed
-          ? 'Submit your ID + selfie and wait for PESO review.'
-          : !documentBacked
-            ? 'Upload supporting documents (TESDA, Barangay clearance, etc.).'
-            : 'Your file is complete — waiting for PESO to activate your account.';
+        ? 'Submit your ID + selfie and wait for PESO review.'
+        : !documentBacked
+          ? 'Upload supporting documents (TESDA, Barangay clearance, etc.) and wait for PESO approval.'
+          : 'Your file is complete — refresh once PESO activation finishes saving.';
     return {
       blocked: true,
+      canAct: false,
       title: 'PESO activation required',
-      body: `You can’t see matches or job records until your account is activated. ${missing}`,
+      body: `Complete verification to accept jobs and view history. ${missing}`,
     };
   }
 
-  return { blocked: false };
+  return { blocked: false, canAct: true };
 }
 
 export function useWorkerAccessGate() {
@@ -53,7 +60,7 @@ export function useWorkerAccessGate() {
 
 export default function WorkerAccessGate() {
   const gate = useWorkerAccessGate();
-  if (!gate.blocked) return null;
+  if (gate.canAct) return null;
   return (
     <GateCard
       title={gate.title}
@@ -63,4 +70,3 @@ export default function WorkerAccessGate() {
     />
   );
 }
-

@@ -5,12 +5,13 @@ import PageSkeleton from '../../components/PageSkeleton.jsx';
 import StatCard from '../../components/StatCard.jsx';
 import JobCard from '../../components/JobCard.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
-import WorkerAccessGate, { useWorkerAccessGate } from '../../components/verification/WorkerAccessGate.jsx';
+import { useWorkerAccessGate } from '../../components/verification/WorkerAccessGate.jsx';
 import {
   useApplicationsByWorker,
   useOpenJobs,
   useWorkerProfile,
 } from '../../lib/matching/hooks.js';
+import { hasActiveApplication } from '../../lib/matching/applications.js';
 import { scoreMatch } from '../../lib/matching/index.js';
 import {
   ACTIVE_APPLICATION_STATUSES,
@@ -22,15 +23,12 @@ function ApplicantDashboardPage() {
   const gate = useWorkerAccessGate();
   const auth = useAuth();
   const workerUid = auth?.user?.uid || null;
+  const canAct = Boolean(gate.canAct);
 
-  const shouldLoadData = !gate.blocked;
-
-  const { data: profile, loading: profileLoading } = useWorkerProfile(
-    shouldLoadData ? workerUid : null,
-  );
+  const { data: profile, loading: profileLoading } = useWorkerProfile(workerUid);
   const { data: openJobs, loading: jobsLoading } = useOpenJobs();
   const { data: myApps, loading: appsLoading } = useApplicationsByWorker(
-    shouldLoadData ? workerUid : null,
+    canAct ? workerUid : null,
   );
 
   const myActiveJobIds = useMemo(
@@ -48,22 +46,47 @@ function ApplicantDashboardPage() {
     [profile?.dismissedJobIds],
   );
 
+  const declinedJobIds = useMemo(
+    () =>
+      new Set(
+        (myApps || [])
+          .filter((a) => a.status === APPLICATION_STATUS.DECLINED && a.jobId)
+          .map((a) => a.jobId),
+      ),
+    [myApps],
+  );
+
+  const workerHasActiveJob = canAct && hasActiveApplication(myApps);
+
   const newMatches = useMemo(() => {
-    if (!profile) return [];
+    if (!profile || workerHasActiveJob) return [];
     return openJobs
       .map((job) => ({ job, ...scoreMatch(job, profile) }))
       .filter((entry) => entry.matchedSkills?.length > 0)
-      .filter((entry) => !myActiveJobIds.has(entry.job.docId || entry.job.id))
-      .filter((entry) => !dismissedJobIds.has(entry.job.docId || entry.job.id))
+      .filter((entry) => {
+        const id = entry.job.docId || entry.job.id;
+        return (
+          !myActiveJobIds.has(id) &&
+          !dismissedJobIds.has(id) &&
+          !declinedJobIds.has(id)
+        );
+      })
       .sort((a, b) => b.score - a.score)
       .slice(0, 3);
-  }, [profile, openJobs, myActiveJobIds, dismissedJobIds]);
+  }, [
+    profile,
+    openJobs,
+    myActiveJobIds,
+    dismissedJobIds,
+    declinedJobIds,
+    workerHasActiveJob,
+  ]);
 
   const completedCount = (myApps || []).filter(
     (a) => a.status === APPLICATION_STATUS.COMPLETED,
   ).length;
 
-  const loading = shouldLoadData && (profileLoading || jobsLoading || appsLoading);
+  const loading = profileLoading || jobsLoading || (canAct && appsLoading);
 
   return (
     <div>
@@ -72,9 +95,7 @@ function ApplicantDashboardPage() {
         subtitle="Matched jobs are pushed here. Accept a job to open chat with the homeowner."
       />
 
-      <WorkerAccessGate />
-
-      {gate.blocked ? null : loading ? (
+      {loading ? (
         <PageSkeleton showHeader={false} variant="stats" />
       ) : (
         <>
@@ -103,27 +124,43 @@ function ApplicantDashboardPage() {
                 to="/applicant/jobs"
                 className="canvas-muted text-sm font-medium underline-offset-2 hover:underline"
               >
-                See all matches
+                See all jobs
               </Link>
             </div>
             <p className="canvas-muted mb-3 text-sm">
               Based on your skills and location.
             </p>
             <div className="grid gap-3">
-              {newMatches.map(({ job }) => (
-                <JobCard
-                  key={job.docId || job.id}
-                  job={{
-                    ...job,
-                    location: locationLabel(job),
-                    clientName: job.postedByName || job.clientName,
-                    schedule:
-                      job.schedule || (job.type === 'Rush' ? 'ASAP · Dispatch now' : ''),
-                  }}
-                  compact
-                />
-              ))}
-              {newMatches.length === 0 ? (
+              {workerHasActiveJob ? (
+                <p className="rounded-xl border border-[#1F4E79]/15 bg-white p-6 text-center text-sm text-gray-600 shadow-sm">
+                  You already have an active job. Open{' '}
+                  <Link
+                    to="/applicant/jobs"
+                    className="font-semibold text-[#1F4E79] underline-offset-2 hover:underline"
+                  >
+                    Jobs
+                  </Link>{' '}
+                  to continue chatting, or finish/withdraw before accepting another match.
+                </p>
+              ) : null}
+              {!workerHasActiveJob
+                ? newMatches.map(({ job }) => (
+                    <JobCard
+                      key={job.docId || job.id}
+                      job={{
+                        ...job,
+                        location: locationLabel(job),
+                        clientName: job.postedByName || job.clientName,
+                        schedule:
+                          job.schedule || (job.type === 'Rush' ? 'ASAP · Dispatch now' : ''),
+                      }}
+                      compact={canAct}
+                      verificationHref={canAct ? null : '/applicant/profile'}
+                      verificationLabel="Profile Verification"
+                    />
+                  ))
+                : null}
+              {!workerHasActiveJob && newMatches.length === 0 ? (
                 <p className="rounded-xl bg-white p-6 text-center text-sm text-gray-500 shadow-sm">
                   No new matches right now. Update your skills and location to improve
                   results.

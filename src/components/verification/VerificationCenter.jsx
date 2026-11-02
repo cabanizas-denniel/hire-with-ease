@@ -171,7 +171,7 @@ function VerificationCenter({ userId, role = 'service-provider', className = '' 
             ? `Activated ${formatDate(stage4ActivatedAt)} by ${stage4ActivatedBy || 'PESO'}.`
             : `Trust bump applied ${formatDate(stage4ActivatedAt)} when your identity was approved by ${stage4ActivatedBy || record?.stage2?.reviewedBy || 'PESO'}.`
           : role === 'service-provider'
-            ? 'A PESO officer activates your account once your identity is approved.'
+            ? 'Your account activates automatically once PESO approves your identity and required supporting documents.'
             : 'Trust bump applied automatically after identity is reviewed.',
       state: stage4Done ? 'complete' : 'waiting',
       action: null,
@@ -364,7 +364,7 @@ function identityAction(s, stage1Done, openFn) {
 function documentsBody(record) {
   const docs = record?.stage3?.documents || [];
   if (!docs.length) {
-    return 'Optional but recommended — Barangay Clearance, TESDA certificate, Police clearance, etc.';
+    return 'Required — upload Barangay Clearance, TESDA certificate, Police clearance, or other supporting documents for PESO review.';
   }
   const reviewed = docs.filter((d) => d.reviewStatus === 'reviewed' || d.reviewed).length;
   const rejected = docs.filter((d) => d.reviewStatus === 'rejected').length;

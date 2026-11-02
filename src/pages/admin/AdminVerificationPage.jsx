@@ -3,7 +3,6 @@ import {
   HiOutlineCheckCircle,
   HiOutlineXMark,
   HiOutlineDocumentText,
-  HiOutlineExclamationTriangle,
   HiOutlineShieldCheck,
   HiOutlineUserCircle,
   HiOutlineXCircle,
@@ -124,7 +123,6 @@ function AdminVerificationPage() {
     reviewIdentity,
     reviewDocument,
     rejectApplication,
-    setActivation,
   } = useVerification();
 
   const [usersById, setUsersById] = useState({});
@@ -155,9 +153,7 @@ function AdminVerificationPage() {
       const isWorker = profile.role === 'service-provider';
       const hasPendingIdentity = rec?.stage2?.reviewStatus === 'pending';
       const hasPendingDocs = (rec?.stage3?.documents || []).some((d) => isDocPending(d));
-      const hasPendingActivation =
-        isWorker && rec?.stage2?.reviewStatus === 'reviewed' && !rec?.stage4?.activatedAt;
-      if (hasPendingIdentity || hasPendingDocs || hasPendingActivation) {
+      if (hasPendingIdentity || hasPendingDocs) {
         if (isWorker) base.workers += 1;
         else base.employers += 1;
       }
@@ -181,7 +177,7 @@ function AdminVerificationPage() {
     <div>
       <PageHeader
         title="Verification Queue"
-        subtitle="Review identity and supporting documents. Worker activation is bundled on the same card."
+        subtitle="Review identity and supporting documents. Workers activate automatically once both are approved."
       />
 
       <div
@@ -257,7 +253,6 @@ function AdminVerificationPage() {
         onApproveIdentity={(id, note) => reviewIdentity(id, { approve: true, reviewer: REVIEWER, note })}
         onRejectApplication={(id, note) => rejectApplication(id, { reviewer: REVIEWER, note })}
         onApproveDoc={(id, docIndex, note) => reviewDocument(id, { docIndex, approve: true, reviewer: REVIEWER, note })}
-        onActivate={(id) => setActivation(id, { active: true, by: REVIEWER })}
       />
     </div>
   );
@@ -469,17 +464,13 @@ function ApproveActivationModal({
   isWorker,
   hasPendingIdentity,
   pendingDocs,
-  canActivateWorker,
   onApproveIdentity,
   onApproveDoc,
-  onActivate,
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const docCount = pendingDocs?.length ?? 0;
   const needsApproval = hasPendingIdentity || docCount > 0;
-  const workerShouldActivate = Boolean(canActivateWorker);
-  const confirmLabel = workerShouldActivate ? 'Activate' : 'Approve';
 
   useEffect(() => {
     if (!isOpen) return;
@@ -487,16 +478,17 @@ function ApproveActivationModal({
   }, [isOpen]);
 
   const runApprove = async () => {
+    if (!needsApproval) {
+      onClose();
+      return;
+    }
     setBusy(true);
     setError('');
     try {
-      if (needsApproval) {
-        if (hasPendingIdentity) await onApproveIdentity('');
-        for (const { docIndex } of pendingDocs || []) {
-          await onApproveDoc(docIndex, '');
-        }
+      if (hasPendingIdentity) await onApproveIdentity('');
+      for (const { docIndex } of pendingDocs || []) {
+        await onApproveDoc(docIndex, '');
       }
-      if (workerShouldActivate) await onActivate();
       onClose();
     } catch (err) {
       setError(err?.message || 'Could not complete approval. Check rules/permissions and try again.');
@@ -505,13 +497,15 @@ function ApproveActivationModal({
     }
   };
 
-  const title = workerShouldActivate ? 'Approve and activate?' : 'Approve submission?';
-
   return (
     <ModalShell
       isOpen={isOpen}
-      title={title}
-      subtitle={isWorker && workerShouldActivate ? 'Approve pending items (if any), then activate for matching.' : undefined}
+      title="Approve submission?"
+      subtitle={
+        isWorker
+          ? 'Workers activate automatically once identity and supporting documents are both approved.'
+          : undefined
+      }
       onClose={busy ? undefined : onClose}
       footer={
         <div className="flex flex-wrap gap-2">
@@ -525,11 +519,11 @@ function ApproveActivationModal({
           </button>
           <button
             type="button"
-            disabled={busy}
+            disabled={busy || !needsApproval}
             onClick={() => runApprove()}
             className="min-h-[40px] flex-1 rounded-lg bg-[#1F4E79] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:brightness-110 disabled:opacity-50 cursor-pointer"
           >
-            {busy ? 'Saving…' : confirmLabel}
+            {busy ? 'Saving…' : 'Approve'}
           </button>
         </div>
       }
@@ -548,19 +542,8 @@ function ApproveActivationModal({
             .
           </p>
         ) : (
-          <p className="text-sm text-gray-700">
-            Identity is already approved. You are about to activate this worker account for matching.
-          </p>
+          <p className="text-sm text-gray-700">Nothing left to approve for this submission.</p>
         )}
-
-        {workerShouldActivate ? (
-          <p className="flex items-start gap-2 rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-950">
-            <HiOutlineExclamationTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
-            <span>
-              Activation marks this account as fully verified and eligible for matching. This cannot be undone from this screen without another admin workflow.
-            </span>
-          </p>
-        ) : null}
 
         {error ? (
           <p className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>
@@ -580,7 +563,6 @@ function SubmissionQueue({
   onApproveIdentity,
   onRejectApplication,
   onApproveDoc,
-  onActivate,
 }) {
   const [rejectUserId, setRejectUserId] = useState(null);
   const [approveTarget, setApproveTarget] = useState(null);
@@ -597,10 +579,8 @@ function SubmissionQueue({
         .filter(Boolean);
 
       const hasPendingIdentity = record?.stage2?.reviewStatus === 'pending';
-      const hasPendingActivation =
-        isWorker && record?.stage2?.reviewStatus === 'reviewed' && !record?.stage4?.activatedAt;
 
-      if (!hasPendingIdentity && pendingDocs.length === 0 && !hasPendingActivation) return null;
+      if (!hasPendingIdentity && pendingDocs.length === 0) return null;
 
       return {
         id,
@@ -608,7 +588,6 @@ function SubmissionQueue({
         profile,
         pendingDocs,
         hasPendingIdentity,
-        hasPendingActivation,
         latestAt: latestSubmissionAt(record),
       };
     });
@@ -654,7 +633,7 @@ function SubmissionQueue({
         onNext={() => setPage(Math.min(totalPages, page + 1))}
       />
       <div className="grid gap-3 md:grid-cols-2">
-        {paged.map(({ id, record, profile, pendingDocs, hasPendingIdentity, hasPendingActivation }) => (
+        {paged.map(({ id, record, profile, pendingDocs, hasPendingIdentity }) => (
           <ReviewCard
             key={id}
             header={
@@ -741,52 +720,35 @@ function SubmissionQueue({
               </section>
             ) : null}
 
-            {hasPendingIdentity || pendingDocs.length > 0 || hasPendingActivation ? (
-              <div className="mt-4 flex flex-wrap gap-2 border-t border-gray-100 pt-4">
-                <button
-                  type="button"
-                  disabled={!hasPendingIdentity && pendingDocs.length === 0}
-                  title={
-                    !hasPendingIdentity && pendingDocs.length === 0
-                      ? 'Nothing to reject — identity is already decided and there are no pending documents.'
-                      : undefined
-                  }
-                  onClick={() => {
-                    setApproveTarget(null);
-                    setRejectUserId(id);
-                  }}
-                  className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-800 shadow-sm hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <HiOutlineXCircle className="h-4 w-4" aria-hidden="true" />
-                  Reject
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setRejectUserId(null);
-                    setApproveTarget({
-                      id,
-                      hasPendingIdentity,
-                      pendingDocs,
-                      canActivateWorker:
-                        profile.role === 'service-provider' && !record.stage4?.activatedAt,
-                      isWorker: profile.role === 'service-provider',
-                    });
-                  }}
-                  className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-[#1F4E79] px-3 py-2 text-xs font-semibold text-white shadow-sm hover:brightness-110"
-                >
-                  <HiOutlineCheckCircle className="h-4 w-4" aria-hidden="true" />
-                  Approve
-                </button>
-              </div>
-            ) : null}
-
-            {hasPendingActivation && !hasPendingIdentity && pendingDocs.length === 0 ? (
-              <p className="mt-2 text-xs text-gray-600">
-                Identity approved {formatDate(record.stage2?.reviewedAt)} · ready for PESO activation (use Approve to
-                confirm).
-              </p>
-            ) : null}
+            <div className="mt-4 flex flex-wrap gap-2 border-t border-gray-100 pt-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setApproveTarget(null);
+                  setRejectUserId(id);
+                }}
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-800 shadow-sm hover:bg-red-100"
+              >
+                <HiOutlineXCircle className="h-4 w-4" aria-hidden="true" />
+                Reject
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setRejectUserId(null);
+                  setApproveTarget({
+                    id,
+                    hasPendingIdentity,
+                    pendingDocs,
+                    isWorker: profile.role === 'service-provider',
+                  });
+                }}
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-[#1F4E79] px-3 py-2 text-xs font-semibold text-white shadow-sm hover:brightness-110"
+              >
+                <HiOutlineCheckCircle className="h-4 w-4" aria-hidden="true" />
+                Approve
+              </button>
+            </div>
           </ReviewCard>
         ))}
       </div>
@@ -804,7 +766,6 @@ function SubmissionQueue({
         isWorker={approveTarget?.isWorker}
         hasPendingIdentity={approveTarget?.hasPendingIdentity}
         pendingDocs={approveTarget?.pendingDocs}
-        canActivateWorker={approveTarget?.canActivateWorker}
         onApproveIdentity={(note) => {
           if (!approveTarget) return;
           return onApproveIdentity(approveTarget.id, note);
@@ -812,10 +773,6 @@ function SubmissionQueue({
         onApproveDoc={(docIndex, note) => {
           if (!approveTarget) return;
           return onApproveDoc(approveTarget.id, docIndex, note);
-        }}
-        onActivate={() => {
-          if (!approveTarget) return;
-          return onActivate(approveTarget.id);
         }}
       />
     </>

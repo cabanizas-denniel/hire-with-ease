@@ -4,14 +4,16 @@ import DashboardLayout from '../components/DashboardLayout.jsx';
 import {
   DashboardRouteFallback,
   PageSkeleton,
+  PublicRouteFallback,
 } from '../components/PageSkeleton.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
+import PrivacyPage from '../pages/public/PrivacyPage.jsx';
+import TermsPage from '../pages/public/TermsPage.jsx';
 import ProtectedRoute from './ProtectedRoute.jsx';
 
 const LandingPage = lazy(() => import('../pages/public/LandingPage.jsx'));
 const LoginPage = lazy(() => import('../pages/public/LoginPage.jsx'));
 const RegisterPage = lazy(() => import('../pages/public/RegisterPage.jsx'));
-const PrivacyPage = lazy(() => import('../pages/public/PrivacyPage.jsx'));
 const NotFoundPage = lazy(() => import('../pages/shared/NotFoundPage.jsx'));
 
 const ApplicantDashboardPage = lazy(() => import('../pages/applicant/ApplicantDashboardPage.jsx'));
@@ -55,13 +57,17 @@ function AppRoutes() {
   const { isAuthenticated, loading, getDefaultRoute } = useAuth();
 
   return (
-    <Suspense fallback={<DashboardRouteFallback />}>
+    <Suspense fallback={<PublicRouteFallback />}>
       <Routes>
         <Route
           path="/"
           element={
             loading ? (
-              <DashboardRouteFallback />
+              isAuthenticated ? (
+                <DashboardRouteFallback />
+              ) : (
+                <PublicRouteFallback />
+              )
             ) : isAuthenticated ? (
               <Navigate to={getDefaultRoute()} replace />
             ) : (
@@ -72,6 +78,7 @@ function AppRoutes() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/terms" element={<TermsPage />} />
 
         <Route element={<ProtectedRoute allowedRole="applicant" />}>
           <Route path="/applicant" element={<RoleLayout role="applicant" />}>

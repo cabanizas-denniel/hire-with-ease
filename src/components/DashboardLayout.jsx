@@ -11,11 +11,13 @@ const PROFILE_ROUTE_BY_ROLE = {
 
 const SIDEBAR_LINKS = {
   applicant: [
+    { to: '/applicant/dashboard', label: 'Home' },
     { to: '/applicant/profile', label: 'Profile' },
-    { to: '/applicant/jobs', label: 'Matched Jobs' },
-    { to: '/applicant/applications', label: 'My Jobs' },
+    { to: '/applicant/jobs', label: 'Jobs' },
+    { to: '/applicant/applications', label: 'History' },
   ],
   employer: [
+    { to: '/employer/dashboard', label: 'Home' },
     { to: '/employer/profile', label: 'Profile' },
     { to: '/employer/post-job', label: 'Request Service' },
     { to: '/employer/jobs', label: 'Requests' },

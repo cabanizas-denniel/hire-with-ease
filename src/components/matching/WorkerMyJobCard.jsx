@@ -1,10 +1,12 @@
 import {
   HiOutlineBanknotes,
   HiOutlineCalendarDays,
+  HiOutlineClock,
   HiOutlineMapPin,
 } from 'react-icons/hi2';
 import HomeownerTrustRow from '../HomeownerTrustRow.jsx';
 import { useJob } from '../../lib/matching/hooks.js';
+import { formatPostedDate } from '../../lib/scheduleFormat.js';
 import { getJobMediaEntries, isVideoMediaEntry } from '../../utils/jobMedia.js';
 
 /**
@@ -21,6 +23,7 @@ function WorkerMyJobCard({ application, selected, statusLabel, onSelect }) {
     job?.location?.barangay ||
     job?.location?.label ||
     null;
+  const postedLabel = formatPostedDate(job?.postedAt, job?.createdAt);
 
   return (
     <article
@@ -115,6 +118,12 @@ function WorkerMyJobCard({ application, selected, statusLabel, onSelect }) {
             <li className="flex items-start gap-1.5">
               <HiOutlineCalendarDays className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#1F4E79]" aria-hidden="true" />
               <span className="line-clamp-2">{job.schedule}</span>
+            </li>
+          ) : null}
+          {postedLabel ? (
+            <li className="flex items-start gap-1.5">
+              <HiOutlineClock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#1F4E79]" aria-hidden="true" />
+              <span className="line-clamp-1">Posted {postedLabel}</span>
             </li>
           ) : null}
         </ul>

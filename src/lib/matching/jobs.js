@@ -118,7 +118,7 @@ export function buildJobDoc({
     engineMatchedWorkerIds: [],
     engineRanAt: null,
     engineMeta: null,
-    postedAt: new Date().toISOString().slice(0, 10),
+    postedAt: new Date().toISOString(),
     location: resolveJobLocation(location),
     photo: photo ?? null,
     media: mediaList,

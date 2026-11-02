@@ -38,6 +38,7 @@ function RegisterPage() {
   const [submitting, setSubmitting] = useState(false);
   const [captchaToken, setCaptchaToken] = useState('');
   const [privacyConsent, setPrivacyConsent] = useState(false);
+  const [termsConsent, setTermsConsent] = useState(false);
   const navigate = useNavigate();
   const { register } = useAuth();
 
@@ -56,9 +57,12 @@ function RegisterPage() {
     }
 
     if (!privacyConsent) {
-      setError(
-        'Please confirm you understand contact may be shared after a match for job coordination.',
-      );
+      setError('Please agree to the Privacy Policy to continue.');
+      return;
+    }
+
+    if (!termsConsent) {
+      setError('Please agree to the Terms & Conditions to continue.');
       return;
     }
 
@@ -244,22 +248,50 @@ function RegisterPage() {
           </p>
         ) : null}
 
-        <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-xs text-gray-700">
-          <input
-            type="checkbox"
-            className="mt-0.5"
-            checked={privacyConsent}
-            onChange={(e) => setPrivacyConsent(e.target.checked)}
-          />
-          <span>
-            I understand that after a match, my contact details may be shared with the other
-            party for job coordination. Payment is off-platform and not processed by Hire With
-            Ease.{' '}
-            <Link to="/privacy" className="font-semibold text-[#2E75B6] hover:underline">
-              Privacy & data use
-            </Link>
-          </span>
-        </label>
+        <div className="space-y-2">
+          <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-xs text-gray-700">
+            <input
+              type="checkbox"
+              className="mt-0.5 shrink-0"
+              checked={privacyConsent}
+              onChange={(e) => setPrivacyConsent(e.target.checked)}
+            />
+            <span>
+              I have read and agree to the{' '}
+              <Link
+                to="/privacy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-[#2E75B6] hover:underline"
+              >
+                Privacy Policy
+              </Link>
+              . I understand contact details may be shared after a match for job coordination, and
+              that payment is off-platform.
+            </span>
+          </label>
+
+          <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-xs text-gray-700">
+            <input
+              type="checkbox"
+              className="mt-0.5 shrink-0"
+              checked={termsConsent}
+              onChange={(e) => setTermsConsent(e.target.checked)}
+            />
+            <span>
+              I have read and agree to the{' '}
+              <Link
+                to="/terms"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-[#2E75B6] hover:underline"
+              >
+                Terms & Conditions
+              </Link>
+              .
+            </span>
+          </label>
+        </div>
 
         <Turnstile
           className="pt-1"
@@ -269,7 +301,7 @@ function RegisterPage() {
 
         <button
           type="submit"
-          disabled={submitting || !captchaToken || !privacyConsent}
+          disabled={submitting || !captchaToken || !privacyConsent || !termsConsent}
           className="mt-2 w-full rounded-lg bg-[#2E75B6] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-110 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
         >
           {submitting ? 'Creating account…' : 'Create account'}
