@@ -11,8 +11,10 @@ export const NOTIFICATION_UI_TYPES = Object.freeze({
 });
 
 /**
- * Persist an in-app notification for a user (idempotent by eventKey).
- * Called from admin approval flows after verification state is saved.
+ * Persist an in-app notification for a user.
+ * Does not read-before-write: callers often notify another party and cannot
+ * read their inbox under security rules (that used to silently block creates).
+ * Unique eventKeys keep overwrites rare and harmless.
  */
 export async function createUserNotification(userId, payload) {
   if (!db || !userId) return;
@@ -27,9 +29,9 @@ export async function createUserNotification(userId, payload) {
 
   if (!eventKey || !title || !message) return;
 
-  const ref = doc(db, 'users', userId, 'notifications', eventKey);
-  const existing = await getDoc(ref);
-  if (existing.exists()) return;
+  // Doc IDs cannot contain "/"; keep the rest of eventKey stable.
+  const docId = String(eventKey).replace(/\//g, '_');
+  const ref = doc(db, 'users', userId, 'notifications', docId);
 
   const createdAtIso = new Date().toISOString();
   await setDoc(ref, {
@@ -255,7 +257,7 @@ export async function notifyHireDeclined({
     type: NOTIFICATION_UI_TYPES.STATUS,
     title: workerTitle,
     message: workerMessage,
-    linkTo: '/applicant/jobs',
+    linkTo: contractStopped ? '/applicant/applications' : '/applicant/jobs',
   });
 
   await createUserNotification(clientId, {

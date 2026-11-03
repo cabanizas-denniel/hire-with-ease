@@ -102,8 +102,9 @@ function ActiveJobCard({ job, variant = 'full', applicantsCount = 0 }) {
     setCancelBusy(true);
     setCancelError(null);
     try {
-      if (canStopContract && job.confirmedWorkerId) {
-        await declineApplication(buildApplicationId(jobId, job.confirmedWorkerId), {
+      const stoppedWorkerId = canStopContract ? job.confirmedWorkerId || null : null;
+      if (stoppedWorkerId) {
+        await declineApplication(buildApplicationId(jobId, stoppedWorkerId), {
           byRole: 'client',
           contractStopped: true,
           reason: 'Homeowner stopped the contract',
@@ -112,6 +113,13 @@ function ActiveJobCard({ job, variant = 'full', applicantsCount = 0 }) {
       await declineAllApplicationsForJob(jobId);
       await setJobStatus(jobId, JOB_STATUS.CANCELLED, {
         cancelledAt: new Date().toISOString(),
+        ...(stoppedWorkerId
+          ? {
+              contractStopped: true,
+              stoppedWorkerId,
+              stoppedWorkerName: job.confirmedWorkerName || null,
+            }
+          : {}),
       });
       setCancelOpen(false);
     } catch (err) {

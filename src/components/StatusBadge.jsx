@@ -5,6 +5,8 @@ const STATUS_STYLES = {
   Declined: 'bg-gray-100 text-gray-500',
   'In Progress': 'bg-indigo-100 text-indigo-800',
   Completed: 'bg-green-100 text-green-800',
+  Cancelled: 'bg-rose-100 text-rose-800',
+  'Contract stopped': 'bg-rose-100 text-rose-800',
   Open: 'bg-gray-100 text-gray-700',
   Pending: 'bg-yellow-100 text-yellow-800',
 };

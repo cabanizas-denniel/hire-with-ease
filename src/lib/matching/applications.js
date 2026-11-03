@@ -283,6 +283,7 @@ export async function declineApplication(
     declinedBy: byRole,
     declinedAt: new Date().toISOString(),
     declineReason: trimmedReason || null,
+    ...(contractStopped ? { contractStopped: true } : {}),
     updatedAt: serverTimestamp(),
   });
 
