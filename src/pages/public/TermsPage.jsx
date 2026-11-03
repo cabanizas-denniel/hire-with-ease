@@ -75,24 +75,43 @@ function TermsPage() {
       <LegalSection title="6. Payments">
         <p>
           Payment for work is arranged <span className="font-medium text-gray-900">off-platform</span>{' '}
-          between homeowner and worker. Hire With Ease does not process, escrow, guarantee, or
-          refund money. In-app payment acknowledgments are records of confirmation only.
+          between homeowner and worker (for example cash on site, GCash, or bank transfer outside
+          the app). Hire With Ease does not process, escrow, guarantee, or transfer money. The
+          in-app buttons such as “I paid the agreed amount” / “I received the payment” only{' '}
+          <span className="font-medium text-gray-900">record acknowledgment</span> that both parties
+          settled outside the platform. They are not a payment gateway.
         </p>
       </LegalSection>
 
-      <LegalSection title="7. Cancellations">
+      <LegalSection title="7. Refunds and payment disputes">
+        <p>
+          Because Hire With Ease never holds funds, the platform{' '}
+          <span className="font-medium text-gray-900">cannot issue refunds</span>. If a job is
+          cancelled, a contract is stopped, or a worker withdraws after payment was already made
+          off-platform, any refund or adjustment must be arranged directly between homeowner and
+          worker. If you cannot resolve a payment disagreement, use the in-app{' '}
+          <span className="font-medium text-gray-900">Report</span> feature so PESO administrators
+          can review chat and job records. PESO review does not automatically move money.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="8. Cancellations">
         <ul className="list-disc space-y-1.5 pl-5">
           <li>
             Homeowners may cancel matching while a request is still in Matching or Matched status.
           </li>
           <li>
-            Workers may decline matches or withdraw from an accepted job subject to the in-app
-            rules (including unlock of a confirmed hire when applicable).
+            After schedule agreement, homeowners may use Stop contract to end the hire and cancel
+            the request; workers may withdraw with a stated reason (shown in chat).
+          </li>
+          <li>
+            Stopping or declining the job in-app does not reverse off-platform payments — see
+            Refunds and payment disputes above.
           </li>
         </ul>
       </LegalSection>
 
-      <LegalSection title="8. Disclaimers">
+      <LegalSection title="9. Disclaimers">
         <p>
           The platform is provided as a prototype for academic demonstration. Matching quality,
           availability of workers, and outcomes of off-platform work are not guaranteed. To the
@@ -102,7 +121,7 @@ function TermsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="9. Changes">
+      <LegalSection title="10. Changes">
         <p>
           These terms may be updated as the prototype evolves. Continued use after changes are
           posted on this page constitutes acceptance of the revised terms for new activity on the
@@ -110,7 +129,7 @@ function TermsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="10. Contact">
+      <LegalSection title="11. Contact">
         <p>
           For questions about these terms, use the contact details on the Hire With Ease landing
           page or reach your local PESO Olongapo channel associated with this project.

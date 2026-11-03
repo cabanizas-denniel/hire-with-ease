@@ -249,11 +249,21 @@ export async function unlockConfirmedHire(jobId) {
 /**
  * Decline / withdraw a hire for either party.
  * If this worker was the locked hire, clears the job lock for both sides.
+ * @param {string} reason — required for worker withdraw; shown in chat + notifications
+ * @param {boolean} contractStopped — homeowner ended a confirmed/in-progress hire
  */
-export async function declineApplication(appId, { byRole = 'client' } = {}) {
+export async function declineApplication(
+  appId,
+  { byRole = 'client', reason = '', contractStopped = false } = {},
+) {
   if (!appId) throw new Error('declineApplication: appId required');
   if (byRole !== 'client' && byRole !== 'worker') {
     throw new Error('declineApplication: byRole must be client or worker');
+  }
+
+  const trimmedReason = typeof reason === 'string' ? reason.trim() : '';
+  if (byRole === 'worker' && !trimmedReason) {
+    throw new Error('Please provide a reason for declining so the homeowner is informed.');
   }
 
   const appRef = doc(db, 'applications', appId);
@@ -272,6 +282,7 @@ export async function declineApplication(appId, { byRole = 'client' } = {}) {
     confirmedByWorker: false,
     declinedBy: byRole,
     declinedAt: new Date().toISOString(),
+    declineReason: trimmedReason || null,
     updatedAt: serverTimestamp(),
   });
 
@@ -319,6 +330,8 @@ export async function declineApplication(appId, { byRole = 'client' } = {}) {
       jobTitle: app.jobTitle,
       byRole,
       unlocked,
+      contractStopped,
+      reason: trimmedReason,
       eventAt,
     });
   } catch (err) {
@@ -327,14 +340,22 @@ export async function declineApplication(appId, { byRole = 'client' } = {}) {
 
   if (jobId && workerId && clientId) {
     try {
-      const text =
-        byRole === 'client'
-          ? unlocked
-            ? 'Homeowner declined this hire — booking unlocked.'
-            : 'Homeowner declined this worker.'
-          : unlocked
-            ? 'Worker declined this hire — booking unlocked.'
-            : 'Worker withdrew from this job.';
+      let text;
+      if (contractStopped && byRole === 'client') {
+        text = trimmedReason
+          ? `Homeowner stopped the contract. Reason: ${trimmedReason}`
+          : 'Homeowner stopped the contract — this request was cancelled.';
+      } else if (byRole === 'client') {
+        text = unlocked
+          ? 'Homeowner declined this hire — booking unlocked.'
+          : 'Homeowner declined this worker.';
+        if (trimmedReason) text += ` Reason: ${trimmedReason}`;
+      } else {
+        text = unlocked
+          ? 'Worker declined this hire — booking unlocked.'
+          : 'Worker withdrew from this job.';
+        if (trimmedReason) text += ` Reason: ${trimmedReason}`;
+      }
       await sendMessage({
         jobId,
         workerId,
@@ -356,8 +377,8 @@ export async function declineApplication(appId, { byRole = 'client' } = {}) {
 }
 
 /** Worker withdraws their own application (same unlock rules as client decline). */
-export async function withdrawApplication(appId) {
-  return declineApplication(appId, { byRole: 'worker' });
+export async function withdrawApplication(appId, { reason = '' } = {}) {
+  return declineApplication(appId, { byRole: 'worker', reason });
 }
 
 /** Mark an application as completed once the underlying job is finished. */

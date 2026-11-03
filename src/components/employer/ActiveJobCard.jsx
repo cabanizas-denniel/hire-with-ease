@@ -105,6 +105,8 @@ function ActiveJobCard({ job, variant = 'full', applicantsCount = 0 }) {
       if (canStopContract && job.confirmedWorkerId) {
         await declineApplication(buildApplicationId(jobId, job.confirmedWorkerId), {
           byRole: 'client',
+          contractStopped: true,
+          reason: 'Homeowner stopped the contract',
         });
       }
       await declineAllApplicationsForJob(jobId);
@@ -243,6 +245,13 @@ function ActiveJobCard({ job, variant = 'full', applicantsCount = 0 }) {
       }
     >
       <p>{cancelBody}</p>
+      {canStopContract && paymentSettled ? (
+        <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-950">
+          Payment was marked settled in the app. Hire With Ease does not refund money. Arrange any
+          refund outside the app (cash / GCash / bank). Use Report if you need PESO to review a
+          payment dispute.
+        </p>
+      ) : null}
       {cancelError ? (
         <p className="mt-2 rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700">
           {cancelError}

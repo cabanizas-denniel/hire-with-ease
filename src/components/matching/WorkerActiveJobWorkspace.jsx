@@ -10,6 +10,15 @@ import { useJob } from '../../lib/matching/hooks.js';
 import { APPLICATION_STATUS, JOB_STATUS } from '../../lib/matching/statuses.js';
 import { formatPostedDate } from '../../lib/scheduleFormat.js';
 
+const DECLINE_REASON_PRESETS = [
+  'Schedule no longer works for me',
+  'Location is too far',
+  'Budget does not work',
+  'Found another job',
+  'Personal emergency',
+  'Other',
+];
+
 function prettyAppStatus(status) {
   switch (status) {
     case APPLICATION_STATUS.PENDING:
@@ -34,6 +43,8 @@ function WorkerActiveJobWorkspace({ application }) {
   const [declining, setDeclining] = useState(false);
   const [declineOpen, setDeclineOpen] = useState(false);
   const [declineError, setDeclineError] = useState(null);
+  const [declinePreset, setDeclinePreset] = useState('');
+  const [declineOther, setDeclineOther] = useState('');
 
   const address =
     [job?.location?.label, job?.location?.barangay && `${job.location.barangay}, Olongapo`]
@@ -47,25 +58,41 @@ function WorkerActiveJobWorkspace({ application }) {
     job?.status !== JOB_STATUS.CANCELLED;
 
   const locked = job?.confirmedWorkerId === application.workerId;
+  const paymentSettled =
+    !!application.paymentAcknowledgedByClient &&
+    !!application.paymentAcknowledgedByWorker;
   const declineBody = locked
     ? 'The booking will unlock and this job will leave your Jobs list permanently.'
     : 'It will be removed from your Jobs list and will not show again.';
+
+  const resolvedDeclineReason =
+    declinePreset === 'Other'
+      ? declineOther.trim()
+      : declinePreset.trim();
 
   const closeDeclineModal = () => {
     if (declining) return;
     setDeclineOpen(false);
     setDeclineError(null);
+    setDeclinePreset('');
+    setDeclineOther('');
   };
 
   const confirmDecline = async () => {
     const appId = application.docId || application.id;
     if (!appId || !canDecline) return;
+    if (!resolvedDeclineReason) {
+      setDeclineError('Please choose or type a reason for the homeowner.');
+      return;
+    }
     setDeclining(true);
     setDeclineError(null);
     try {
       const { withdrawApplication } = await import('../../lib/matching/applications.js');
-      await withdrawApplication(appId);
+      await withdrawApplication(appId, { reason: resolvedDeclineReason });
       setDeclineOpen(false);
+      setDeclinePreset('');
+      setDeclineOther('');
     } catch (err) {
       setDeclineError(err.message || 'Could not decline this job.');
     } finally {
@@ -92,6 +119,8 @@ function WorkerActiveJobWorkspace({ application }) {
                 type="button"
                 onClick={() => {
                   setDeclineError(null);
+                  setDeclinePreset('');
+                  setDeclineOther('');
                   setDeclineOpen(true);
                 }}
                 disabled={declining}
@@ -188,8 +217,46 @@ function WorkerActiveJobWorkspace({ application }) {
         onClose={closeDeclineModal}
         onConfirm={confirmDecline}
         confirmText={declining ? 'Declining…' : 'Decline'}
+        confirmDisabled={declining || !resolvedDeclineReason}
       >
         <p>{declineBody}</p>
+        {paymentSettled ? (
+          <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-950">
+            Payment was marked settled in the app. Hire With Ease does not refund money. Arrange
+            any refund outside the app with the homeowner. Use Report if you need PESO to review a
+            payment dispute.
+          </p>
+        ) : null}
+        <p className="mt-3 text-xs font-semibold text-[#1F4E79]">
+          Tell the homeowner why (required — sent in chat)
+        </p>
+        <div className="mt-2 space-y-1.5">
+          {DECLINE_REASON_PRESETS.map((option) => (
+            <label
+              key={option}
+              className="flex cursor-pointer items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700 hover:bg-gray-100"
+            >
+              <input
+                type="radio"
+                name="decline-reason"
+                className="shrink-0"
+                checked={declinePreset === option}
+                onChange={() => setDeclinePreset(option)}
+              />
+              <span>{option}</span>
+            </label>
+          ))}
+        </div>
+        {declinePreset === 'Other' ? (
+          <textarea
+            value={declineOther}
+            onChange={(e) => setDeclineOther(e.target.value)}
+            rows={3}
+            maxLength={280}
+            placeholder="Brief reason for the homeowner…"
+            className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-xs text-gray-800 focus:border-[#1F4E79] focus:outline-none focus:ring-2 focus:ring-[#1F4E79]/20"
+          />
+        ) : null}
         {declineError ? (
           <p className="mt-2 rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700">
             {declineError}

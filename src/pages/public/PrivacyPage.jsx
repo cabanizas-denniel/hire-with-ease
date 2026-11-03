@@ -42,7 +42,8 @@ function PrivacyPage() {
           <li>
             <span className="font-medium text-gray-900">Payment acknowledgments:</span> notes that
             off-platform payment was agreed or confirmed — not card, bank, or wallet secrets. Hire
-            With Ease does not process money.
+            With Ease does not process or refund money; refunds after cancellation are arranged
+            between the parties outside the app (see Terms).
           </li>
         </ul>
       </LegalSection>

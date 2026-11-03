@@ -1,4 +1,12 @@
-function Modal({ isOpen, title, children, onClose, onConfirm, confirmText = 'Confirm' }) {
+function Modal({
+  isOpen,
+  title,
+  children,
+  onClose,
+  onConfirm,
+  confirmText = 'Confirm',
+  confirmDisabled = false,
+}) {
   if (!isOpen) {
     return null;
   }
@@ -19,7 +27,8 @@ function Modal({ isOpen, title, children, onClose, onConfirm, confirmText = 'Con
           <button
             type="button"
             onClick={onConfirm}
-            className="cursor-pointer w-full rounded-lg bg-[#1F4E79] px-4 py-2 text-sm font-medium text-white"
+            disabled={confirmDisabled}
+            className="cursor-pointer w-full rounded-lg bg-[#1F4E79] px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
             {confirmText}
           </button>

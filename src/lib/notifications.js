@@ -208,7 +208,7 @@ export async function notifyScheduleConfirmed({
 }
 
 /**
- * Bell alerts when either party declines a hire / unlocks a booking.
+ * Bell alerts when either party declines a hire / unlocks a booking / stops a contract.
  */
 export async function notifyHireDeclined({
   workerId,
@@ -217,32 +217,53 @@ export async function notifyHireDeclined({
   jobTitle,
   byRole,
   unlocked = false,
+  contractStopped = false,
+  reason = '',
   eventAt = new Date().toISOString(),
 }) {
   if (!workerId || !clientId || !jobId) return;
 
   const jobLabel = jobTitle || 'the job';
   const byHomeowner = byRole === 'client';
-  const unlockNote = unlocked ? ' The booking is unlocked.' : '';
+  const unlockNote = unlocked && !contractStopped ? ' The booking is unlocked.' : '';
+  const reasonNote = reason?.trim() ? ` Reason: ${reason.trim()}` : '';
+
+  let workerTitle;
+  let workerMessage;
+  let clientTitle;
+  let clientMessage;
+
+  if (contractStopped && byHomeowner) {
+    workerTitle = 'Contract stopped';
+    workerMessage = `The homeowner stopped the contract for "${jobLabel}". The request was cancelled.${reasonNote}`;
+    clientTitle = 'You stopped the contract';
+    clientMessage = `You stopped the contract for "${jobLabel}". The request was cancelled.${reasonNote}`;
+  } else if (byHomeowner) {
+    workerTitle = 'Homeowner declined hire';
+    workerMessage = `The homeowner declined you for "${jobLabel}".${unlockNote}${reasonNote}`;
+    clientTitle = 'You declined the hire';
+    clientMessage = `You declined the worker for "${jobLabel}".${unlockNote}${reasonNote}`;
+  } else {
+    workerTitle = 'You declined the job';
+    workerMessage = `You withdrew from "${jobLabel}".${unlockNote}${reasonNote}`;
+    clientTitle = 'Worker declined the job';
+    clientMessage = `The worker withdrew from "${jobLabel}".${unlockNote}${reasonNote}`;
+  }
 
   await createUserNotification(workerId, {
     eventKey: `schedule:declined:worker:${jobId}:${eventAt}`,
     type: NOTIFICATION_UI_TYPES.STATUS,
-    title: byHomeowner ? 'Homeowner declined hire' : 'You declined the hire',
-    message: byHomeowner
-      ? `The homeowner declined you for "${jobLabel}".${unlockNote}`
-      : `You withdrew from "${jobLabel}".${unlockNote}`,
+    title: workerTitle,
+    message: workerMessage,
     linkTo: '/applicant/jobs',
   });
 
   await createUserNotification(clientId, {
     eventKey: `schedule:declined:client:${jobId}:${eventAt}`,
     type: NOTIFICATION_UI_TYPES.STATUS,
-    title: byHomeowner ? 'You declined the hire' : 'Worker declined hire',
-    message: byHomeowner
-      ? `You declined the worker for "${jobLabel}".${unlockNote}`
-      : `The worker withdrew from "${jobLabel}".${unlockNote}`,
-    linkTo: `/employer/candidates/${jobId}`,
+    title: clientTitle,
+    message: clientMessage,
+    linkTo: contractStopped ? '/employer/jobs' : `/employer/candidates/${jobId}`,
   });
 }
 

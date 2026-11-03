@@ -49,8 +49,10 @@ function PaymentFulfillmentCard({ application, role }) {
       </header>
       <div className="space-y-3 p-4 text-sm">
         <p className="text-xs text-gray-600">
-          Hire With Ease does <span className="font-semibold">not</span> process payments or hold
-          escrow. Use this only to record that you settled the agreed amount outside the app.
+          Hire With Ease does <span className="font-semibold">not</span> process payments, hold
+          escrow, or issue refunds. Use this only to record that you settled the agreed amount
+          outside the app. If the job is later stopped, arrange any refund directly with the other
+          party (or Report for PESO review).
         </p>
         {error ? (
           <p className="rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700">
