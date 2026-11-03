@@ -5,7 +5,7 @@
  *   Matching     -> open and accepting applicants
  *   Matched      -> client engaged with one or more applicants but not committed yet
  *   Confirmed    -> mutual agreement reached, worker is locked, job not yet started
- *   In Progress  -> worker arrived/started
+ *   In Progress  -> either party marked that on-site work has begun
  *   Completed    -> client marked as done
  *   Cancelled    -> client withdrew
  *   Expired      -> auto-expired with no agreement

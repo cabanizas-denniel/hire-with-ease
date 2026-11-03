@@ -85,7 +85,7 @@ function EmployerDashboardPage() {
                   className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-[#1F4E79] px-4 py-2.5 text-sm font-semibold text-[#1F4E79] hover:bg-blue-50"
                 >
                   <HiOutlineClipboardDocumentList className="h-4 w-4" aria-hidden="true" />
-                  View Requests
+                  View History
                 </Link>
               </div>
             </section>

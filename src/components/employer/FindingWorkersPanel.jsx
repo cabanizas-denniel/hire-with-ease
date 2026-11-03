@@ -65,7 +65,7 @@ function FindingWorkersPanel({
         </h2>
         <p className="mt-1 text-sm text-emerald-900/80">
           {hireLocked
-            ? 'Schedule is confirmed. Chat and payment are below. To end this hire, open My Requests and use Stop contract (Report alone does not cancel the job).'
+            ? 'Schedule is confirmed. Chat is below. Mark in progress when work begins. Payment is arranged off-platform. To end this hire, open Home and use Stop contract (Report alone does not cancel the job).'
             : matches.length > 0
               ? acceptedCount > 0
                 ? 'Tap an accepted card to chat. Decline removes a worker from this request permanently.'

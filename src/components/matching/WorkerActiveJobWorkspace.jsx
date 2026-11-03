@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import PaymentFulfillmentCard from './PaymentFulfillmentCard.jsx';
 import ChatPanel from './ChatPanel.jsx';
 import JobIssueMedia from '../JobIssueMedia.jsx';
 import HomeownerTrustRow from '../HomeownerTrustRow.jsx';
@@ -58,9 +57,6 @@ function WorkerActiveJobWorkspace({ application }) {
     job?.status !== JOB_STATUS.CANCELLED;
 
   const locked = job?.confirmedWorkerId === application.workerId;
-  const paymentSettled =
-    !!application.paymentAcknowledgedByClient &&
-    !!application.paymentAcknowledgedByWorker;
   const declineBody = locked
     ? 'The booking will unlock and this job will leave your Jobs list permanently.'
     : 'It will be removed from your Jobs list and will not show again.';
@@ -197,17 +193,10 @@ function WorkerActiveJobWorkspace({ application }) {
         compact
       />
 
-      {job?.status === JOB_STATUS.IN_PROGRESS ||
-      job?.status === JOB_STATUS.COMPLETED ||
-      application.status === APPLICATION_STATUS.COMPLETED ? (
-        <PaymentFulfillmentCard application={application} role="worker" />
-      ) : null}
-
-      {job?.status === JOB_STATUS.IN_PROGRESS &&
-      job?.confirmedWorkerId === application.workerId ? (
-        <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-950">
-          You are checked in. When you finish on site, send a check-out photo in chat.
-          Confirm off-platform payment above, then the homeowner can mark the job complete.
+      {job?.status === JOB_STATUS.IN_PROGRESS && locked ? (
+        <p className="rounded-lg border border-indigo-200 bg-indigo-50 p-3 text-xs text-indigo-950">
+          Job is in progress. Finish with the homeowner on site; they can mark the job complete when
+          work is done. Payment stays between you outside the app.
         </p>
       ) : null}
 
@@ -220,13 +209,6 @@ function WorkerActiveJobWorkspace({ application }) {
         confirmDisabled={declining || !resolvedDeclineReason}
       >
         <p>{declineBody}</p>
-        {paymentSettled ? (
-          <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-950">
-            Payment was marked settled in the app. Hire With Ease does not refund money. Arrange
-            any refund outside the app with the homeowner. Use Report if you need PESO to review a
-            payment dispute.
-          </p>
-        ) : null}
         <p className="mt-3 text-xs font-semibold text-[#1F4E79]">
           Tell the homeowner why (required — sent in chat)
         </p>

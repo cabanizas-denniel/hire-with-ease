@@ -5,12 +5,12 @@ Thesis / defense reference for the Olongapo informal-services matching prototype
 ## In scope
 
 - **Geography:** Olongapo City informal home services (plumbing, electrical, carpentry, etc.).
-- **Homeowner (client):** Post one service request at a time; review shortlisted workers; chat; agree on price/schedule/scope; confirm hire; check-in/out photo proofs; mark complete after mutual off-platform payment acknowledgment; rate workers.
-- **Worker (applicant):** Profile with skills and location; receive matched jobs; accept/decline; apply; chat; confirm schedule; check-in/out photos; acknowledge payment received.
+- **Homeowner (client):** Post one service request at a time; review shortlisted workers; chat; agree on price/schedule/scope; confirm hire; mark in progress when work begins; mark complete; rate workers.
+- **Worker (applicant):** Profile with skills and location; receive matched jobs; accept/decline; apply; chat; confirm schedule; do the work on site.
 - **PESO admin:** Worker verification, dispute/report review, labor-market dashboards (live Firestore aggregates + density heatmap) — **not** selecting the hire.
 - **Matching:** Browser-side rule-based scoring (weighted skills / location / category / reputation), greedy candidate pool, A* shortlist of **1–5** workers per job.
 - **Coordination:** In-app chat; final start date/time, agreed price, and scope (included / not included) recorded for records; contact may be shared with the matched counterpart for job coordination.
-- **Payment model:** **Cash / off-platform only** (cash on site, GCash, bank transfer outside the app). Platform stores agreed price and mutual “paid / received” acknowledgments — **no** payment gateway, escrow, or money movement.
+- **Payment model:** **Fully off-platform** (cash on site, GCash, bank transfer outside the app). The app may store an agreed price on the schedule for coordination — **no** payment gateway, escrow, money movement, or in-app paid/received acknowledgments.
 
 ## Cardinality (relationships)
 
@@ -27,7 +27,7 @@ Negotiation can be multi-party; **hire lock is 1:1** (not a free many-to-many hi
 
 - **System:** Scores and shortlists (max 5).
 - **Homeowner:** Reviews and picks whom to chat / confirm.
-- **Worker:** Accept/decline matches; apply; confirm agreement; check-in/out; ack payment.
+- **Worker:** Accept/decline matches; apply; confirm agreement; do the work.
 - **PESO admin:** Verification, disputes, dashboards — not picking the hire.
 
 ## Predictive analysis?
@@ -40,12 +40,11 @@ The system is **recommendation / rule-based scoring**, not machine-learning pred
 - Not a multi-city product; map bounds and demo pins target Olongapo (demo pin available when testing physically outside the city, e.g. Hermosa).
 - Matching runs **client-side** with rule-based weights — not trained ML models.
 - One active job per homeowner at a time.
-- Check-in/out photos are operational proofs, not forensic evidence.
+- On-site arrival/finish is coordinated by the parties; the app only records In Progress / Completed status (no photo check-in/out).
 - Privacy: Auth + email verification + Firestore rules; contact shared with matched counterpart; admin heatmap is aggregate density. **No claim of full DPA / NPC compliance** — see in-app Privacy page for stated limitations.
 - Some negotiation auto-release / SLA behaviors may remain partial in this prototype.
 
 ## Related app surfaces
 
 - Privacy / data use: `/privacy`
-- Payment acknowledgment UI after work (homeowner “I paid” / worker “I received”)
 - Admin analytics: `/admin/dashboard` (live Firestore)

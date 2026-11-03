@@ -139,11 +139,7 @@ export async function sendMessage({
     authorRole: authorRole || null,
     text:
       trimmed ||
-      (messageType === 'check_in'
-        ? 'Check-in photo'
-        : messageType === 'check_out'
-          ? 'Check-out photo'
-          : ''),
+      (messageType === 'work_started' ? 'Work started — job is in progress.' : ''),
     messageType,
     imageUrl: imageUrl || null,
     createdAt: serverTimestamp(),

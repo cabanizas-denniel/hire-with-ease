@@ -3,24 +3,18 @@ import { JOB_STATUS, APPLICATION_STATUS } from '../../lib/matching/statuses.js';
 const STEPS = [
   { id: 'applied', label: 'Applied' },
   { id: 'agreed', label: 'Agreed' },
-  { id: 'checkin', label: 'Check-in' },
-  { id: 'working', label: 'On site' },
-  { id: 'checkout', label: 'Check-out' },
+  { id: 'working', label: 'In progress' },
   { id: 'done', label: 'Done' },
 ];
 
-export function workProgressIndex({
-  applicationStatus,
-  jobStatus,
-  hasCheckIn,
-  hasCheckOut,
-}) {
-  if (jobStatus === JOB_STATUS.COMPLETED || applicationStatus === APPLICATION_STATUS.COMPLETED) {
-    return 5;
+export function workProgressIndex({ applicationStatus, jobStatus }) {
+  if (
+    jobStatus === JOB_STATUS.COMPLETED ||
+    applicationStatus === APPLICATION_STATUS.COMPLETED
+  ) {
+    return 3;
   }
-  if (hasCheckOut) return 4;
-  if (jobStatus === JOB_STATUS.IN_PROGRESS || hasCheckIn) return 3;
-  if (hasCheckIn) return 2;
+  if (jobStatus === JOB_STATUS.IN_PROGRESS) return 2;
   if (
     jobStatus === JOB_STATUS.CONFIRMED ||
     applicationStatus === APPLICATION_STATUS.CONFIRMED
@@ -31,18 +25,8 @@ export function workProgressIndex({
   return -1;
 }
 
-function JobProgressBar({
-  applicationStatus,
-  jobStatus,
-  hasCheckIn = false,
-  hasCheckOut = false,
-}) {
-  const current = workProgressIndex({
-    applicationStatus,
-    jobStatus,
-    hasCheckIn,
-    hasCheckOut,
-  });
+function JobProgressBar({ applicationStatus, jobStatus }) {
+  const current = workProgressIndex({ applicationStatus, jobStatus });
   if (current < 0) return null;
 
   return (

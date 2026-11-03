@@ -210,6 +210,80 @@ export async function notifyScheduleConfirmed({
 }
 
 /**
+ * Bell alerts when the homeowner marks the job In Progress.
+ */
+export async function notifyJobInProgress({
+  workerId,
+  clientId,
+  jobId,
+  jobTitle,
+  byRole = 'client',
+  eventAt = new Date().toISOString(),
+}) {
+  if (!workerId || !clientId || !jobId) return;
+
+  const jobLabel = jobTitle || 'the job';
+  const byHomeowner = byRole === 'client';
+
+  await createUserNotification(workerId, {
+    eventKey: `schedule:in_progress:worker:${jobId}:${eventAt}`,
+    type: NOTIFICATION_UI_TYPES.STATUS,
+    title: 'Job in progress',
+    message: byHomeowner
+      ? `The homeowner marked "${jobLabel}" as in progress.`
+      : `You marked "${jobLabel}" as in progress.`,
+    linkTo: '/applicant/jobs',
+  });
+
+  await createUserNotification(clientId, {
+    eventKey: `schedule:in_progress:client:${jobId}:${eventAt}`,
+    type: NOTIFICATION_UI_TYPES.STATUS,
+    title: 'Job in progress',
+    message: byHomeowner
+      ? `You marked "${jobLabel}" as in progress.`
+      : `The worker marked "${jobLabel}" as in progress.`,
+    linkTo: '/employer/dashboard',
+  });
+}
+
+/**
+ * Bell alerts when the homeowner marks the job Completed.
+ */
+export async function notifyJobCompleted({
+  workerId,
+  clientId,
+  jobId,
+  jobTitle,
+  byRole = 'client',
+  eventAt = new Date().toISOString(),
+}) {
+  if (!workerId || !clientId || !jobId) return;
+
+  const jobLabel = jobTitle || 'the job';
+  const byHomeowner = byRole === 'client';
+
+  await createUserNotification(workerId, {
+    eventKey: `schedule:completed:worker:${jobId}:${eventAt}`,
+    type: NOTIFICATION_UI_TYPES.STATUS,
+    title: 'Job completed',
+    message: byHomeowner
+      ? `The homeowner marked "${jobLabel}" as completed. It now appears in your History.`
+      : `You marked "${jobLabel}" as completed.`,
+    linkTo: '/applicant/applications',
+  });
+
+  await createUserNotification(clientId, {
+    eventKey: `schedule:completed:client:${jobId}:${eventAt}`,
+    type: NOTIFICATION_UI_TYPES.STATUS,
+    title: 'Job completed',
+    message: byHomeowner
+      ? `You marked "${jobLabel}" as completed. It now appears in History.`
+      : `The worker marked "${jobLabel}" as completed.`,
+    linkTo: '/employer/jobs',
+  });
+}
+
+/**
  * Bell alerts when either party declines a hire / unlocks a booking / stops a contract.
  */
 export async function notifyHireDeclined({

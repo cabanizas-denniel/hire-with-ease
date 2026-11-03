@@ -3,11 +3,11 @@ import { HiOutlineFlag, HiOutlineXMark } from 'react-icons/hi2';
 import { submitDisputeReport } from '../../lib/disputeReports.js';
 
 const REASONS = [
-  'Fraudulent check-in / check-out',
   'No-show',
   'Harassment or abuse',
   'Misleading job details',
   'Payment dispute (off-platform)',
+  'Unsafe or unprofessional conduct',
   'Other',
 ];
 

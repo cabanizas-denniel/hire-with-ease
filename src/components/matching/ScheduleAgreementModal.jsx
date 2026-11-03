@@ -50,6 +50,7 @@ function ScheduleAgreementModal({
   application,
   role,
   initialPrice = '',
+  budgetHint = '',
 }) {
   const { user } = useAuth();
   const isWorker = role === 'worker';
@@ -77,10 +78,13 @@ function ScheduleAgreementModal({
     if (!isOpen) return;
     setError(null);
     setAwaitingSendConfirm(false);
+    // Only seed from a real agreed amount — never from a budget range
+    // like "PHP 500 - 1,000" (digits-only would become ₱5,001,000).
+    const seedPrice = priceDigits(proposed?.price || initialPrice || '');
     if (proposed) {
       setStartDate(proposed.startDate || '');
       setStartTime(proposed.startTime || '');
-      setPrice(priceDigits(proposed.price || initialPrice || ''));
+      setPrice(seedPrice);
       setScope(
         proposed.scope ||
           [proposed.scopeIncluded, proposed.scopeExcluded].filter(Boolean).join('\n') ||
@@ -91,7 +95,7 @@ function ScheduleAgreementModal({
     } else {
       setStartDate('');
       setStartTime('');
-      setPrice(priceDigits(initialPrice || ''));
+      setPrice('');
       setScope('');
       setEditing(isWorker);
     }
@@ -451,7 +455,11 @@ function ScheduleAgreementModal({
                       const raw = e.target.value.replace(/,/g, '');
                       setPrice(priceDigits(raw));
                     }}
-                    placeholder="1,500"
+                    placeholder={
+                      budgetHint
+                        ? `Budget Range: ${budgetHint}`
+                        : 'Enter agreed amount'
+                    }
                     aria-label="Agreed price in pesos"
                   />
                 </div>

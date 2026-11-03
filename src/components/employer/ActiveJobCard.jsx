@@ -14,22 +14,29 @@ import {
   locationLabel,
 } from '../../utils/clientJobs.js';
 import { JOB_STATUS } from '../../lib/matching/statuses.js';
-import { setJobStatus } from '../../lib/matching/jobs.js';
+import { setJobStatus, startJobWork } from '../../lib/matching/jobs.js';
 import {
   buildApplicationId,
   declineAllApplicationsForJob,
   declineApplication,
   markApplicationCompleted,
 } from '../../lib/matching/applications.js';
+import { sendMessage } from '../../lib/matching/threads.js';
+import {
+  notifyJobCompleted,
+  notifyJobInProgress,
+} from '../../lib/notifications.js';
 import { useApplication } from '../../lib/matching/hooks.js';
+import { useAuth } from '../../context/AuthContext.jsx';
 import Modal from '../Modal.jsx';
 
 /**
  * Central "ongoing job" card for the client. Dominates the dashboard and
- * the My Requests page whenever an active job exists, since the client
+ * the Home dashboard whenever an active job exists, since the client
  * can only manage one request at a time.
  */
 function ActiveJobCard({ job, variant = 'full', applicantsCount = 0 }) {
+  const auth = useAuth();
   const compact = variant === 'compact';
   const jobId = job?.docId || job?.id || null;
   const appId =
@@ -40,37 +47,121 @@ function ActiveJobCard({ job, variant = 'full', applicantsCount = 0 }) {
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelBusy, setCancelBusy] = useState(false);
   const [cancelError, setCancelError] = useState(null);
+  const [completeOpen, setCompleteOpen] = useState(false);
+  const [completeBusy, setCompleteBusy] = useState(false);
+  const [completeError, setCompleteError] = useState(null);
+  const [progressOpen, setProgressOpen] = useState(false);
+  const [progressBusy, setProgressBusy] = useState(false);
+  const [progressError, setProgressError] = useState(null);
 
   if (!job) return null;
 
   const currentStep = getStatusStepIndex(job.status);
   const statusCopy = getStatusCopy(job.status);
   const action = getPrimaryAction(job, applicantsCount);
-  const paymentSettled =
-    !!application?.paymentAcknowledgedByClient &&
-    !!application?.paymentAcknowledgedByWorker;
+  const canMarkInProgress =
+    job.status === JOB_STATUS.CONFIRMED && Boolean(job.confirmedWorkerId);
+  const canMarkCompleted =
+    job.status === JOB_STATUS.IN_PROGRESS && Boolean(job.confirmedWorkerId);
 
-  const handleMarkComplete = async () => {
-    if (!jobId) return;
-    if (!paymentSettled) {
-      alert(
-        'Open Matched workers to confirm off-platform payment with the worker before marking the job complete.',
-      );
-      return;
+  const closeProgressModal = () => {
+    if (progressBusy) return;
+    setProgressOpen(false);
+    setProgressError(null);
+  };
+
+  const openProgressModal = () => {
+    if (!jobId || !canMarkInProgress) return;
+    setProgressError(null);
+    setProgressOpen(true);
+  };
+
+  const confirmMarkInProgress = async () => {
+    if (!jobId || !canMarkInProgress || progressBusy) return;
+    setProgressBusy(true);
+    setProgressError(null);
+    try {
+      await startJobWork(jobId);
+      const workerId = application?.workerId || job.confirmedWorkerId || null;
+      const clientId = application?.clientId || job.postedBy || auth?.user?.uid || null;
+      const jobTitle = application?.jobTitle || job.title;
+      if (workerId && clientId) {
+        await sendMessage({
+          jobId,
+          workerId,
+          clientId,
+          jobTitle,
+          authorId: auth?.user?.uid || clientId,
+          authorName: auth?.user?.fullName || job.postedByName || 'Homeowner',
+          authorRole: 'client',
+          text: 'Work started — job is now in progress.',
+          messageType: 'work_started',
+          replaceMessageTypes: ['work_started'],
+        });
+        try {
+          await notifyJobInProgress({
+            workerId,
+            clientId,
+            jobId,
+            jobTitle,
+            byRole: 'client',
+          });
+        } catch (notifyErr) {
+          console.warn('Could not create in-progress notifications', notifyErr);
+        }
+      }
+      setProgressOpen(false);
+    } catch (err) {
+      setProgressError(err.message || 'Could not mark in progress. Please try again.');
+    } finally {
+      setProgressBusy(false);
     }
-    if (!window.confirm('Mark this job as completed? This cannot be undone.')) return;
+  };
+
+  const closeCompleteModal = () => {
+    if (completeBusy) return;
+    setCompleteOpen(false);
+    setCompleteError(null);
+  };
+
+  const openCompleteModal = () => {
+    if (!jobId || !canMarkCompleted) return;
+    setCompleteError(null);
+    setCompleteOpen(true);
+  };
+
+  const confirmMarkComplete = async () => {
+    if (!jobId || completeBusy) return;
+    setCompleteBusy(true);
+    setCompleteError(null);
     try {
       await setJobStatus(jobId, JOB_STATUS.COMPLETED, {
         completedAt: new Date().toISOString(),
       });
-      if (job.confirmedWorkerId) {
-        await markApplicationCompleted(
-          buildApplicationId(jobId, job.confirmedWorkerId)
-        );
+      const workerId = application?.workerId || job.confirmedWorkerId || null;
+      const clientId = application?.clientId || job.postedBy || auth?.user?.uid || null;
+      const jobTitle = application?.jobTitle || job.title;
+      if (workerId) {
+        await markApplicationCompleted(buildApplicationId(jobId, workerId));
       }
+      if (workerId && clientId) {
+        try {
+          await notifyJobCompleted({
+            workerId,
+            clientId,
+            jobId,
+            jobTitle,
+            byRole: 'client',
+          });
+        } catch (notifyErr) {
+          console.warn('Could not create completed notifications', notifyErr);
+        }
+      }
+      setCompleteOpen(false);
     } catch (err) {
-       
-      alert(err.message || 'Could not mark complete. Please try again.');
+      setCompleteError(err.message || 'Could not mark complete. Please try again.');
+    } finally {
+      setCompleteBusy(false);
     }
   };
 
@@ -219,17 +310,21 @@ function ActiveJobCard({ job, variant = 'full', applicantsCount = 0 }) {
               Stop contract
             </button>
           ) : null}
-          {!compact && (job.status === JOB_STATUS.IN_PROGRESS || job.status === JOB_STATUS.CONFIRMED) ? (
+          {!compact && canMarkInProgress ? (
             <button
               type="button"
-              onClick={handleMarkComplete}
-              disabled={!paymentSettled}
-              title={
-                paymentSettled
-                  ? undefined
-                  : 'Confirm off-platform payment on Matched workers first'
-              }
-              className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-800 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto cursor-pointer"
+              onClick={openProgressModal}
+              className="inline-flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-indigo-300 bg-indigo-50 px-4 py-2.5 text-sm font-semibold text-indigo-900 hover:bg-indigo-100 sm:w-auto"
+            >
+              <HiOutlineCheckCircle className="h-4 w-4" aria-hidden="true" />
+              Mark as in progress
+            </button>
+          ) : null}
+          {!compact && canMarkCompleted ? (
+            <button
+              type="button"
+              onClick={openCompleteModal}
+              className="inline-flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-800 hover:bg-emerald-100 sm:w-auto"
             >
               <HiOutlineCheckCircle className="h-4 w-4" aria-hidden="true" />
               Mark as completed
@@ -253,16 +348,50 @@ function ActiveJobCard({ job, variant = 'full', applicantsCount = 0 }) {
       }
     >
       <p>{cancelBody}</p>
-      {canStopContract && paymentSettled ? (
+      {canStopContract ? (
         <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-950">
-          Payment was marked settled in the app. Hire With Ease does not refund money. Arrange any
-          refund outside the app (cash / GCash / bank). Use Report if you need PESO to review a
-          payment dispute.
+          Any payment already made outside the app is between you and the worker. Hire With Ease
+          does not refund money. Use Report if you need PESO to review a dispute.
         </p>
       ) : null}
       {cancelError ? (
         <p className="mt-2 rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700">
           {cancelError}
+        </p>
+      ) : null}
+    </Modal>
+
+    <Modal
+      isOpen={progressOpen}
+      title="Mark this job as in progress?"
+      onClose={closeProgressModal}
+      onConfirm={confirmMarkInProgress}
+      confirmText={progressBusy ? 'Updating…' : 'Mark as in progress'}
+      confirmDisabled={progressBusy}
+    >
+      <p>
+        Confirm only when work has started on site. The worker will be notified that the job is
+        now in progress.
+      </p>
+      {progressError ? (
+        <p className="mt-2 rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700">
+          {progressError}
+        </p>
+      ) : null}
+    </Modal>
+
+    <Modal
+      isOpen={completeOpen}
+      title="Mark this job as completed?"
+      onClose={closeCompleteModal}
+      onConfirm={confirmMarkComplete}
+      confirmText={completeBusy ? 'Completing…' : 'Mark as completed'}
+      confirmDisabled={completeBusy}
+    >
+      <p>This cannot be undone. The request will move to your past jobs and the worker will be notified.</p>
+      {completeError ? (
+        <p className="mt-2 rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700">
+          {completeError}
         </p>
       ) : null}
     </Modal>
@@ -363,13 +492,13 @@ function getStatusCopy(status) {
       return {
         title: 'Booking confirmed',
         detail:
-          'You and the worker have agreed on price, schedule, and scope. The worker will start the job at the agreed time.',
+          'You and the worker have agreed on price, schedule, and scope. When work begins on site, mark the job in progress (either of you can).',
       };
     case JOB_STATUS.IN_PROGRESS:
       return {
-        title: 'Your worker is on-site',
+        title: 'Work in progress',
         detail:
-          'Be present while work is ongoing. After check-out, confirm you paid off-platform (cash / GCash / bank), then mark the job complete.',
+          'Coordinate arrival, finish, and payment with your worker on site. When work is done, mark the job complete.',
       };
     default:
       return { title: status, detail: '' };

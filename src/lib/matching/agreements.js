@@ -10,9 +10,9 @@
  *        job.confirmedWorkerId is recorded
  *        all other applications for the job are auto-declined
  *
- * Worker then transitions the job to "In Progress" on arrival and the
- * client closes it with "Completed". Those are simple status pokes
- * defined on jobs.js.
+ * Either party then marks the job "In Progress" when work begins; the
+ * client closes it with "Completed". Payment stays fully off-platform.
+ * Those are simple status pokes defined on jobs.js.
  */
 
 import { doc, getDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
@@ -114,42 +114,6 @@ export async function confirmAgreement({ appId, role }) {
   }
 
   return { bothAgree };
-}
-
-/**
- * Off-platform payment acknowledgment (cash / GCash / bank).
- * Does not move money — both parties confirm the deal was paid.
- */
-export async function acknowledgePayment({ appId, role, methodNote = 'Cash / off-platform' }) {
-  if (!appId) throw new Error('acknowledgePayment: appId required');
-  if (role !== 'client' && role !== 'worker') {
-    throw new Error('acknowledgePayment: role must be client or worker');
-  }
-
-  const appRef = doc(db, 'applications', appId);
-  const appSnap = await getDoc(appRef);
-  if (!appSnap.exists()) throw new Error('Application no longer exists.');
-  const app = appSnap.data();
-
-  const paymentAcknowledgedByClient =
-    role === 'client' ? true : !!app.paymentAcknowledgedByClient;
-  const paymentAcknowledgedByWorker =
-    role === 'worker' ? true : !!app.paymentAcknowledgedByWorker;
-  const bothPaid = paymentAcknowledgedByClient && paymentAcknowledgedByWorker;
-  const nowIso = new Date().toISOString();
-
-  const patch = {
-    paymentAcknowledgedByClient,
-    paymentAcknowledgedByWorker,
-    paymentMethodNote: methodNote || app.paymentMethodNote || 'Cash / off-platform',
-    updatedAt: serverTimestamp(),
-  };
-  if (role === 'client') patch.paymentAckedByClientAt = nowIso;
-  if (role === 'worker') patch.paymentAckedByWorkerAt = nowIso;
-  if (bothPaid) patch.paymentSettledAt = nowIso;
-
-  await updateDoc(appRef, patch);
-  return { bothPaid };
 }
 
 /** Convenience: build the canonical app id without importing applications.js */

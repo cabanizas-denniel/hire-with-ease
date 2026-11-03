@@ -130,23 +130,29 @@ function ApplicantDashboardPage() {
             <p className="canvas-muted mb-3 text-sm">
               Based on your skills and location.
             </p>
-            <div className="grid gap-3">
-              {workerHasActiveJob ? (
-                <p className="rounded-xl border border-[#1F4E79]/15 bg-white p-6 text-center text-sm text-gray-600 shadow-sm">
-                  You already have an active job. Open{' '}
-                  <Link
-                    to="/applicant/jobs"
-                    className="font-semibold text-[#1F4E79] underline-offset-2 hover:underline"
-                  >
-                    Jobs
-                  </Link>{' '}
-                  to continue chatting, or finish/withdraw before accepting another match.
-                </p>
-              ) : null}
-              {!workerHasActiveJob
-                ? newMatches.map(({ job }) => (
+            {workerHasActiveJob ? (
+              <p className="rounded-xl border border-[#1F4E79]/15 bg-white p-6 text-center text-sm text-gray-600 shadow-sm">
+                You already have an active job. Open{' '}
+                <Link
+                  to="/applicant/jobs"
+                  className="font-semibold text-[#1F4E79] underline-offset-2 hover:underline"
+                >
+                  Jobs
+                </Link>{' '}
+                to continue chatting, or finish/withdraw before accepting another match.
+              </p>
+            ) : null}
+            {!workerHasActiveJob && newMatches.length === 0 ? (
+              <p className="rounded-xl bg-white p-6 text-center text-sm text-gray-500 shadow-sm">
+                No new matches right now. Update your skills and location to improve
+                results.
+              </p>
+            ) : null}
+            {!workerHasActiveJob && newMatches.length > 0 ? (
+              <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 [&>li]:min-w-0">
+                {newMatches.map(({ job }) => (
+                  <li key={job.docId || job.id}>
                     <JobCard
-                      key={job.docId || job.id}
                       job={{
                         ...job,
                         location: locationLabel(job),
@@ -158,15 +164,10 @@ function ApplicantDashboardPage() {
                       verificationHref={canAct ? null : '/applicant/profile'}
                       verificationLabel="Profile Verification"
                     />
-                  ))
-                : null}
-              {!workerHasActiveJob && newMatches.length === 0 ? (
-                <p className="rounded-xl bg-white p-6 text-center text-sm text-gray-500 shadow-sm">
-                  No new matches right now. Update your skills and location to improve
-                  results.
-                </p>
-              ) : null}
-            </div>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
           </section>
         </>
       )}

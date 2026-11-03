@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   HiOutlineCalendarDays,
-  HiOutlineCamera,
   HiOutlineChevronDown,
   HiOutlineChevronUp,
   HiOutlinePaperAirplane,
@@ -26,7 +25,6 @@ import {
 import ReportFlagDialog from './ReportFlagDialog.jsx';
 import ScheduleAgreementModal from './ScheduleAgreementModal.jsx';
 import JobProgressBar from './JobProgressBar.jsx';
-import { setJobStatus } from '../../lib/matching/jobs.js';
 import { APPLICATION_STATUS, JOB_STATUS } from '../../lib/matching/statuses.js';
 
 const DEFAULT_HEIGHT = 'min-h-[200px] max-h-[min(320px,45vh)]';
@@ -59,8 +57,6 @@ function ChatPanel({
   const [contactOpen, setContactOpen] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const scrollerRef = useRef(null);
-  const fileInputRef = useRef(null);
-  const [proofMode, setProofMode] = useState(null);
 
   const resolvedClientEmail = thread?.clientEmail || clientEmail || null;
   const resolvedClientMobile = thread?.clientMobile || clientMobile || null;
@@ -73,8 +69,6 @@ function ChatPanel({
   const countdown = formatNegotiationCountdown(thread);
   const schedule = thread?.scheduleAgreement;
 
-  const hasCheckIn = (messages || []).some((m) => m.messageType === 'check_in');
-  const hasCheckOut = (messages || []).some((m) => m.messageType === 'check_out');
   const bookingLocked =
     jobStatus === JOB_STATUS.CONFIRMED ||
     jobStatus === JOB_STATUS.IN_PROGRESS ||
@@ -93,19 +87,16 @@ function ChatPanel({
     }
     if (!lastAgreementId) return list;
     return list.filter((m) => {
-      if (m.messageType !== 'schedule' && m.messageType !== 'agreement_confirmed' && m.messageType !== 'hire_declined') {
+      if (
+        m.messageType !== 'schedule' &&
+        m.messageType !== 'agreement_confirmed' &&
+        m.messageType !== 'hire_declined'
+      ) {
         return true;
       }
       return m.id === lastAgreementId;
     });
   }, [messages]);
-  const showCheckIn = role === 'worker' && bookingLocked && !hasCheckIn && !expired;
-  const showCheckOut =
-    role === 'worker' &&
-    hasCheckIn &&
-    !hasCheckOut &&
-    (jobStatus === JOB_STATUS.IN_PROGRESS || bookingLocked) &&
-    !expired;
 
   const showSuggestions = useMemo(
     () =>
@@ -152,7 +143,7 @@ function ChatPanel({
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages?.length]);
 
-  const postMessage = async (text, { dismissSuggestions = false, messageType = 'text', imageUrl = null } = {}) => {
+  const postMessage = async (text, { dismissSuggestions = false, messageType = 'text' } = {}) => {
     if (!user?.uid || expired) return;
     setSending(true);
     setError(null);
@@ -167,14 +158,8 @@ function ChatPanel({
         authorRole: role,
         text,
         messageType,
-        imageUrl,
         dismissSuggestions: dismissSuggestions || role === 'client',
       });
-      if (messageType === 'check_in' && jobId) {
-        await setJobStatus(jobId, JOB_STATUS.IN_PROGRESS, {
-          startedAt: new Date().toISOString(),
-        }).catch(() => {});
-      }
       if (messageType === 'text') setDraft('');
     } catch (err) {
       setError(err.message || 'Could not send message.');
@@ -193,27 +178,6 @@ function ChatPanel({
     await postMessage(suggestion.text, { dismissSuggestions: true });
   };
 
-  const handleProofFile = async (event) => {
-    const file = event.target.files?.[0];
-    if (!file || !proofMode) return;
-    if (!file.type.startsWith('image/')) {
-      setError('Please choose a photo.');
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const dataUrl = reader.result;
-      if (typeof dataUrl !== 'string') return;
-      await postMessage(
-        proofMode === 'check_in' ? 'Arrived — check-in proof' : 'Finished on-site — check-out proof',
-        { messageType: proofMode, imageUrl: dataUrl },
-      );
-      setProofMode(null);
-    };
-    reader.readAsDataURL(file);
-    event.target.value = '';
-  };
-
   const heightClass = compact ? DEFAULT_HEIGHT : 'min-h-[280px]';
 
   return (
@@ -225,8 +189,6 @@ function ChatPanel({
           <JobProgressBar
             applicationStatus={applicationStatus}
             jobStatus={jobStatus}
-            hasCheckIn={hasCheckIn}
-            hasCheckOut={hasCheckOut}
           />
         </div>
       ) : null}
@@ -341,25 +303,28 @@ function ChatPanel({
           <ul className="space-y-1.5">
             {visibleMessages.map((m) => {
               const mine = m.authorId === user?.uid;
-              const isProof =
-                m.messageType === 'check_in' || m.messageType === 'check_out';
               const isSchedule = m.messageType === 'schedule';
               const isAgreementConfirmed = m.messageType === 'agreement_confirmed';
               const isHireDeclined = m.messageType === 'hire_declined';
+              const isWorkStarted = m.messageType === 'work_started';
               const isAgreementDivider =
-                isSchedule || isAgreementConfirmed || isHireDeclined;
+                isSchedule || isAgreementConfirmed || isHireDeclined || isWorkStarted;
 
               if (isAgreementDivider) {
                 const lineClass = isAgreementConfirmed
                   ? 'bg-emerald-300'
                   : isHireDeclined
                     ? 'bg-red-200'
-                    : 'bg-gray-200';
+                    : isWorkStarted
+                      ? 'bg-indigo-300'
+                      : 'bg-gray-200';
                 const textClass = isAgreementConfirmed
                   ? 'text-emerald-700'
                   : isHireDeclined
                     ? 'text-red-700'
-                    : 'text-gray-500';
+                    : isWorkStarted
+                      ? 'text-indigo-700'
+                      : 'text-gray-500';
                 return (
                   <li key={m.id} className="flex items-center gap-2 py-1.5">
                     <span className={`h-px flex-1 ${lineClass}`} aria-hidden="true" />
@@ -371,7 +336,9 @@ function ChatPanel({
                           ? 'Agreement confirmed — booking locked.'
                           : isHireDeclined
                             ? 'Hire declined — booking unlocked.'
-                            : 'Schedule agreement submitted — open Review schedule.')}
+                            : isWorkStarted
+                              ? 'Work started — job is in progress.'
+                              : 'Schedule agreement submitted — open Review schedule.')}
                     </p>
                     <span className={`h-px flex-1 ${lineClass}`} aria-hidden="true" />
                   </li>
@@ -384,50 +351,22 @@ function ChatPanel({
                   className={`flex ${mine ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`max-w-[85%] overflow-hidden rounded-xl text-xs shadow-sm ${
-                      isProof
-                        ? 'border border-[#2ea3e6]/40 bg-white text-gray-800'
-                        : mine
-                          ? 'bg-[#1F4E79] px-2.5 py-1.5 text-white'
-                          : 'bg-slate-100 px-2.5 py-1.5 text-gray-800'
+                    className={`max-w-[85%] overflow-hidden rounded-xl px-2.5 py-1.5 text-xs shadow-sm ${
+                      mine
+                        ? 'bg-[#1F4E79] text-white'
+                        : 'bg-slate-100 text-gray-800'
                     }`}
                   >
-                    {isProof ? (
-                      <div>
-                        <p
-                          className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${
-                            m.messageType === 'check_in'
-                              ? 'bg-amber-400 text-[#1F4E79]'
-                              : 'bg-emerald-500 text-white'
-                          }`}
-                        >
-                          {m.messageType === 'check_in' ? 'Check-in proof' : 'Check-out proof'}
-                        </p>
-                        {m.imageUrl ? (
-                          <img
-                            src={m.imageUrl}
-                            alt=""
-                            className="max-h-44 w-full object-cover"
-                          />
-                        ) : null}
-                        {m.text ? (
-                          <p className="px-2.5 py-1.5 text-[11px] text-gray-700">{m.text}</p>
-                        ) : null}
-                      </div>
-                    ) : (
-                      <>
-                        {m.imageUrl ? (
-                          <img
-                            src={m.imageUrl}
-                            alt=""
-                            className="mb-1 max-h-32 rounded-lg object-cover"
-                          />
-                        ) : null}
-                        {m.text ? (
-                          <p className="whitespace-pre-wrap break-words">{m.text}</p>
-                        ) : null}
-                      </>
-                    )}
+                    {m.imageUrl ? (
+                      <img
+                        src={m.imageUrl}
+                        alt=""
+                        className="mb-1 max-h-32 rounded-lg object-cover"
+                      />
+                    ) : null}
+                    {m.text ? (
+                      <p className="whitespace-pre-wrap break-words">{m.text}</p>
+                    ) : null}
                   </div>
                 </li>
               );
@@ -461,52 +400,6 @@ function ChatPanel({
         </p>
       ) : null}
 
-      {role === 'worker' && (showCheckIn || showCheckOut) ? (
-        <div className="shrink-0 border-t border-[#2ea3e6]/25 bg-[#e8f6fd] px-3 py-2">
-          {showCheckIn ? (
-            <button
-              type="button"
-              disabled={sending}
-              onClick={() => {
-                setProofMode('check_in');
-                fileInputRef.current?.click();
-              }}
-              className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-amber-400 px-3 py-2 text-xs font-bold text-[#1F4E79] shadow-sm hover:bg-amber-300 disabled:cursor-not-allowed"
-            >
-              <HiOutlineCamera className="h-4 w-4" aria-hidden="true" />
-              Check in with a photo
-            </button>
-          ) : null}
-          {showCheckOut ? (
-            <div className="space-y-1.5">
-              <p className="text-center text-[11px] font-medium text-[#1F4E79]">
-                Work in progress. Check out when you leave the site.
-              </p>
-              <button
-                type="button"
-                disabled={sending}
-                onClick={() => {
-                  setProofMode('check_out');
-                  fileInputRef.current?.click();
-                }}
-                className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white shadow-sm hover:bg-emerald-500 disabled:cursor-not-allowed"
-              >
-                <HiOutlineCamera className="h-4 w-4" aria-hidden="true" />
-                Check out with a photo
-              </button>
-            </div>
-          ) : null}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            className="hidden"
-            onChange={handleProofFile}
-          />
-        </div>
-      ) : null}
-
       <form
         onSubmit={handleSend}
         className="flex shrink-0 items-center gap-1.5 border-t border-gray-100 p-2"
@@ -537,9 +430,8 @@ function ChatPanel({
         jobTitle={jobTitle}
         application={application}
         role={role === 'client' ? 'client' : 'worker'}
-        initialPrice={
-          application?.proposedAgreement?.price || schedule?.price || jobBudget
-        }
+        initialPrice={application?.proposedAgreement?.price || schedule?.price || ''}
+        budgetHint={jobBudget || ''}
       />
     </div>
   );

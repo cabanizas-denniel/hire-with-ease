@@ -232,6 +232,14 @@ export async function setJobStatus(jobId, status, extra = {}) {
   });
 }
 
+/** Confirmed → In Progress when either party marks that on-site work has begun. */
+export async function startJobWork(jobId) {
+  if (!jobId) throw new Error('startJobWork: jobId required');
+  await setJobStatus(jobId, JOB_STATUS.IN_PROGRESS, {
+    startedAt: new Date().toISOString(),
+  });
+}
+
 /** Bumps a counter on the job doc so the dashboard summary stays current. */
 export async function setMatchedWorkers(jobId, count) {
   await updateDoc(doc(db, 'jobs', jobId), {

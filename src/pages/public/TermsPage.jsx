@@ -66,7 +66,7 @@ function TermsPage() {
           <li>Treat counterparts respectfully in chat and on site.</li>
           <li>Do not harass, spam, or attempt to bypass security or verification controls.</li>
           <li>
-            Check-in / check-out photos and chat records support coordination and dispute review;
+            Chat records and job status history support coordination and dispute review;
             do not upload unrelated private content.
           </li>
         </ul>
@@ -74,12 +74,12 @@ function TermsPage() {
 
       <LegalSection title="6. Payments">
         <p>
-          Payment for work is arranged <span className="font-medium text-gray-900">off-platform</span>{' '}
-          between homeowner and worker (for example cash on site, GCash, or bank transfer outside
-          the app). Hire With Ease does not process, escrow, guarantee, or transfer money. The
-          in-app buttons such as “I paid the agreed amount” / “I received the payment” only{' '}
-          <span className="font-medium text-gray-900">record acknowledgment</span> that both parties
-          settled outside the platform. They are not a payment gateway.
+          Payment for work is arranged entirely{' '}
+          <span className="font-medium text-gray-900">off-platform</span> between homeowner and
+          worker (for example cash on site, GCash, or bank transfer outside the app). Hire With
+          Ease does not process, escrow, guarantee, transfer, or record payment inside the app. The
+          schedule agreement may store an agreed price for coordination only — it is not a payment
+          receipt.
         </p>
       </LegalSection>
 

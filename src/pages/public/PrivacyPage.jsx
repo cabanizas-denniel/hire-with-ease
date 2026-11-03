@@ -37,13 +37,12 @@ function PrivacyPage() {
           </li>
           <li>
             <span className="font-medium text-gray-900">Job activity:</span> job requests, match
-            results, applications, chat messages, check-in/out photos, and status history.
+            results, applications, chat messages, and status history.
           </li>
           <li>
-            <span className="font-medium text-gray-900">Payment acknowledgments:</span> notes that
-            off-platform payment was agreed or confirmed — not card, bank, or wallet secrets. Hire
-            With Ease does not process or refund money; refunds after cancellation are arranged
-            between the parties outside the app (see Terms).
+            <span className="font-medium text-gray-900">Agreed price (coordination only):</span>{' '}
+            optional agreed amount from the schedule agreement for records — not card, bank, or
+            wallet secrets. Hire With Ease does not process or refund money (see Terms).
           </li>
         </ul>
       </LegalSection>
@@ -115,7 +114,7 @@ function PrivacyPage() {
         <ul className="list-disc space-y-1.5 pl-5">
           <li>Matching logic runs in the client; treat shortlists as decision support, not guarantees.</li>
           <li>Counterpart contact becomes visible for coordination after engagement.</li>
-          <li>Photo proofs and map pins are operational tools, not forensic evidence systems.</li>
+          <li>Map pins and status timestamps support coordination; they are not forensic evidence systems.</li>
           <li>Do not upload documents beyond what verification requires.</li>
         </ul>
       </LegalSection>

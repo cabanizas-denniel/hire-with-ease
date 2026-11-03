@@ -3,7 +3,6 @@ import { Link, useParams } from 'react-router-dom';
 import { HiOutlineArrowLeft } from 'react-icons/hi2';
 import FindingWorkersPanel from '../../components/employer/FindingWorkersPanel.jsx';
 import ChatPanel from '../../components/matching/ChatPanel.jsx';
-import PaymentFulfillmentCard from '../../components/matching/PaymentFulfillmentCard.jsx';
 import JobIssueMedia from '../../components/JobIssueMedia.jsx';
 import PageHeader from '../../components/PageHeader.jsx';
 import SkillBadge from '../../components/SkillBadge.jsx';
@@ -302,11 +301,11 @@ function EmployerCandidatesPage() {
 
       <div className="mb-3">
         <Link
-          to="/employer/jobs"
+          to="/employer/dashboard"
           className="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
         >
           <HiOutlineArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
-          Back to My Requests
+          Back to Home
         </Link>
       </div>
 
@@ -344,12 +343,6 @@ function EmployerCandidatesPage() {
             application={selected}
             compact
           />
-          {(job.status === JOB_STATUS.CONFIRMED ||
-            job.status === JOB_STATUS.IN_PROGRESS ||
-            selected?.status === APPLICATION_STATUS.CONFIRMED) &&
-          job.confirmedWorkerId === activeWorkerId ? (
-            <PaymentFulfillmentCard application={selected} role="client" />
-          ) : null}
         </section>
       ) : null}
     </div>

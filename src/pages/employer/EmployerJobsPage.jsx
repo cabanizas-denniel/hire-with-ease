@@ -1,16 +1,11 @@
 import { useMemo } from 'react';
-import { HiOutlineArchiveBox, HiOutlinePlusCircle } from 'react-icons/hi2';
+import { HiOutlineArchiveBox } from 'react-icons/hi2';
 import { Link } from 'react-router-dom';
-import ActiveJobCard from '../../components/employer/ActiveJobCard.jsx';
 import PageHeader from '../../components/PageHeader.jsx';
 import PageSkeleton from '../../components/PageSkeleton.jsx';
 import StatusBadge from '../../components/StatusBadge.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
-import {
-  useApplicationsForJob,
-  useJobsByOwner,
-} from '../../lib/matching/hooks.js';
-import { findActiveJob } from '../../lib/matching/jobs.js';
+import { useJobsByOwner } from '../../lib/matching/hooks.js';
 import { ACTIVE_JOB_STATUSES, JOB_STATUS } from '../../lib/matching/statuses.js';
 import { locationLabel } from '../../utils/clientJobs.js';
 
@@ -19,89 +14,65 @@ function EmployerJobsPage() {
   const ownerUid = auth?.user?.uid || null;
 
   const { data: jobs, loading } = useJobsByOwner(ownerUid);
-  const activeJob = useMemo(() => findActiveJob(jobs), [jobs]);
-  const completed = useMemo(
-    () => jobs.filter((j) => !ACTIVE_JOB_STATUSES.has(j.status)),
-    [jobs]
-  );
-
-  const { data: applicants } = useApplicationsForJob(
-    activeJob?.docId || activeJob?.id || null
+  const pastJobs = useMemo(
+    () =>
+      (jobs || [])
+        .filter((j) => !ACTIVE_JOB_STATUSES.has(j.status))
+        .sort((a, b) => {
+          const ta =
+            a.updatedAt?.toMillis?.() ??
+            (Date.parse(a.completedAt || a.cancelledAt || a.postedAt || '') || 0);
+          const tb =
+            b.updatedAt?.toMillis?.() ??
+            (Date.parse(b.completedAt || b.cancelledAt || b.postedAt || '') || 0);
+          return tb - ta;
+        }),
+    [jobs],
   );
 
   return (
     <div>
       <PageHeader
-        title="Requests"
-        subtitle={
-          activeJob
-            ? 'Your ongoing request is shown below. Completed and past requests are listed underneath.'
-            : 'No ongoing request. Your past and completed requests are listed below.'
-        }
+        title="History"
+        subtitle="Past and completed requests only. Ongoing work stays on Home."
       />
 
-      <section>
-        <h2 className="canvas-muted mb-2 px-1 text-xs font-semibold uppercase tracking-wide">
-          Ongoing
-        </h2>
-        {loading ? (
-          <PageSkeleton showHeader={false} variant="cards" />
-        ) : activeJob ? (
-          <ActiveJobCard job={activeJob} applicantsCount={applicants?.length || 0} />
-        ) : (
-          <div className="rounded-xl border border-dashed border-gray-200 bg-white p-5 text-center shadow-sm sm:p-6">
-            <p className="text-sm font-semibold text-gray-800">
-              No ongoing request
-            </p>
-            <p className="mx-auto mt-1 max-w-sm text-xs text-gray-500">
-              You can only run one request at a time, so the next worker who
-              arrives is meeting you and not an empty address.
-            </p>
-            <Link
-              to="/employer/post-job"
-              className="mt-3 inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#1F4E79] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:brightness-110"
-            >
-              <HiOutlinePlusCircle className="h-4 w-4" aria-hidden="true" />
-              Request a Service
-            </Link>
-          </div>
-        )}
-      </section>
-
-      <section className="mt-6">
-        <div className="mb-2 flex items-end justify-between px-1">
-          <h2 className="canvas-muted text-xs font-semibold uppercase tracking-wide">
-            Past Requests
-          </h2>
-          <span className="canvas-muted text-[11px]">
-            {completed.length} total
-          </span>
+      {loading ? (
+        <PageSkeleton showHeader={false} variant="cards" />
+      ) : pastJobs.length === 0 ? (
+        <div className="mt-4 flex flex-col items-center gap-2 rounded-xl border border-dashed border-gray-200 bg-white p-6 text-center">
+          <HiOutlineArchiveBox
+            className="h-6 w-6 text-gray-400"
+            aria-hidden="true"
+          />
+          <p className="text-sm font-semibold text-gray-800">No past requests yet</p>
+          <p className="max-w-sm text-xs text-gray-500">
+            When a request is completed or cancelled, it appears here.
+          </p>
+          <Link
+            to="/employer/post-job"
+            className="mt-2 text-sm font-semibold text-[#1F4E79] underline-offset-2 hover:underline"
+          >
+            Request a service
+          </Link>
         </div>
-
-        {completed.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-gray-200 bg-white p-6 text-center">
-            <HiOutlineArchiveBox
-              className="h-6 w-6 text-gray-400"
-              aria-hidden="true"
-            />
-            <p className="text-sm font-semibold text-gray-800">
-              No past requests yet
-            </p>
-            <p className="max-w-sm text-xs text-gray-500">
-              Once a job wraps up it moves here so you can look back at worker
-              history and ratings.
-            </p>
+      ) : (
+        <section className="mt-4">
+          <div className="mb-2 flex items-end justify-between px-1">
+            <h2 className="canvas-muted text-xs font-semibold uppercase tracking-wide">
+              Past requests
+            </h2>
+            <span className="canvas-muted text-[11px]">{pastJobs.length} total</span>
           </div>
-        ) : (
           <ul className="space-y-2.5">
-            {completed.map((job) => (
+            {pastJobs.map((job) => (
               <li key={job.docId || job.id}>
                 <HistoryRow job={job} />
               </li>
             ))}
           </ul>
-        )}
-      </section>
+        </section>
+      )}
     </div>
   );
 }
@@ -125,7 +96,9 @@ function HistoryRow({ job }) {
           <p className="mt-0.5 text-[11px] text-gray-400">
             {isCompleted && job.completedAt
               ? `Completed ${new Date(job.completedAt).toLocaleDateString()}`
-              : `Posted ${job.postedAt || '—'}`}
+              : job.status === JOB_STATUS.CANCELLED && job.cancelledAt
+                ? `Cancelled ${new Date(job.cancelledAt).toLocaleDateString()}`
+                : `Posted ${job.postedAt || '—'}`}
             {job.schedule ? ` · ${job.schedule}` : ''}
           </p>
         </div>

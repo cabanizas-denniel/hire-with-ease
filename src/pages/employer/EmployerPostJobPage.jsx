@@ -6,7 +6,7 @@ import {
   HiOutlineTrash,
   HiOutlineXMark,
 } from 'react-icons/hi2';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import ActiveJobCard from '../../components/employer/ActiveJobCard.jsx';
 import FormStepper from '../../components/FormStepper.jsx';
 import PageHeader from '../../components/PageHeader.jsx';
@@ -21,7 +21,7 @@ import {
   prepareJobIssueMedia,
 } from '../../lib/jobIssueMediaUpload.js';
 import { createJob, findActiveJob, newJobId } from '../../lib/matching/jobs.js';
-import { useJobsByOwner } from '../../lib/matching/hooks.js';
+import { useApplicationsForJob, useJobsByOwner } from '../../lib/matching/hooks.js';
 import ScheduleTimeSelect from '../../components/ScheduleTimeSelect.jsx';
 import {
   formatScheduledStart,
@@ -213,7 +213,7 @@ function EmployerPostJobPage() {
   if (loading) {
     return (
       <div>
-        <PageHeader title="Request a Service" subtitle="Loading…" />
+        <PageHeader title="Request" subtitle="Loading…" />
       </div>
     );
   }
@@ -230,7 +230,7 @@ function EmployerPostJobPage() {
   return (
     <div>
       <PageHeader
-        title="Request a Service"
+        title="Request"
         subtitle="Follow the steps below. Your request is saved to the database and matched to workers by skill and location."
       />
 
@@ -601,30 +601,22 @@ function IssueMediaSection({
 }
 
 function BlockedByActiveJob({ activeJob }) {
+  const { data: applicants } = useApplicationsForJob(
+    activeJob?.docId || activeJob?.id || null,
+  );
+
   return (
     <div>
       <PageHeader
-        title="Request Service"
-        subtitle="You have an active request. Complete it to post another."
+        title="Request"
+        subtitle="You already have an ongoing request. Finish or stop it before posting another."
       />
 
       <div className="mt-5">
-        <ActiveJobCard job={activeJob} />
-      </div>
-
-      <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-        <Link
-          to="/employer/jobs"
-          className="inline-flex w-full items-center justify-center rounded-lg bg-[#1F4E79] px-4 py-2.5 text-sm font-semibold text-white sm:w-auto"
-        >
-          View request
-        </Link>
-        <Link
-          to="/employer/dashboard"
-          className="inline-flex w-full items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 sm:w-auto"
-        >
-          Home
-        </Link>
+        <ActiveJobCard
+          job={activeJob}
+          applicantsCount={applicants?.length || 0}
+        />
       </div>
     </div>
   );

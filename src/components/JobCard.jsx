@@ -1,13 +1,16 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
-import { HiOutlineCheck, HiOutlineMapPin } from 'react-icons/hi2';
+import {
+  HiOutlineBanknotes,
+  HiOutlineCalendarDays,
+  HiOutlineCheck,
+  HiOutlineClock,
+  HiOutlineMapPin,
+} from 'react-icons/hi2';
 import { formatPostedDate } from '../lib/scheduleFormat.js';
-import { getJobMediaEntries } from '../utils/jobMedia.js';
+import { getJobMediaEntries, isVideoMediaEntry } from '../utils/jobMedia.js';
 import HomeownerTrustRow from './HomeownerTrustRow.jsx';
-import JobIssueMedia from './JobIssueMedia.jsx';
-import SkillBadge from './SkillBadge.jsx';
-import StatusBadge from './StatusBadge.jsx';
 
 const TOOLTIP_W = 220;
 const TOOLTIP_H = 150;
@@ -26,6 +29,20 @@ function tooltipPosition(x, y) {
   return { left, top };
 }
 
+function locationText(job) {
+  if (!job) return null;
+  if (typeof job.location === 'string' && job.location.trim()) return job.location.trim();
+  const barangay = job.location?.barangay;
+  const label = job.location?.label;
+  if (barangay) return `${barangay}, Olongapo`;
+  if (label) return label;
+  return null;
+}
+
+/**
+ * Matched / browse job card — same visual language as WorkerMyJobCard
+ * (hero issue photo, overlay title, icon detail rows).
+ */
 function JobCard({
   job,
   onAccept,
@@ -33,7 +50,6 @@ function JobCard({
   onViewDetails,
   compact = false,
   showDescription = false,
-  showFullMedia = false,
   declineLabel = 'Not Interested',
   acceptLabel = 'Accept',
   statusTag = null,
@@ -47,15 +63,22 @@ function JobCard({
   const trustTier =
     clientTrustTier ?? job.postedByTrustTier ?? job.clientTrustTier ?? null;
   const isRush = job.type === 'Rush';
-  const hasMedia = getJobMediaEntries(job).length > 0;
+  const media = getJobMediaEntries(job);
+  const cover = media[0] || null;
+  const extraCount = Math.max(0, media.length - 1);
   const postedLabel = formatPostedDate(job.postedAt, job.createdAt);
+  const address = locationText(job);
   const topMatch = matchReasons?.[0] || null;
   const hasMatchWhy = Boolean(matchReasons?.length);
   const tipPos = cursor ? tooltipPosition(cursor.x, cursor.y) : null;
+  const hasActions = Boolean(
+    verificationHref || (!compact && (onDecline || onAccept || onViewDetails)),
+  );
+  const badgeLabel = statusTag || (isRush ? 'Rush' : 'Match');
 
   return (
     <article
-      className="relative flex h-full flex-col"
+      className="relative h-full"
       onMouseMove={
         hasMatchWhy
           ? (e) => setCursor({ x: e.clientX, y: e.clientY })
@@ -86,67 +109,112 @@ function JobCard({
         : null}
 
       <div
-        className={`panel-surface flex h-full min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-[#1F4E79]/20 bg-white ${
-          isRush ? 'ring-2 ring-amber-300' : ''
+        className={`group relative flex aspect-[4/5] h-full flex-col overflow-hidden rounded-2xl border bg-white shadow-[0_12px_28px_rgba(8,45,90,0.18)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(8,45,90,0.24)] ${
+          isRush ? 'border-amber-300 ring-2 ring-amber-300/60' : 'border-[#1F4E79]/20'
         }`}
       >
-        {hasMedia ? (
-          <JobIssueMedia
-            job={job}
-            variant={showFullMedia ? 'gallery' : 'card'}
-            compact={!showFullMedia}
-            titleAlt={`Photo for "${job.title}"`}
+        <div className="relative flex-[1.15] overflow-hidden bg-gradient-to-br from-[#1a3d5c] via-[#2E75B6] to-[#5eb0d8]">
+          {cover ? (
+            isVideoMediaEntry(cover) ? (
+              <video
+                src={cover.url}
+                muted
+                playsInline
+                className="absolute inset-0 h-full w-full object-cover"
+                aria-hidden="true"
+              />
+            ) : (
+              <img
+                src={cover.url}
+                alt=""
+                className="absolute inset-0 h-full w-full object-cover transition duration-200 group-hover:scale-[1.03]"
+              />
+            )
+          ) : null}
+          <div
+            className="absolute inset-0 bg-gradient-to-t from-[#0d2a44]/90 via-[#0d2a44]/35 to-transparent"
+            aria-hidden="true"
           />
-        ) : null}
-
-        <div className="flex min-h-0 flex-1 flex-col p-3">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <h3 className="line-clamp-1 text-sm font-semibold text-[#1F4E79]">{job.title}</h3>
+          <div className="absolute left-3 top-3 z-10 flex flex-wrap gap-1.5">
+            <span
+              className={`rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-wide shadow-sm ${
+                isRush
+                  ? 'bg-amber-400 text-[#1F4E79]'
+                  : 'bg-white/95 text-[#1F4E79]'
+              }`}
+            >
+              {badgeLabel}
+            </span>
+            {extraCount > 0 ? (
+              <span className="rounded-md bg-black/50 px-2 py-1 text-[10px] font-semibold text-white backdrop-blur-sm">
+                +{extraCount} photos
+              </span>
+            ) : null}
+          </div>
+          <div className="absolute inset-x-0 bottom-0 z-10 p-3.5">
+            <p className="line-clamp-2 text-base font-semibold leading-tight text-white drop-shadow-sm sm:text-lg">
+              {job.title || 'Job'}
+            </p>
+            <p className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-white/90">
               {job.clientName || trustTier != null ? (
-                <HomeownerTrustRow name={job.clientName} trustTier={trustTier} />
-              ) : null}
-            </div>
-            <div className="flex shrink-0 flex-col items-end gap-1">
-              {statusTag ? (
-                <span className="rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800">
-                  {statusTag}
-                </span>
-              ) : null}
-              {isRush ? (
-                <span className="rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-800">
-                  Rush
-                </span>
-              ) : null}
-            </div>
+                <>
+                  {job.clientName ? <span>{job.clientName}</span> : null}
+                  <HomeownerTrustRow
+                    name={null}
+                    trustTier={trustTier}
+                    prefix=""
+                    className="mt-0"
+                  />
+                </>
+              ) : (
+                <span>Homeowner</span>
+              )}
+            </p>
           </div>
+        </div>
 
-          <div className="mt-1.5 space-y-0.5 text-xs text-gray-600">
-            <p className="flex min-w-0 items-center gap-1">
-              <HiOutlineMapPin className="h-3.5 w-3.5 shrink-0 text-[#1F4E79]" aria-hidden="true" />
-              <span className="truncate">{job.location || 'Location pending'}</span>
-            </p>
-            <p className="truncate">
-              {[job.budget, !compact ? job.schedule : null].filter(Boolean).join(' · ')}
-            </p>
-            {postedLabel ? <p className="text-[11px] text-gray-400">Posted {postedLabel}</p> : null}
-          </div>
+        <div className="flex min-h-0 flex-1 flex-col px-3.5 pb-3 pt-2.5">
+          <ul className="space-y-1.5 text-[11px] text-gray-600">
+            {address ? (
+              <li className="flex items-start gap-1.5">
+                <HiOutlineMapPin
+                  className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#1F4E79]"
+                  aria-hidden="true"
+                />
+                <span className="line-clamp-1">{address}</span>
+              </li>
+            ) : null}
+            {job.budget ? (
+              <li className="flex items-start gap-1.5">
+                <HiOutlineBanknotes
+                  className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#1F4E79]"
+                  aria-hidden="true"
+                />
+                <span className="line-clamp-1">{job.budget}</span>
+              </li>
+            ) : null}
+            {job.schedule ? (
+              <li className="flex items-start gap-1.5">
+                <HiOutlineCalendarDays
+                  className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#1F4E79]"
+                  aria-hidden="true"
+                />
+                <span className="line-clamp-2">{job.schedule}</span>
+              </li>
+            ) : null}
+            {postedLabel ? (
+              <li className="flex items-start gap-1.5">
+                <HiOutlineClock
+                  className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#1F4E79]"
+                  aria-hidden="true"
+                />
+                <span className="line-clamp-1">Posted {postedLabel}</span>
+              </li>
+            ) : null}
+          </ul>
 
           {showDescription && job.description ? (
-            <p className="mt-2 line-clamp-2 text-xs text-gray-700">{job.description}</p>
-          ) : null}
-
-          {job.requiredSkills?.length ? (
-            <div className="mt-2 flex flex-wrap gap-1">
-              {job.requiredSkills.slice(0, 2).map((skill) => (
-                <SkillBadge key={skill} skill={skill} />
-              ))}
-              {job.requiredSkills.length > 2 ? (
-                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600">
-                  +{job.requiredSkills.length - 2}
-                </span>
-              ) : null}
-            </div>
+            <p className="mt-2 line-clamp-2 text-[11px] text-gray-700">{job.description}</p>
           ) : null}
 
           {hasMatchWhy ? (
@@ -200,10 +268,11 @@ function JobCard({
               ) : null}
             </div>
           ) : null}
-          {!verificationHref && compact ? (
-            <div className="mt-2">
-              <StatusBadge status={job.status} />
-            </div>
+
+          {!hasActions ? (
+            <p className="mt-auto pt-3 text-center text-[11px] font-medium text-[#2E75B6]">
+              Open Jobs to accept
+            </p>
           ) : null}
         </div>
       </div>

@@ -19,8 +19,8 @@ const SIDEBAR_LINKS = {
   employer: [
     { to: '/employer/dashboard', label: 'Home' },
     { to: '/employer/profile', label: 'Profile' },
-    { to: '/employer/post-job', label: 'Request Service' },
-    { to: '/employer/jobs', label: 'Requests' },
+    { to: '/employer/post-job', label: 'Request' },
+    { to: '/employer/jobs', label: 'History' },
   ],
   admin: [
     { to: '/admin/dashboard', label: 'Analytics' },
