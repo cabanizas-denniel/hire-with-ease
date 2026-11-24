@@ -152,14 +152,14 @@ function EmployerProfilePage() {
     <div>
       <PageHeader
         title="Client Profile"
-        subtitle="Complete each step below. Your home address is used when you post service requests — save on the final step."
+        subtitle="Complete each step below. Your home address is used when you post service requests."
       />
 
       <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4 text-sm text-[#1F4E79]">
         <p className="font-semibold">Why verification matters</p>
         <p className="mt-1 text-gray-600">
           Workers can see your trust tier before accepting a job. A verified
-          profile builds confidence, reduces no-shows, and unlocks larger-budget
+          profile builds confidence, and reduces no-shows.
           requests.
         </p>
       </div>
