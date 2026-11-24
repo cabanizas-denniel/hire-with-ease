@@ -17,7 +17,7 @@ function AuthLayout({
   return (
     <div className="min-h-dvh min-h-screen bg-[var(--hwe-canvas)]">
       <header className="flex min-w-0 items-center justify-between border-b border-[var(--hwe-slate)]/15 bg-[var(--hwe-strong)] px-[var(--hwe-page-pad)] py-3 lg:hidden">
-        <BrandMark to="/" variant="dark" />
+        <BrandMark to="/" variant="onStrong" />
         <Link
           to="/"
           className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-[var(--hwe-slate)] hover:underline"
@@ -30,7 +30,7 @@ function AuthLayout({
       <div className="min-w-0 lg:grid lg:min-h-dvh lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
         <aside className="relative hidden min-w-0 overflow-hidden bg-[var(--hwe-slate)] text-white lg:flex lg:flex-col">
           <div className="relative z-10 flex min-w-0 items-center justify-between px-[var(--hwe-page-pad)] pt-10">
-            <BrandMark to="/" variant="blueOnDark" />
+            <BrandMark to="/" variant="light" />
             <Link
               to="/"
               className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-white/25 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur hover:bg-white/20"
