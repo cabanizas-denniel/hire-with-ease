@@ -103,11 +103,11 @@ function FileDropInput({
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
-          className="flex w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-center hover:border-[#1F4E79] hover:bg-blue-50/40"
+          className="flex w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-center hover:border-[var(--hwe-slate)] hover:bg-blue-50/40"
         >
           <Icon className="h-6 w-6 text-gray-400" aria-hidden="true" />
           <span className="text-sm font-medium text-gray-700">
-            <span className="text-[#1F4E79] underline">Click to upload</span>
+            <span className="text-[var(--hwe-slate)] underline">Click to upload</span>
           </span>
           {hint ? (
             <span className="text-[11px] text-gray-500">{hint}</span>

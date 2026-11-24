@@ -48,7 +48,7 @@ function ScheduleTimeSelect({
       aria-label="Time"
       value={selected}
       onChange={(e) => onChange?.(e.target.value)}
-      className={`w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-base focus:border-[#1F4E79] focus:outline-none focus:ring-2 focus:ring-[#1F4E79]/20 disabled:opacity-60 ${className}`.trim()}
+      className={`w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-base focus:border-[var(--hwe-slate)] focus:outline-none focus:ring-2 focus:ring-[var(--hwe-sky)]/20 disabled:opacity-60 ${className}`.trim()}
     >
       <option value="">{placeholder}</option>
       {TIME_OPTIONS.map((opt) => (

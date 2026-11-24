@@ -188,7 +188,7 @@ function VerificationCenter({ userId, role = 'service-provider', className = '' 
       <header className="flex flex-wrap items-start justify-between gap-3 border-b border-gray-100 p-4 sm:p-5">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-base font-semibold text-[#1F4E79]">
+            <h2 className="text-base font-semibold text-[var(--hwe-slate)]">
               Verification Center
             </h2>
             <TrustBadge tier={tier} role={role === 'service-provider' ? 'service-provider' : 'client'} size="md" />
@@ -199,12 +199,12 @@ function VerificationCenter({ userId, role = 'service-provider', className = '' 
           </p>
         </div>
         <div className="text-right text-xs text-gray-500">
-          <p className="font-semibold text-[#1F4E79]">
+          <p className="font-semibold text-[var(--hwe-slate)]">
             {completedStages} / {totalStages} complete
           </p>
           <div className="mt-1 h-1.5 w-32 overflow-hidden rounded-full bg-gray-100">
             <div
-              className="h-full bg-[#1F4E79] transition-all"
+              className="h-full bg-[var(--hwe-accent)] transition-all"
               style={{ width: `${(completedStages / totalStages) * 100}%` }}
             />
           </div>
@@ -252,7 +252,7 @@ function StageRow({ index, icon, title, body, state, action }) {
   return (
     <li className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between sm:p-5">
       <div className="flex gap-3">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#1F4E79]/10 text-[#1F4E79]">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--hwe-sky-soft)] text-[var(--hwe-slate)]">
           <Icon className="h-5 w-5" aria-hidden="true" />
         </div>
         <div className="min-w-0 flex-1">
@@ -279,7 +279,7 @@ function StageRow({ index, icon, title, body, state, action }) {
           disabled={action.disabled}
           className={`self-start whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold shadow-sm transition cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 ${
             action.variant === 'primary'
-              ? 'bg-[#1F4E79] text-white hover:brightness-110'
+              ? 'btn-primary'
               : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
           }`}
         >

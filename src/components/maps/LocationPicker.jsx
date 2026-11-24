@@ -195,7 +195,7 @@ function LocationPicker({ value, onChange, height = 260, inferBarangay = true })
             type="button"
             onClick={handleUseMyLocation}
             disabled={geoState.status === 'loading'}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-[#1F4E79] bg-white px-3 py-1.5 text-xs font-semibold text-[#1F4E79] hover:bg-blue-50 disabled:opacity-60"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--hwe-slate)] bg-white px-3 py-1.5 text-xs font-semibold text-[var(--hwe-slate)] hover:bg-blue-50 disabled:opacity-60"
           >
             <HiOutlineMapPin className="h-4 w-4" aria-hidden="true" />
             {geoState.status === 'loading'
@@ -214,7 +214,7 @@ function LocationPicker({ value, onChange, height = 260, inferBarangay = true })
           <p className="text-[11px] text-gray-600">
             {inferBarangay ? (
               <>
-                <span className="font-semibold text-[#1F4E79]">
+                <span className="font-semibold text-[var(--hwe-slate)]">
                   {value.barangay || 'Pinned'}
                 </span>{' '}
                 ·{' '}
@@ -235,7 +235,7 @@ function LocationPicker({ value, onChange, height = 260, inferBarangay = true })
           <button
             type="button"
             onClick={handleDemoPin}
-            className="mt-2 font-semibold text-[#1F4E79] underline"
+            className="mt-2 font-semibold text-[var(--hwe-slate)] underline"
           >
             Place demo Olongapo pin
           </button>

@@ -196,7 +196,7 @@ function AdminVerificationPage() {
               onClick={() => setTab(t.key)}
               className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition cursor-pointer ${
                 active
-                  ? 'bg-[#1F4E79] text-white shadow-sm'
+                  ? 'bg-[var(--hwe-slate)] text-[var(--hwe-on-slate)] shadow-sm'
                   : 'text-gray-600 hover:bg-gray-100'
               }`}
             >
@@ -292,7 +292,7 @@ function PreviewImage({ src, label, fallbackIcon }) {
         href={src}
         target="_blank"
         rel="noreferrer"
-        className="flex items-center justify-center gap-1 rounded-lg border border-gray-200 bg-gray-50 p-4 text-xs text-[#1F4E79] underline"
+        className="flex items-center justify-center gap-1 rounded-lg border border-gray-200 bg-gray-50 p-4 text-xs text-[var(--hwe-slate)] underline"
       >
         <HiOutlineDocumentText className="h-4 w-4" aria-hidden="true" />
         Open {label}
@@ -305,7 +305,7 @@ function PreviewImage({ src, label, fallbackIcon }) {
         href={src}
         target="_blank"
         rel="noreferrer"
-        className="flex items-center justify-center gap-1 rounded-lg border border-gray-200 bg-gray-50 p-4 text-xs text-[#1F4E79] underline"
+        className="flex items-center justify-center gap-1 rounded-lg border border-gray-200 bg-gray-50 p-4 text-xs text-[var(--hwe-slate)] underline"
       >
         <HiOutlineDocumentText className="h-4 w-4" aria-hidden="true" />
         Open {label}
@@ -446,7 +446,7 @@ function RejectVerificationModal({ isOpen, onClose, userId, onRejectApplication 
             onChange={(e) => setNote(e.target.value)}
             disabled={busy}
             placeholder="Shown on every rejected item for this applicant"
-            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-[#1F4E79] focus:outline-none focus:ring-1 focus:ring-[#1F4E79]"
+            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-[var(--hwe-slate)] focus:outline-none focus:ring-1 focus:ring-[var(--hwe-sky)]"
           />
         </div>
 
@@ -521,7 +521,7 @@ function ApproveActivationModal({
             type="button"
             disabled={busy || !needsApproval}
             onClick={() => runApprove()}
-            className="min-h-[40px] flex-1 rounded-lg bg-[#1F4E79] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:brightness-110 disabled:opacity-50 cursor-pointer"
+            className="min-h-[40px] flex-1 btn-primary disabled:opacity-50 cursor-pointer"
           >
             {busy ? 'Saving…' : 'Approve'}
           </button>
@@ -743,7 +743,7 @@ function SubmissionQueue({
                     isWorker: profile.role === 'service-provider',
                   });
                 }}
-                className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-[#1F4E79] px-3 py-2 text-xs font-semibold text-white shadow-sm hover:brightness-110"
+                className="btn-primary cursor-pointer inline-flex items-center gap-1.5 text-xs"
               >
                 <HiOutlineCheckCircle className="h-4 w-4" aria-hidden="true" />
                 Approve

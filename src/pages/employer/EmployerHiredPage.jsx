@@ -40,7 +40,7 @@ function EmployerHiredPage() {
           <article key={item.docId || item.id} className="rounded-xl bg-white p-4 shadow-sm">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <h3 className="text-base font-semibold text-[#1F4E79]">{item.title}</h3>
+                <h3 className="text-base font-semibold text-[var(--hwe-slate)]">{item.title}</h3>
                 <p className="text-sm text-gray-600">
                   Worker: {item.confirmedWorkerName || '—'} · {locationLabel(item)}
                 </p>

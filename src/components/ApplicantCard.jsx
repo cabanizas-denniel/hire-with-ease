@@ -14,12 +14,12 @@ function WorkerCard({
     <article className="rounded-xl bg-white p-4 shadow-sm">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#1F4E79] text-sm font-bold text-white">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--hwe-accent)] text-sm font-bold text-[var(--hwe-slate)]">
             {applicant.name.charAt(0)}
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="text-base font-semibold text-[#1F4E79]">{applicant.name}</h3>
+              <h3 className="text-base font-semibold text-[var(--hwe-slate)]">{applicant.name}</h3>
               {applicant.verified ? (
                 <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-700">Verified</span>
               ) : null}
@@ -49,10 +49,10 @@ function WorkerCard({
               key={skill}
               className={`rounded-full px-3 py-1 text-xs font-medium ${
                 isPrimary
-                  ? 'bg-[#1F4E79] text-white'
+                  ? 'bg-[var(--hwe-accent)] text-[var(--hwe-slate)]'
                   : matchedSkills.includes(skill)
-                    ? 'bg-[#2E75B6] text-white'
-                    : 'bg-[#2E75B6]/10 text-[#1F4E79]'
+                    ? 'bg-[var(--hwe-accent)] text-[var(--hwe-slate)]'
+                    : 'bg-[var(--hwe-sky-soft)] text-[var(--hwe-slate)]'
               }`}
               title={isPrimary ? 'Primary skill' : 'Additional skill'}
             >
@@ -71,7 +71,7 @@ function WorkerCard({
 
       {certificationCount > 0 ? (
         <div className="mt-3">
-          <span className="inline-flex rounded-full bg-[#2E75B6]/10 px-3 py-1 text-xs font-medium text-[#1F4E79]">
+          <span className="inline-flex rounded-full bg-[var(--hwe-sky-soft)] px-3 py-1 text-xs font-medium text-[var(--hwe-slate)]">
             {certificationCount} certification{certificationCount === 1 ? '' : 's'} uploaded
           </span>
         </div>
@@ -83,7 +83,7 @@ function WorkerCard({
             <button
               type="button"
               onClick={() => onViewProfile(applicant)}
-              className="cursor-pointer w-full rounded-lg border border-[#1F4E79] px-4 py-2 text-sm font-medium text-[#1F4E79]"
+              className="cursor-pointer w-full rounded-lg border border-[var(--hwe-slate)] px-4 py-2 text-sm font-medium text-[var(--hwe-slate)]"
             >
               View Profile
             </button>
@@ -92,7 +92,7 @@ function WorkerCard({
             <button
               type="button"
               onClick={() => onSelect(applicant)}
-              className="cursor-pointer w-full rounded-lg bg-[#1F4E79] px-4 py-2 text-sm font-medium text-white"
+              className="cursor-pointer w-full btn-primary"
             >
               Select Worker
             </button>

@@ -4,7 +4,7 @@
 export function SkeletonPulse({ className = '' }) {
   return (
     <div
-      className={`animate-pulse rounded-lg bg-[#1F4E79]/10 ${className}`}
+      className={`animate-pulse rounded-lg bg-[var(--hwe-sky-soft)] ${className}`}
       aria-hidden="true"
     />
   );
@@ -19,16 +19,14 @@ export function PageSkeleton({
   return (
     <div aria-busy="true" aria-live="polite">
       {showHeader ? (
-        <div className="mb-6 ml-[calc(50%-50vw)] w-screen max-w-[100vw] bg-[#2E75B6] shadow-[0_1px_0_rgba(0,0,0,0.06)] sm:mb-8">
-          <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-7 lg:px-8">
-            <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">{title}</h1>
-            <p className="mt-2 max-w-3xl text-sm text-white/90 sm:text-base">{subtitle}</p>
-          </div>
+        <div className="relative mb-6 ml-[calc(-1*var(--hwe-page-pad))] mr-[calc(-1*var(--hwe-page-pad))] w-[calc(100%+2*var(--hwe-page-pad))] bg-[var(--hwe-strong)] px-[var(--hwe-page-pad)] py-6 sm:mb-8 sm:py-8">
+          <h1 className="text-2xl font-bold tracking-tight text-[var(--hwe-slate)] sm:text-3xl">{title}</h1>
+          <p className="mt-2 w-full text-sm text-[var(--hwe-slate-mid)] sm:text-base">{subtitle}</p>
         </div>
       ) : null}
 
       {variant === 'stats' ? (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="hwe-auto-grid">
           {[0, 1, 2].map((i) => (
             <div key={i} className="panel-surface rounded-xl bg-white p-4">
               <SkeletonPulse className="h-3 w-24" />
@@ -90,28 +88,18 @@ export function PageSkeleton({
 
 export function DashboardRouteFallback() {
   return (
-    <div className="hwe-shell relative min-h-screen bg-[#06243f]">
-      <div
-        className="pointer-events-none fixed inset-0"
-        style={{
-          background:
-            'radial-gradient(ellipse at center, rgba(4, 22, 44, 0.2) 0%, rgba(4, 22, 44, 0.55) 55%, rgba(2, 10, 24, 0.85) 100%)',
-        }}
-        aria-hidden="true"
-      />
-      <div className="relative">
-        <div className="sticky top-0 z-40 border-b border-white/30 bg-white/90 backdrop-blur-md">
-          <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
-            <SkeletonPulse className="h-8 w-36" />
-            <div className="flex gap-2">
-              <SkeletonPulse className="h-8 w-8 rounded-full" />
-              <SkeletonPulse className="h-8 w-8 rounded-full" />
-            </div>
+    <div className="hwe-shell relative min-h-screen">
+      <div className="sticky top-0 z-40 border-b border-[var(--hwe-border)] bg-[var(--hwe-surface)]/95 backdrop-blur-md">
+        <div className="flex w-full min-w-0 items-center justify-between gap-3 px-[var(--hwe-page-pad)] py-3">
+          <SkeletonPulse className="h-8 w-36" />
+          <div className="flex gap-2">
+            <SkeletonPulse className="h-8 w-8 rounded-full" />
+            <SkeletonPulse className="h-8 w-8 rounded-full" />
           </div>
         </div>
-        <div className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6">
-          <PageSkeleton variant="stats" title="Hire With Ease" subtitle="Loading your workspace…" />
-        </div>
+      </div>
+      <div className="w-full min-w-0 px-[var(--hwe-page-pad)] pb-8">
+        <PageSkeleton variant="stats" title="Hire With Ease" subtitle="Loading your workspace…" />
       </div>
     </div>
   );
@@ -120,8 +108,8 @@ export function DashboardRouteFallback() {
 /** Lightweight fallback for public routes (login, register, privacy, terms). */
 export function PublicRouteFallback() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#f0f3f7]">
-      <p className="text-sm font-medium text-[#1F4E79]">Loading…</p>
+    <div className="flex min-h-screen items-center justify-center bg-[var(--hwe-canvas)]">
+      <p className="text-sm font-medium text-[var(--hwe-slate)]">Loading…</p>
     </div>
   );
 }

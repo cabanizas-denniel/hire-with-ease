@@ -80,7 +80,7 @@ function ApplicantApplicationsPage() {
           No history yet. Accept a match from{' '}
           <Link
             to="/applicant/jobs"
-            className="font-semibold text-[#1F4E79] underline-offset-2 hover:underline"
+            className="font-semibold text-[var(--hwe-slate)] underline-offset-2 hover:underline"
           >
             Jobs
           </Link>{' '}
@@ -102,7 +102,7 @@ function ApplicantApplicationsPage() {
               >
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
-                    <p className="text-base font-semibold text-[#1F4E79]">
+                    <p className="text-base font-semibold text-[var(--hwe-slate)]">
                       {item.jobTitle || 'Job'}
                     </p>
                     <p className="text-sm text-gray-600">{item.clientName || '—'}</p>

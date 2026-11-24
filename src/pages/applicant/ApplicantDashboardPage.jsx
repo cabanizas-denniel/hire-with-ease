@@ -100,11 +100,17 @@ function ApplicantDashboardPage() {
       ) : (
         <>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            <StatCard
-              label="New Matches"
-              value={newMatches.length}
-              helperText="Waiting for your response"
-            />
+            <Link
+              to="/applicant/jobs"
+              className="block min-w-0 rounded-[var(--hwe-radius-lg)] transition hover:opacity-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--hwe-strong)]"
+              aria-label="View new matches on Jobs"
+            >
+              <StatCard
+                label="New Matches"
+                value={newMatches.length}
+                helperText="Waiting for your response · Open Jobs"
+              />
+            </Link>
             <StatCard
               label="Jobs Completed"
               value={profile?.jobsCompleted ?? completedCount}
@@ -131,11 +137,11 @@ function ApplicantDashboardPage() {
               Based on your skills and location.
             </p>
             {workerHasActiveJob ? (
-              <p className="rounded-xl border border-[#1F4E79]/15 bg-white p-6 text-center text-sm text-gray-600 shadow-sm">
+              <p className="rounded-xl border border-[var(--hwe-slate)]/15 bg-white p-6 text-center text-sm text-gray-600 shadow-sm">
                 You already have an active job. Open{' '}
                 <Link
                   to="/applicant/jobs"
-                  className="font-semibold text-[#1F4E79] underline-offset-2 hover:underline"
+                  className="font-semibold text-[var(--hwe-slate)] underline-offset-2 hover:underline"
                 >
                   Jobs
                 </Link>{' '}
@@ -149,23 +155,46 @@ function ApplicantDashboardPage() {
               </p>
             ) : null}
             {!workerHasActiveJob && newMatches.length > 0 ? (
-              <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 [&>li]:min-w-0">
-                {newMatches.map(({ job }) => (
-                  <li key={job.docId || job.id}>
-                    <JobCard
-                      job={{
-                        ...job,
-                        location: locationLabel(job),
-                        clientName: job.postedByName || job.clientName,
-                        schedule:
-                          job.schedule || (job.type === 'Rush' ? 'ASAP · Dispatch now' : ''),
-                      }}
-                      compact={canAct}
-                      verificationHref={canAct ? null : '/applicant/profile'}
-                      verificationLabel="Profile Verification"
-                    />
-                  </li>
-                ))}
+              <ul className="jobs-card-grid">
+                {newMatches.map(({ job }) => {
+                  const jobId = job.docId || job.id;
+                  return (
+                    <li key={jobId}>
+                      {canAct ? (
+                        <Link
+                          to="/applicant/jobs"
+                          className="block min-w-0 rounded-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--hwe-strong)]"
+                          aria-label={`Open Jobs to review ${job.title || 'this match'}`}
+                        >
+                          <JobCard
+                            job={{
+                              ...job,
+                              location: locationLabel(job),
+                              clientName: job.postedByName || job.clientName,
+                              schedule:
+                                job.schedule ||
+                                (job.type === 'Rush' ? 'ASAP · Dispatch now' : ''),
+                            }}
+                            compact
+                          />
+                        </Link>
+                      ) : (
+                        <JobCard
+                          job={{
+                            ...job,
+                            location: locationLabel(job),
+                            clientName: job.postedByName || job.clientName,
+                            schedule:
+                              job.schedule || (job.type === 'Rush' ? 'ASAP · Dispatch now' : ''),
+                          }}
+                          compact
+                          verificationHref="/applicant/profile"
+                          verificationLabel="Profile Verification"
+                        />
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             ) : null}
           </section>

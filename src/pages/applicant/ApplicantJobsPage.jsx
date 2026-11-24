@@ -186,26 +186,27 @@ function ApplicantJobsPage() {
       {!loading && canAct && hasActiveJob ? (
         <section className="mt-5 space-y-4">
           {activeApps.length > 1 ? (
-            <p className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
-              More than one active acceptance was found. Keep one and decline the rest.
-            </p>
+            <>
+              <p className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
+                More than one active acceptance was found. Keep one and decline the rest.
+              </p>
+              <ul className="jobs-card-grid">
+                {activeApps.map((app) => {
+                  const id = app.docId || app.id;
+                  return (
+                    <li key={id}>
+                      <WorkerMyJobCard
+                        application={app}
+                        selected={id === selectedAppId}
+                        statusLabel={prettyAppStatus(app.status)}
+                        onSelect={(a) => setPickedAppId(a.docId || a.id)}
+                      />
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
           ) : null}
-
-          <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 [&>li]:min-w-0">
-            {activeApps.map((app) => {
-              const id = app.docId || app.id;
-              return (
-                <li key={id}>
-                  <WorkerMyJobCard
-                    application={app}
-                    selected={id === selectedAppId}
-                    statusLabel={prettyAppStatus(app.status)}
-                    onSelect={(a) => setPickedAppId(a.docId || a.id)}
-                  />
-                </li>
-              );
-            })}
-          </ul>
 
           {selectedActive ? (
             <div className="space-y-4">
@@ -227,14 +228,14 @@ function ApplicantJobsPage() {
             </div>
           ) : null}
 
-          <div className="mt-5">
+          <div className="mt-5 min-w-0">
             {matched.length === 0 ? (
-              <p className="rounded-xl bg-white p-6 text-center text-sm text-gray-500 shadow-sm">
+              <p className="rounded-xl border border-dashed border-[var(--hwe-border-strong)] bg-[var(--hwe-surface)] p-6 text-center text-sm text-[var(--hwe-muted)]">
                 No matched jobs right now. Keep your skills and location up to date for better
                 results.
               </p>
             ) : (
-              <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 [&>li]:min-w-0">
+              <ul className="jobs-card-grid">
                 {matched.map(({ job, reasons }) => {
                   const jobId = job.docId || job.id;
                   return (

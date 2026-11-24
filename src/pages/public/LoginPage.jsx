@@ -226,7 +226,7 @@ function LoginPage() {
       footer={
         <p className="text-sm text-gray-600">
           No account yet?{' '}
-          <Link to="/register" className="font-semibold text-[#2E75B6] hover:underline">
+          <Link to="/register" className="font-semibold text-[var(--hwe-sky)] hover:underline">
             Create one here
           </Link>
         </p>
@@ -274,7 +274,7 @@ function LoginPage() {
             onChange={(e) =>
               setForm((prev) => ({ ...prev, email: e.target.value }))
             }
-            className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base focus:border-[#1F4E79] focus:outline-none focus:ring-2 focus:ring-[#1F4E79]/20"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base focus:border-[var(--hwe-slate)] focus:outline-none focus:ring-2 focus:ring-[var(--hwe-sky)]/20"
             placeholder="you@example.com"
             autoComplete="email"
           />
@@ -308,7 +308,7 @@ function LoginPage() {
               setResendNotice('');
               setNeedsVerification(false);
             }}
-            className="text-xs font-semibold text-[#2E75B6] hover:underline"
+            className="text-xs font-semibold text-[var(--hwe-sky)] hover:underline"
           >
             Forgot password?
           </button>
@@ -325,7 +325,7 @@ function LoginPage() {
                 type="button"
                 onClick={handleSendPasswordReset}
                 disabled={resetBusy || submitting || resendBusy}
-                className="cursor-pointer rounded-lg bg-[#1F4E79] px-3 py-2 text-xs font-semibold text-white shadow-sm hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+                className="btn-primary cursor-pointer text-xs disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {resetBusy ? 'Sending…' : 'Send reset link'}
               </button>
@@ -348,7 +348,7 @@ function LoginPage() {
                 setDemoApplicant('');
                 fillDemoAccount(DEMO_HOMEOWNERS.find((a) => a.email === email));
               }}
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-800 focus:border-[#1F4E79] focus:outline-none focus:ring-2 focus:ring-[#1F4E79]/20"
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-800 focus:border-[var(--hwe-slate)] focus:outline-none focus:ring-2 focus:ring-[var(--hwe-sky)]/20"
             >
               <option value="">Select account</option>
               {DEMO_HOMEOWNERS.map((account) => (
@@ -369,7 +369,7 @@ function LoginPage() {
                 setDemoHomeowner('');
                 fillDemoAccount(DEMO_APPLICANTS.find((a) => a.email === email));
               }}
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-800 focus:border-[#1F4E79] focus:outline-none focus:ring-2 focus:ring-[#1F4E79]/20"
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-800 focus:border-[var(--hwe-slate)] focus:outline-none focus:ring-2 focus:ring-[var(--hwe-sky)]/20"
             >
               <option value="">Select account</option>
               {DEMO_APPLICANTS.map((account) => (
@@ -387,7 +387,7 @@ function LoginPage() {
               setDemoApplicant('');
               fillDemoAccount(DEMO_ADMIN);
             }}
-            className="sm:col-span-2 cursor-pointer rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-left text-sm font-semibold text-[#1F4E79] hover:border-[#1F4E79]/50"
+            className="sm:col-span-2 cursor-pointer rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-left text-sm font-semibold text-[var(--hwe-slate)] hover:border-[var(--hwe-slate)]/50"
           >
             {DEMO_ADMIN.label}
           </button>
@@ -402,7 +402,7 @@ function LoginPage() {
         <button
           type="submit"
           disabled={submitting || resendBusy}
-          className="mt-2 w-full rounded-lg bg-[#2E75B6] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-110 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
+          className="mt-2 w-full btn-primary cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
         >
           {submitting ? 'Signing in…' : 'Sign in'}
         </button>

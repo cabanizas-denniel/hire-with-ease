@@ -37,7 +37,7 @@ function ClaimedMethodRow({ meta, methodId }) {
   const Icon = meta.icon;
   return (
     <>
-      <Icon className="h-5 w-5 text-[#1F4E79]" aria-hidden="true" />
+      <Icon className="h-5 w-5 text-[var(--hwe-slate)]" aria-hidden="true" />
       <span className="font-semibold">{meta.label}</span>
       <span className="text-gray-500">({methodId})</span>
     </>
@@ -130,7 +130,7 @@ function PaymentFulfillmentCard({ application, role }) {
         <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-800">
           Payment (off-platform)
         </p>
-        <h3 className="mt-0.5 text-sm font-semibold text-[#1F4E79]">
+        <h3 className="mt-0.5 text-sm font-semibold text-[var(--hwe-slate)]">
           {bothOk
             ? 'Payment confirmed by both parties'
             : isWorker
@@ -189,7 +189,7 @@ function PaymentFulfillmentCard({ application, role }) {
 
             <div className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2.5 text-xs text-gray-700">
               <p className="font-medium text-gray-500">Agreed amount</p>
-              <p className="mt-0.5 text-sm font-semibold text-[#1F4E79]">{amountLabel}</p>
+              <p className="mt-0.5 text-sm font-semibold text-[var(--hwe-slate)]">{amountLabel}</p>
             </div>
 
             {!clientOk ? (
@@ -211,7 +211,7 @@ function PaymentFulfillmentCard({ application, role }) {
                         onClick={() => setMethod(id)}
                         className={`flex cursor-pointer flex-col items-center gap-1.5 rounded-xl border px-2 py-3 text-center transition ${
                           selected
-                            ? 'border-[#1F4E79] bg-[#1F4E79]/5 text-[#1F4E79] ring-2 ring-[#1F4E79]/20'
+                            ? 'border-[var(--hwe-slate)] bg-[var(--hwe-canvas-deep)] text-[var(--hwe-slate)] ring-2 ring-[var(--hwe-sky)]/20'
                             : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300 hover:bg-white'
                         }`}
                       >
@@ -240,7 +240,7 @@ function PaymentFulfillmentCard({ application, role }) {
                 type="button"
                 onClick={handleClientAck}
                 disabled={busy}
-                className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-amber-400 px-4 py-2.5 text-sm font-bold text-[#1F4E79] hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-amber-400 px-4 py-2.5 text-sm font-bold text-[var(--hwe-slate)] hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <HiOutlineBanknotes className="h-4 w-4" aria-hidden="true" />
                 {busy ? 'Saving…' : 'I paid the agreed amount'}
@@ -258,15 +258,15 @@ function PaymentFulfillmentCard({ application, role }) {
                   Waiting for the homeowner to record that they paid the agreed amount and how
                   (Cash, E-Wallet, or Bank).
                 </p>
-                <p className="mt-2 font-medium text-[#1F4E79]">Agreed amount: {amountLabel}</p>
+                <p className="mt-2 font-medium text-[var(--hwe-slate)]">Agreed amount: {amountLabel}</p>
               </div>
             ) : (
               <>
-                <div className="rounded-lg border border-[#1F4E79]/15 bg-[#1F4E79]/5 px-3 py-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[#1F4E79]/70">
+                <div className="rounded-lg border border-[var(--hwe-slate)]/15 bg-[var(--hwe-canvas-deep)] px-3 py-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--hwe-slate)]/70">
                     Homeowner claims
                   </p>
-                  <p className="mt-1 text-sm font-semibold text-[#1F4E79]">
+                  <p className="mt-1 text-sm font-semibold text-[var(--hwe-slate)]">
                     Amount: {amountLabel}
                   </p>
                   <div className="mt-2 flex items-center gap-2 text-xs text-gray-700">
@@ -284,7 +284,7 @@ function PaymentFulfillmentCard({ application, role }) {
                       type="button"
                       onClick={handleWorkerAck}
                       disabled={busy}
-                      className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-amber-400 px-4 py-2.5 text-sm font-bold text-[#1F4E79] hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-amber-400 px-4 py-2.5 text-sm font-bold text-[var(--hwe-slate)] hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <HiOutlineCheckBadge className="h-4 w-4" aria-hidden="true" />
                       {busy ? 'Saving…' : 'I received this'}
@@ -312,7 +312,7 @@ function PaymentFulfillmentCard({ application, role }) {
                       rows={3}
                       maxLength={280}
                       placeholder="e.g. Amount is wrong, or I was paid by a different method…"
-                      className="w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-xs text-gray-800 focus:border-[#1F4E79] focus:outline-none focus:ring-2 focus:ring-[#1F4E79]/20"
+                      className="w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-xs text-gray-800 focus:border-[var(--hwe-slate)] focus:outline-none focus:ring-2 focus:ring-[var(--hwe-sky)]/20"
                     />
                     <div className="flex flex-wrap gap-2">
                       <button

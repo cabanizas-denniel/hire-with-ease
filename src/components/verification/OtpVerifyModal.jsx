@@ -117,7 +117,7 @@ function OtpVerifyModal({
           type="button"
           onClick={handleSend}
           disabled={busy}
-          className="w-full cursor-pointer rounded-lg bg-[#1F4E79] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+          className="w-full cursor-pointer btn-primary disabled:cursor-not-allowed disabled:opacity-60"
         >
           {busy ? 'Sending…' : 'Send verification email'}
         </button>
@@ -135,7 +135,7 @@ function OtpVerifyModal({
           type="button"
           onClick={handleIveVerified}
           disabled={busy}
-          className="w-full cursor-pointer rounded-lg bg-[#1F4E79] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+          className="w-full cursor-pointer btn-primary disabled:cursor-not-allowed disabled:opacity-60"
         >
           {busy ? 'Checking…' : "I've verified"}
         </button>
@@ -207,7 +207,7 @@ function OtpVerifyModal({
               type="button"
               onClick={handleSend}
               disabled={busy}
-              className="cursor-pointer font-semibold text-[#1F4E79] hover:underline"
+              className="cursor-pointer font-semibold text-[var(--hwe-slate)] hover:underline"
             >
               Resend email
             </button>

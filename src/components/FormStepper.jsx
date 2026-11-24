@@ -1,9 +1,12 @@
 /**
- * Horizontal step indicator for multi-step forms.
+ * Full-width progress indicator. Active step uses amber highlight only.
  */
 function FormStepper({ steps, currentStep }) {
   return (
-    <ol className="mb-6 flex items-center justify-between gap-1 overflow-x-auto">
+    <ol
+      className="mb-6 flex w-full items-center justify-between gap-1 overflow-x-auto border-b border-[var(--hwe-border)] pb-4"
+      aria-label="Form progress"
+    >
       {steps.map((label, index) => {
         const isDone = index < currentStep;
         const isActive = index === currentStep;
@@ -11,6 +14,7 @@ function FormStepper({ steps, currentStep }) {
           <li
             key={label}
             className="flex min-w-0 flex-1 flex-col items-center text-center"
+            aria-current={isActive ? 'step' : undefined}
           >
             <div className="flex w-full items-center">
               <div
@@ -18,17 +22,17 @@ function FormStepper({ steps, currentStep }) {
                   index === 0
                     ? 'bg-transparent'
                     : isDone || isActive
-                      ? 'bg-[#1F4E79]'
-                      : 'bg-gray-200'
+                      ? 'bg-[var(--hwe-slate)]'
+                      : 'bg-[var(--hwe-border-strong)]'
                 }`}
               />
               <span
-                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold ${
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold ${
                   isDone
-                    ? 'border-[#1F4E79] bg-[#1F4E79] text-white'
+                    ? 'border-[var(--hwe-slate)] bg-[var(--hwe-slate)] text-[var(--hwe-on-slate)]'
                     : isActive
-                      ? 'border-[#1F4E79] bg-white text-[#1F4E79] ring-2 ring-[#1F4E79]/20'
-                      : 'border-gray-300 bg-white text-gray-400'
+                      ? 'border-[var(--hwe-highlight)] bg-[var(--hwe-highlight)] text-[var(--hwe-slate)]'
+                      : 'border-[var(--hwe-border-strong)] bg-[var(--hwe-surface)] text-[var(--hwe-muted)]'
                 }`}
               >
                 {isDone ? '✓' : index + 1}
@@ -38,14 +42,18 @@ function FormStepper({ steps, currentStep }) {
                   index === steps.length - 1
                     ? 'bg-transparent'
                     : isDone
-                      ? 'bg-[#1F4E79]'
-                      : 'bg-gray-200'
+                      ? 'bg-[var(--hwe-slate)]'
+                      : 'bg-[var(--hwe-border-strong)]'
                 }`}
               />
             </div>
             <span
               className={`mt-1.5 hidden text-[10px] font-medium leading-tight sm:block ${
-                isActive ? 'text-[#1F4E79]' : isDone ? 'text-gray-600' : 'text-gray-400'
+                isActive
+                  ? 'text-[var(--hwe-slate)]'
+                  : isDone
+                    ? 'text-[var(--hwe-slate-soft)]'
+                    : 'text-[var(--hwe-muted)]'
               }`}
             >
               {label}

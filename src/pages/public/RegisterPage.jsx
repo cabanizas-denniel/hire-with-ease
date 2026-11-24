@@ -66,7 +66,8 @@ function RegisterPage() {
       return;
     }
 
-    if (!captchaToken) {
+    const captchaRequired = Boolean(import.meta.env.VITE_TURNSTILE_SITE_KEY);
+    if (captchaRequired && !captchaToken) {
       setError('Please complete the captcha first.');
       return;
     }
@@ -102,7 +103,7 @@ function RegisterPage() {
       footer={
         <p className="text-sm text-gray-600">
           Already registered?{' '}
-          <Link to="/login" className="font-semibold text-[#2E75B6] hover:underline">
+          <Link to="/login" className="font-semibold text-[var(--hwe-sky)] hover:underline">
             Sign in here
           </Link>
         </p>
@@ -148,7 +149,7 @@ function RegisterPage() {
             onChange={(e) =>
               setForm((prev) => ({ ...prev, fullName: e.target.value }))
             }
-            className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base focus:border-[#1F4E79] focus:outline-none focus:ring-2 focus:ring-[#1F4E79]/20"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base focus:border-[var(--hwe-slate)] focus:outline-none focus:ring-2 focus:ring-[var(--hwe-sky)]/20"
             placeholder="Juan Dela Cruz"
             autoComplete="name"
             required
@@ -169,7 +170,7 @@ function RegisterPage() {
             onChange={(e) =>
               setForm((prev) => ({ ...prev, email: e.target.value }))
             }
-            className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base focus:border-[#1F4E79] focus:outline-none focus:ring-2 focus:ring-[#1F4E79]/20"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base focus:border-[var(--hwe-slate)] focus:outline-none focus:ring-2 focus:ring-[var(--hwe-sky)]/20"
             placeholder="you@example.com"
             autoComplete="email"
             required
@@ -262,7 +263,7 @@ function RegisterPage() {
                 to="/privacy"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-semibold text-[#2E75B6] hover:underline"
+                className="font-semibold text-[var(--hwe-sky)] hover:underline"
               >
                 Privacy Policy
               </Link>
@@ -284,7 +285,7 @@ function RegisterPage() {
                 to="/terms"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-semibold text-[#2E75B6] hover:underline"
+                className="font-semibold text-[var(--hwe-sky)] hover:underline"
               >
                 Terms & Conditions
               </Link>
@@ -301,8 +302,13 @@ function RegisterPage() {
 
         <button
           type="submit"
-          disabled={submitting || !captchaToken || !privacyConsent || !termsConsent}
-          className="mt-2 w-full rounded-lg bg-[#2E75B6] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-110 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={
+            submitting ||
+            !privacyConsent ||
+            !termsConsent ||
+            (Boolean(import.meta.env.VITE_TURNSTILE_SITE_KEY) && !captchaToken)
+          }
+          className="mt-2 w-full btn-primary cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
         >
           {submitting ? 'Creating account…' : 'Create account'}
         </button>
@@ -319,8 +325,8 @@ function RoleOption({ active, onClick, title, subtitle }) {
       aria-pressed={active}
       className={`flex flex-col items-start rounded-lg border px-3.5 py-2.5 text-left transition cursor-pointer ${
         active
-          ? 'border-[#2E75B6] bg-[#2E75B6] text-white shadow-sm'
-          : 'border-gray-200 bg-white text-gray-700 hover:border-[#2E75B6]/40 hover:bg-[#2E75B6]/5'
+          ? 'border-[var(--hwe-slate)] bg-[var(--hwe-slate)] text-[var(--hwe-on-slate)] shadow-sm'
+          : 'border-gray-200 bg-white text-gray-700 hover:border-[var(--hwe-sky)]/40 hover:bg-[var(--hwe-canvas-deep)]'
       }`}
     >
       <span className="text-sm font-semibold">{title}</span>

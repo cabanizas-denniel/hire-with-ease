@@ -288,7 +288,7 @@ function AdminDashboardPage() {
 
       <div className="mt-6 grid gap-4 xl:grid-cols-2">
         <section className="panel-surface rounded-xl bg-white/95 p-4">
-          <h2 className="text-base font-semibold text-[#1F4E79]">
+          <h2 className="text-base font-semibold text-[var(--hwe-slate)]">
             Top 5 Most Demanded Skills
           </h2>
           <div className="mt-4 h-64 w-full min-w-0">
@@ -308,7 +308,7 @@ function AdminDashboardPage() {
                   />
                   <YAxis allowDecimals={false} />
                   <Tooltip />
-                  <Bar dataKey="demand" fill="#2E75B6" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="demand" fill="#3ab6fd" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -316,7 +316,7 @@ function AdminDashboardPage() {
         </section>
 
         <section className="panel-surface rounded-xl bg-white/95 p-4">
-          <h2 className="text-base font-semibold text-[#1F4E79]">
+          <h2 className="text-base font-semibold text-[var(--hwe-slate)]">
             Recent Request Trend
           </h2>
           <p className="mt-1 text-xs text-gray-500">
@@ -335,7 +335,7 @@ function AdminDashboardPage() {
                   <Line
                     type="monotone"
                     dataKey="requests"
-                    stroke="#1F4E79"
+                    stroke="#14283a"
                     strokeWidth={3}
                   />
                 </LineChart>
@@ -347,7 +347,7 @@ function AdminDashboardPage() {
 
       <section className="mt-4 grid gap-4 lg:grid-cols-2">
         <div className="panel-surface rounded-xl bg-white/95 p-4">
-          <h2 className="text-base font-semibold text-[#1F4E79]">
+          <h2 className="text-base font-semibold text-[var(--hwe-slate)]">
             Skill Shortage Indicators
           </h2>
           <div className="mt-3 space-y-2">
@@ -379,7 +379,7 @@ function AdminDashboardPage() {
 
         <div className="panel-surface rounded-xl bg-white/95 p-4">
           <div className="flex items-baseline justify-between">
-            <h2 className="text-base font-semibold text-[#1F4E79]">
+            <h2 className="text-base font-semibold text-[var(--hwe-slate)]">
               Regional Demand Heatmap
             </h2>
             <span className="text-[11px] text-gray-500">

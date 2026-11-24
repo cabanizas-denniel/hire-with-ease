@@ -309,8 +309,8 @@ function ScheduleAgreementModal({
       <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl bg-white shadow-xl">
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-100 bg-white px-4 py-3">
           <div className="flex items-center gap-2">
-            <HiOutlineCalendarDays className="h-5 w-5 text-[#1F4E79]" aria-hidden="true" />
-            <h2 id="schedule-agreement-title" className="text-sm font-semibold text-[#1F4E79]">
+            <HiOutlineCalendarDays className="h-5 w-5 text-[var(--hwe-slate)]" aria-hidden="true" />
+            <h2 id="schedule-agreement-title" className="text-sm font-semibold text-[var(--hwe-slate)]">
               Schedule
             </h2>
           </div>
@@ -355,7 +355,7 @@ function ScheduleAgreementModal({
           ) : null}
 
           {!bothConfirmed && proposed && !editing && !awaitingSendConfirm ? (
-            <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm text-[#1F4E79]">
+            <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm text-[var(--hwe-slate)]">
               <p className="font-semibold">
                 Latest proposal
                 {proposedBy === 'worker'
@@ -403,7 +403,7 @@ function ScheduleAgreementModal({
                   type="button"
                   onClick={handlePropose}
                   disabled={busy || !appId}
-                  className="w-full cursor-pointer rounded-lg bg-[#1F4E79] py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                  className="btn-primary w-full disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {busy ? 'Sending…' : 'Confirm & send'}
                 </button>
@@ -436,7 +436,7 @@ function ScheduleAgreementModal({
               </div>
               <label className="block text-xs font-medium text-gray-600">
                 Agreed price <span className="text-red-600">*</span>
-                <div className="mt-1 flex items-stretch overflow-hidden rounded-lg border border-gray-300 focus-within:border-[#1F4E79] focus-within:ring-1 focus-within:ring-[#1F4E79]">
+                <div className="mt-1 flex items-stretch overflow-hidden rounded-lg border border-gray-300 focus-within:border-[var(--hwe-slate)] focus-within:ring-1 focus-within:ring-[var(--hwe-sky)]">
                   <span
                     className="flex shrink-0 items-center bg-gray-50 px-3 text-sm font-semibold text-gray-700"
                     aria-hidden="true"
@@ -484,7 +484,7 @@ function ScheduleAgreementModal({
                 type="button"
                 onClick={handleSendProposalClick}
                 disabled={busy || !appId}
-                className="w-full cursor-pointer rounded-lg bg-[#1F4E79] py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                className="btn-primary w-full disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {proposed ? 'Send counter-proposal' : 'Send proposal'}
               </button>

@@ -13,16 +13,16 @@ function FindingWorkersPanel({
 }) {
   if (searching) {
     return (
-      <section className="panel-surface mb-6 overflow-hidden rounded-xl border border-[#1F4E79]/20 bg-gradient-to-br from-blue-50 to-white p-6">
+      <section className="panel-surface mb-6 overflow-hidden rounded-xl border border-[var(--hwe-slate)]/20 bg-gradient-to-br from-blue-50 to-white p-6">
         <div className="flex flex-col items-center text-center sm:flex-row sm:items-start sm:text-left">
           <div
-            className="mb-4 flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#1F4E79]/10 sm:mb-0 sm:mr-4"
+            className="mb-4 flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[var(--hwe-sky-soft)] sm:mb-0 sm:mr-4"
             aria-hidden="true"
           >
-            <span className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-[#1F4E79]/20 border-t-[#1F4E79]" />
+            <span className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-[var(--hwe-slate)]/20 border-t-[var(--hwe-sky)]" />
           </div>
           <div className="min-w-0 flex-1">
-            <h2 className="text-lg font-semibold text-[#1F4E79]">Finding qualified workers…</h2>
+            <h2 className="text-lg font-semibold text-[var(--hwe-slate)]">Finding qualified workers…</h2>
             <p className="mt-1 text-sm text-gray-600">
               Running the matching engine for{' '}
               <span className="font-medium">{jobTitle || 'your request'}</span> — skills,
@@ -30,15 +30,15 @@ function FindingWorkersPanel({
             </p>
             <ul className="mt-3 space-y-1 text-left text-xs text-gray-500">
               <li className="flex items-center gap-2">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#2E75B6]" />
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--hwe-accent)]" />
                 Weighted scoring (skills, barangay, reputation)
               </li>
               <li className="flex items-center gap-2">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#2E75B6] [animation-delay:150ms]" />
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--hwe-accent)] [animation-delay:150ms]" />
                 Greedy best-first candidate pool
               </li>
               <li className="flex items-center gap-2">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#2E75B6] [animation-delay:300ms]" />
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--hwe-accent)] [animation-delay:300ms]" />
                 A* shortlist (up to 5 workers)
               </li>
             </ul>

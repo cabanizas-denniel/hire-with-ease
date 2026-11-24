@@ -105,7 +105,7 @@ function AdminAccountModal({ isOpen, onClose }) {
     >
       <div className="space-y-6">
         <section>
-          <h3 className="text-sm font-semibold text-[#1F4E79]">Change password</h3>
+          <h3 className="text-sm font-semibold text-[var(--hwe-slate)]">Change password</h3>
           <p className="mt-1 text-xs text-gray-500">
             Your current password is required before setting a new one.
           </p>
@@ -177,7 +177,7 @@ function AdminAccountModal({ isOpen, onClose }) {
             <button
               type="submit"
               disabled={busy}
-              className="w-full rounded-lg bg-[#1F4E79] px-4 py-2.5 text-sm font-medium text-white hover:brightness-110 disabled:opacity-60 cursor-pointer"
+              className="btn-primary w-full disabled:opacity-60 cursor-pointer"
             >
               {busy ? 'Updating…' : 'Update password'}
             </button>

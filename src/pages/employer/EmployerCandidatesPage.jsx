@@ -309,41 +309,47 @@ function EmployerCandidatesPage() {
         </Link>
       </div>
 
-      {job ? <JobSummaryCard job={job} /> : null}
-
       {job ? (
-        <FindingWorkersPanel
-          searching={showFindingUi}
-          matches={matchedWorkers}
-          jobTitle={job.title}
-          appliedWorkerIds={appliedWorkerIds}
-          acceptedCount={activeApplicants.length}
-          chatWorkerId={activeWorkerId}
-          onChat={handleChatWithCard}
-          onDecline={job.confirmedWorkerId ? undefined : handleDeclineCard}
-          hireLocked={Boolean(job.confirmedWorkerId)}
-        />
-      ) : null}
+        <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,20rem)]">
+          <div className="min-w-0 space-y-5">
+            <FindingWorkersPanel
+              searching={showFindingUi}
+              matches={matchedWorkers}
+              jobTitle={job.title}
+              appliedWorkerIds={appliedWorkerIds}
+              acceptedCount={activeApplicants.length}
+              chatWorkerId={activeWorkerId}
+              onChat={handleChatWithCard}
+              onDecline={job.confirmedWorkerId ? undefined : handleDeclineCard}
+              hireLocked={Boolean(job.confirmedWorkerId)}
+            />
 
-      {job && selected && activeWorkerId && !showFindingUi ? (
-        <section className="mb-5 space-y-4">
-          <ChatPanel
-            jobId={job.docId || job.id}
-            jobTitle={job.title}
-            clientId={job.postedBy}
-            clientName={job.postedByName || job.clientName}
-            clientEmail={auth.user?.email || job.postedByEmail}
-            clientMobile={auth.profile?.mobile || job.postedByMobile}
-            workerId={activeWorkerId}
-            workerName={activeWorkerName}
-            role="client"
-            jobBudget={job.budget}
-            jobStatus={job.status}
-            applicationStatus={selected?.status}
-            application={selected}
-            compact
-          />
-        </section>
+            {selected && activeWorkerId && !showFindingUi ? (
+              <section className="space-y-4">
+                <ChatPanel
+                  jobId={job.docId || job.id}
+                  jobTitle={job.title}
+                  clientId={job.postedBy}
+                  clientName={job.postedByName || job.clientName}
+                  clientEmail={auth.user?.email || job.postedByEmail}
+                  clientMobile={auth.profile?.mobile || job.postedByMobile}
+                  workerId={activeWorkerId}
+                  workerName={activeWorkerName}
+                  role="client"
+                  jobBudget={job.budget}
+                  jobStatus={job.status}
+                  applicationStatus={selected?.status}
+                  application={selected}
+                  compact
+                />
+              </section>
+            ) : null}
+          </div>
+
+          <aside className="min-w-0 lg:sticky lg:top-20 lg:self-start">
+            <JobSummaryCard job={job} />
+          </aside>
+        </div>
       ) : null}
     </div>
   );
@@ -351,23 +357,26 @@ function EmployerCandidatesPage() {
 
 function JobSummaryCard({ job }) {
   return (
-    <section className="mb-5 overflow-hidden rounded-xl border border-blue-100 bg-blue-50/60">
+    <section className="overflow-hidden rounded-xl border border-[var(--hwe-border)] bg-[var(--hwe-surface)] shadow-[var(--hwe-shadow)]">
+      <div className="bg-[var(--hwe-strong)] px-4 py-3">
+        <p className="text-sm font-bold text-[var(--hwe-slate)]">Request summary</p>
+      </div>
       <JobIssueMedia job={job} variant="gallery" titleAlt={`Issue media for "${job.title}"`} />
-      <div className="p-4 text-sm text-[#1F4E79]">
+      <div className="p-4 text-sm text-[var(--hwe-slate)]">
         <p className="font-semibold">
           {job.title} <StatusBadge status={job.status} />
         </p>
-        <div className="mt-2 grid gap-1 text-xs text-gray-700 sm:grid-cols-2">
-          <p className="sm:col-span-2">
-            <span className="font-semibold text-[#1F4E79]">Home address:</span>{' '}
+        <div className="mt-2 grid gap-1 text-xs text-[var(--hwe-slate-soft)]">
+          <p>
+            <span className="font-semibold text-[var(--hwe-slate)]">Home address:</span>{' '}
             {locationLabel(job) || '—'}
           </p>
           <p>
-            <span className="font-semibold text-[#1F4E79]">Budget:</span>{' '}
+            <span className="font-semibold text-[var(--hwe-slate)]">Budget:</span>{' '}
             {job.budget || '—'}
           </p>
           <p>
-            <span className="font-semibold text-[#1F4E79]">Schedule:</span>{' '}
+            <span className="font-semibold text-[var(--hwe-slate)]">Schedule:</span>{' '}
             {job.schedule || '—'}
           </p>
         </div>

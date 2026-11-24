@@ -8,12 +8,12 @@ import {
 
 const FACTOR_STYLES = {
   skills: {
-    bar: 'bg-[#1F4E79]',
-    chip: 'bg-[#1F4E79]/10 text-[#1F4E79]',
+    bar: 'bg-[var(--hwe-accent)]',
+    chip: 'bg-[var(--hwe-sky-soft)] text-[var(--hwe-slate)]',
   },
   location: {
-    bar: 'bg-[#2E75B6]',
-    chip: 'bg-[#2E75B6]/10 text-[#1F4E79]',
+    bar: 'bg-[var(--hwe-accent)]',
+    chip: 'bg-[var(--hwe-sky-soft)] text-[var(--hwe-slate)]',
   },
   category: {
     bar: 'bg-teal-500',
@@ -119,13 +119,13 @@ function WorkerMatchDetailCard({
         accepted ? 'cursor-pointer' : ''
       } ${
         selected
-          ? 'border-[#1F4E79] ring-2 ring-[#1F4E79]/30'
+          ? 'border-[var(--hwe-slate)] ring-2 ring-[var(--hwe-sky)]/30'
           : accepted
             ? 'border-emerald-300'
-            : 'border-[#1F4E79]/20'
+            : 'border-[var(--hwe-slate)]/20'
       }`}
     >
-      <div className="relative flex-[1.05] overflow-hidden bg-gradient-to-br from-[#1a3d5c] via-[#2E75B6] to-[#5eb0d8]">
+      <div className="relative flex-[1.05] overflow-hidden bg-[var(--hwe-slate-mid)]">
         <div
           className="pointer-events-none absolute inset-0 opacity-30"
           style={{
@@ -143,8 +143,8 @@ function WorkerMatchDetailCard({
             title={showBreakdown ? 'Hide match breakdown' : 'See why they matched'}
             className={`cursor-pointer rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-wide shadow-sm transition ${
               showBreakdown
-                ? 'bg-[#1F4E79] text-white ring-2 ring-white/70'
-                : 'bg-white/95 text-[#1F4E79] hover:bg-white'
+                ? 'bg-[var(--hwe-accent)] text-[var(--hwe-slate)] ring-2 ring-white/70'
+                : 'bg-white/95 text-[var(--hwe-slate)] hover:bg-white'
             }`}
           >
             {Math.round(score)}% match
@@ -163,7 +163,7 @@ function WorkerMatchDetailCard({
         </div>
 
         <div className="absolute inset-0 flex flex-col items-center justify-center px-4 pb-2 pt-8">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full border-4 border-white/40 bg-[#0d2a44] text-2xl font-bold text-white shadow-lg sm:h-20 sm:w-20 sm:text-3xl">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full border-4 border-white/40 bg-[var(--hwe-slate)] text-2xl font-bold text-white shadow-lg sm:h-20 sm:w-20 sm:text-3xl">
             {name.charAt(0).toUpperCase()}
           </div>
           <p className="mt-2.5 line-clamp-2 text-center text-sm font-semibold leading-tight text-white drop-shadow-sm sm:text-base">
@@ -180,17 +180,17 @@ function WorkerMatchDetailCard({
             id={panelId}
             role="dialog"
             aria-label={`Why ${name} matched`}
-            className="absolute inset-0 z-30 flex flex-col bg-[#0d2a44]/55 p-3 backdrop-blur-[2px]"
+            className="absolute inset-0 z-30 flex flex-col bg-[var(--hwe-slate)]/55 p-3 backdrop-blur-[2px]"
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
           >
             <div className="mt-auto overflow-hidden rounded-2xl border border-white/40 bg-white/95 shadow-[0_12px_28px_rgba(8,45,90,0.35)]">
-              <div className="flex items-start justify-between gap-2 border-b border-[#1F4E79]/10 px-3 py-2.5">
+              <div className="flex items-start justify-between gap-2 border-b border-[var(--hwe-slate)]/10 px-3 py-2.5">
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wide text-[#2E75B6]">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--hwe-sky)]">
                     Why they matched
                   </p>
-                  <p className="mt-0.5 text-sm font-semibold text-[#1F4E79]">
+                  <p className="mt-0.5 text-sm font-semibold text-[var(--hwe-slate)]">
                     {Math.round(score)}% overall match
                   </p>
                 </div>
@@ -217,7 +217,7 @@ function WorkerMatchDetailCard({
                           {item.label}
                         </span>
                         {pct != null ? (
-                          <span className="shrink-0 text-xs font-bold tabular-nums text-[#1F4E79]">
+                          <span className="shrink-0 text-xs font-bold tabular-nums text-[var(--hwe-slate)]">
                             {pct}%
                           </span>
                         ) : null}
@@ -250,7 +250,7 @@ function WorkerMatchDetailCard({
             {profile?.completionRate != null ? ` · ${profile.completionRate}%` : ''}
           </span>
           {experienceLine ? (
-            <span className="truncate text-right font-medium text-[#1F4E79]">
+            <span className="truncate text-right font-medium text-[var(--hwe-slate)]">
               {experienceLine}
             </span>
           ) : null}
@@ -258,7 +258,7 @@ function WorkerMatchDetailCard({
 
         <div className="mt-1.5 flex flex-wrap gap-1">
           {primarySkill ? (
-            <span className="rounded-md bg-[#1F4E79] px-2 py-0.5 text-[10px] font-semibold text-white">
+            <span className="rounded-md bg-[var(--hwe-accent)] px-2 py-0.5 text-[10px] font-semibold text-[var(--hwe-slate)]">
               {primarySkill}
             </span>
           ) : null}
@@ -267,7 +267,7 @@ function WorkerMatchDetailCard({
             .map((s) => (
               <span
                 key={s}
-                className="rounded-md bg-[#2E75B6]/12 px-2 py-0.5 text-[10px] font-semibold text-[#1F4E79]"
+                className="rounded-md bg-[var(--hwe-accent)]/12 px-2 py-0.5 text-[10px] font-semibold text-[var(--hwe-slate)]"
               >
                 {s}
               </span>
@@ -280,7 +280,7 @@ function WorkerMatchDetailCard({
         </div>
 
         <p className="mt-2 text-[10px] text-gray-400">
-          Tap <span className="font-semibold text-[#1F4E79]">{Math.round(score)}% match</span> to see
+          Tap <span className="font-semibold text-[var(--hwe-slate)]">{Math.round(score)}% match</span> to see
           why
         </p>
 

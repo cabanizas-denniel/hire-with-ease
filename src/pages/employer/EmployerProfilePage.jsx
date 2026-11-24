@@ -155,7 +155,7 @@ function EmployerProfilePage() {
         subtitle="Complete each step below. Your home address is used when you post service requests."
       />
 
-      <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4 text-sm text-[#1F4E79]">
+      <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4 text-sm text-[var(--hwe-slate)]">
         <p className="font-semibold">Why verification matters</p>
         <p className="mt-1 text-gray-600">
           Workers can see your trust tier before accepting a job. A verified
@@ -231,7 +231,7 @@ function EmployerProfilePage() {
             <button
               type="button"
               onClick={goNext}
-              className="inline-flex cursor-pointer items-center justify-center gap-1 rounded-lg bg-[#1F4E79] px-5 py-2.5 text-sm font-semibold text-white hover:brightness-110"
+              className="inline-flex cursor-pointer items-center justify-center gap-1 btn-primary"
             >
               Continue
               <HiOutlineArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -241,7 +241,7 @@ function EmployerProfilePage() {
               type="button"
               disabled={busy}
               onClick={handleSave}
-              className="inline-flex cursor-pointer items-center justify-center rounded-lg bg-[#1F4E79] px-5 py-2.5 text-sm font-semibold text-white hover:brightness-110 disabled:opacity-60"
+              className="inline-flex cursor-pointer items-center justify-center btn-primary disabled:opacity-60"
             >
               {busy ? 'Saving…' : profileSaved ? 'Save again' : 'Save profile'}
             </button>
@@ -255,7 +255,7 @@ function EmployerProfilePage() {
 function ContactStep({ auth, form, setForm }) {
   return (
     <section>
-      <h2 className="text-sm font-semibold text-[#1F4E79]">Step 1 — Contact</h2>
+      <h2 className="text-sm font-semibold text-[var(--hwe-slate)]">Step 1 — Contact</h2>
       <p className="mt-1 text-xs text-gray-500">
         Your account email is shown to workers when they chat with you about a job.
         Add a phone number if you want them to call or text for urgent updates.
@@ -308,7 +308,7 @@ function ContactStep({ auth, form, setForm }) {
 function HomeLocationStep({ form, setForm }) {
   return (
     <section>
-      <h2 className="text-sm font-semibold text-[#1F4E79]">Step 2 — Home location</h2>
+      <h2 className="text-sm font-semibold text-[var(--hwe-slate)]">Step 2 — Home location</h2>
       <p className="mt-1 text-xs text-gray-500">
         Pin where you live in Olongapo. This address is reused when you post a
         service request — workers see it on your jobs.
@@ -336,7 +336,7 @@ function PreferencesStep({ form, setForm }) {
   return (
     <section className="space-y-4">
       <div>
-        <h2 className="text-sm font-semibold text-[#1F4E79]">
+        <h2 className="text-sm font-semibold text-[var(--hwe-slate)]">
           Step 3 — Preferences &amp; about
         </h2>
         <p className="mt-1 text-xs text-gray-500">
@@ -386,7 +386,7 @@ function PreferencesStep({ form, setForm }) {
 function ReviewStep({ auth, form, homeLabel, saved = false }) {
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-semibold text-[#1F4E79]">Step 4 — Review &amp; save</h2>
+      <h2 className="text-sm font-semibold text-[var(--hwe-slate)]">Step 4 — Review &amp; save</h2>
       <p className="text-xs text-gray-500">
         Check everything below, then press <strong>Save profile</strong>. Confirmation
         appears right below this summary.
@@ -454,7 +454,7 @@ function ProfileFormStatus({ error, success, form, homeLabel, onEditStep }) {
             <div className="mt-4 flex flex-wrap gap-2">
               <Link
                 to="/employer/post-job"
-                className="inline-flex rounded-lg bg-[#1F4E79] px-4 py-2 text-sm font-semibold text-white hover:brightness-110"
+                className="inline-flex btn-primary"
               >
                 Request a service
               </Link>
@@ -478,7 +478,7 @@ function ProfileFormStatus({ error, success, form, homeLabel, onEditStep }) {
 function ReviewRow({ label, value }) {
   return (
     <div className="grid gap-1 px-3 py-2.5 sm:grid-cols-[140px_1fr]">
-      <dt className="text-xs font-semibold text-[#1F4E79]">{label}</dt>
+      <dt className="text-xs font-semibold text-[var(--hwe-slate)]">{label}</dt>
       <dd className="text-gray-700">{value || '—'}</dd>
     </div>
   );

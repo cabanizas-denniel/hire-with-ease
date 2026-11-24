@@ -98,107 +98,112 @@ function WorkerActiveJobWorkspace({ application }) {
 
   return (
     <>
-      <div className="panel-surface overflow-hidden rounded-xl border border-[#1F4E79]/15 bg-white">
-        <JobIssueMedia
-          job={job}
-          variant="gallery"
-          titleAlt={`Issue media for "${application.jobTitle || 'Job'}"`}
-        />
-        <div className="p-4 text-sm text-[#1F4E79]">
-          <p className="font-semibold">
-            {application.jobTitle || 'Job'}{' '}
-            <StatusBadge status={prettyAppStatus(application.status)} />
-          </p>
-          {canDecline ? (
-            <div className="mt-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setDeclineError(null);
-                  setDeclinePreset('');
-                  setDeclineOther('');
-                  setDeclineOpen(true);
-                }}
-                disabled={declining}
-                className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                Decline job
-              </button>
-            </div>
-          ) : null}
-          <div className="mt-2 grid gap-1 text-xs text-gray-700 sm:grid-cols-2">
-            <div className="sm:col-span-2">
-              <span className="font-semibold text-[#1F4E79]">Homeowner:</span>{' '}
-              <HomeownerTrustRow
-                name={application.clientName || 'Homeowner'}
-                trustTier={
-                  application.clientTrustTier ?? job?.postedByTrustTier ?? null
-                }
-                prefix=""
-                className="mt-1 inline-flex"
-              />
-            </div>
-            {(application.clientMobile || job?.postedByMobile) ? (
-              <p>
-                <span className="font-semibold text-[#1F4E79]">Phone:</span>{' '}
-                <a
-                  href={`tel:${String(application.clientMobile || job.postedByMobile).replace(/\s/g, '')}`}
-                  className="text-[#2E75B6] hover:underline"
+      <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(16rem,22rem)_minmax(0,1fr)] lg:items-start">
+        <aside className="panel-surface min-w-0 overflow-hidden rounded-xl border border-[var(--hwe-slate)]/15 bg-white lg:sticky lg:top-20">
+          <JobIssueMedia
+            job={job}
+            variant="gallery"
+            titleAlt={`Issue media for "${application.jobTitle || 'Job'}"`}
+          />
+          <div className="p-4 text-sm text-[var(--hwe-slate)]">
+            <p className="font-semibold">
+              {application.jobTitle || 'Job'}{' '}
+              <StatusBadge status={prettyAppStatus(application.status)} />
+            </p>
+            {canDecline ? (
+              <div className="mt-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDeclineError(null);
+                    setDeclinePreset('');
+                    setDeclineOther('');
+                    setDeclineOpen(true);
+                  }}
+                  disabled={declining}
+                  className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {application.clientMobile || job.postedByMobile}
-                </a>
-              </p>
+                  Decline job
+                </button>
+              </div>
             ) : null}
-            <p>
-              <span className="font-semibold text-[#1F4E79]">Budget:</span>{' '}
-              {job?.budget || '—'}
-            </p>
-            <p className="sm:col-span-2">
-              <span className="font-semibold text-[#1F4E79]">Home address:</span>{' '}
-              {address || '—'}
-            </p>
-            {job?.schedule ? (
-              <p className="sm:col-span-2">
-                <span className="font-semibold text-[#1F4E79]">Preferred start:</span>{' '}
-                {job.schedule}
+            <div className="mt-2 grid gap-1 text-xs text-gray-700">
+              <div>
+                <span className="font-semibold text-[var(--hwe-slate)]">Homeowner:</span>{' '}
+                <HomeownerTrustRow
+                  name={application.clientName || 'Homeowner'}
+                  trustTier={
+                    application.clientTrustTier ?? job?.postedByTrustTier ?? null
+                  }
+                  prefix=""
+                  className="mt-1 inline-flex"
+                />
+              </div>
+              {(application.clientMobile || job?.postedByMobile) ? (
+                <p>
+                  <span className="font-semibold text-[var(--hwe-slate)]">Phone:</span>{' '}
+                  <a
+                    href={`tel:${String(application.clientMobile || job.postedByMobile).replace(/\s/g, '')}`}
+                    className="text-[var(--hwe-sky)] hover:underline"
+                  >
+                    {application.clientMobile || job.postedByMobile}
+                  </a>
+                </p>
+              ) : null}
+              <p>
+                <span className="font-semibold text-[var(--hwe-slate)]">Budget:</span>{' '}
+                {job?.budget || '—'}
               </p>
-            ) : null}
-            {formatPostedDate(job?.postedAt, job?.createdAt) ? (
-              <p className="sm:col-span-2">
-                <span className="font-semibold text-[#1F4E79]">Date posted:</span>{' '}
-                {formatPostedDate(job?.postedAt, job?.createdAt)}
+              <p>
+                <span className="font-semibold text-[var(--hwe-slate)]">Home address:</span>{' '}
+                {address || '—'}
               </p>
-            ) : null}
+              {job?.schedule ? (
+                <p>
+                  <span className="font-semibold text-[var(--hwe-slate)]">Preferred start:</span>{' '}
+                  {job.schedule}
+                </p>
+              ) : null}
+              {formatPostedDate(job?.postedAt, job?.createdAt) ? (
+                <p>
+                  <span className="font-semibold text-[var(--hwe-slate)]">Date posted:</span>{' '}
+                  {formatPostedDate(job?.postedAt, job?.createdAt)}
+                </p>
+              ) : null}
+            </div>
           </div>
+        </aside>
+
+        <div className="flex min-w-0 flex-col gap-3">
+          <ChatPanel
+            jobId={application.jobId}
+            jobTitle={application.jobTitle}
+            clientId={application.clientId}
+            clientName={application.clientName}
+            clientEmail={application.clientEmail || job?.postedByEmail}
+            clientMobile={application.clientMobile || job?.postedByMobile}
+            clientTrustTier={
+              application.clientTrustTier ?? job?.postedByTrustTier ?? null
+            }
+            workerId={application.workerId}
+            workerName={application.workerName || user?.fullName}
+            role="worker"
+            jobBudget={job?.budget}
+            jobStatus={job?.status}
+            applicationStatus={application.status}
+            application={application}
+            compact={false}
+            className="min-h-[min(70vh,36rem)] lg:min-h-[min(75vh,40rem)]"
+          />
+
+          {job?.status === JOB_STATUS.IN_PROGRESS && locked ? (
+            <p className="rounded-lg border border-indigo-200 bg-indigo-50 p-3 text-xs text-indigo-950">
+              Job is in progress. Finish with the homeowner on site; they can mark the job complete when
+              work is done. Payment stays between you outside the app.
+            </p>
+          ) : null}
         </div>
       </div>
-
-      <ChatPanel
-        jobId={application.jobId}
-        jobTitle={application.jobTitle}
-        clientId={application.clientId}
-        clientName={application.clientName}
-        clientEmail={application.clientEmail || job?.postedByEmail}
-        clientMobile={application.clientMobile || job?.postedByMobile}
-        clientTrustTier={
-          application.clientTrustTier ?? job?.postedByTrustTier ?? null
-        }
-        workerId={application.workerId}
-        workerName={application.workerName || user?.fullName}
-        role="worker"
-        jobBudget={job?.budget}
-        jobStatus={job?.status}
-        applicationStatus={application.status}
-        application={application}
-        compact
-      />
-
-      {job?.status === JOB_STATUS.IN_PROGRESS && locked ? (
-        <p className="rounded-lg border border-indigo-200 bg-indigo-50 p-3 text-xs text-indigo-950">
-          Job is in progress. Finish with the homeowner on site; they can mark the job complete when
-          work is done. Payment stays between you outside the app.
-        </p>
-      ) : null}
 
       <Modal
         isOpen={declineOpen}
@@ -209,7 +214,7 @@ function WorkerActiveJobWorkspace({ application }) {
         confirmDisabled={declining || !resolvedDeclineReason}
       >
         <p>{declineBody}</p>
-        <p className="mt-3 text-xs font-semibold text-[#1F4E79]">
+        <p className="mt-3 text-xs font-semibold text-[var(--hwe-slate)]">
           Tell the homeowner why (required — sent in chat)
         </p>
         <div className="mt-2 space-y-1.5">
@@ -236,7 +241,7 @@ function WorkerActiveJobWorkspace({ application }) {
             rows={3}
             maxLength={280}
             placeholder="Brief reason for the homeowner…"
-            className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-xs text-gray-800 focus:border-[#1F4E79] focus:outline-none focus:ring-2 focus:ring-[#1F4E79]/20"
+            className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-xs text-gray-800 focus:border-[var(--hwe-slate)] focus:outline-none focus:ring-2 focus:ring-[var(--hwe-sky)]/20"
           />
         ) : null}
         {declineError ? (

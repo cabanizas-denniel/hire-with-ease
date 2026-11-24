@@ -11,7 +11,7 @@ function TermsPage() {
       title="Terms & Conditions"
       updatedLabel="Last updated · November 2026 · Hire With Ease (Olongapo prototype)"
     >
-      <p className="rounded-xl border border-[#1F4E79]/15 bg-white p-5 text-gray-600 shadow-sm">
+      <p className="rounded-xl border border-[var(--hwe-slate)]/15 bg-white p-5 text-gray-600 shadow-sm">
         These Terms & Conditions govern use of the Hire With Ease platform. By registering or
         signing in, you agree to these terms. The service is an academic / PESO-oriented prototype
         for matching homeowners with informal skilled workers in Olongapo.

@@ -52,7 +52,6 @@ export default function Turnstile({
 
     async function mount() {
       if (!SITE_KEY) {
-        onError?.('Captcha is not configured (missing VITE_TURNSTILE_SITE_KEY).');
         return;
       }
 

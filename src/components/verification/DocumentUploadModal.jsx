@@ -77,7 +77,7 @@ function DocumentUploadModal({ isOpen, userId, onClose, onSuccess }) {
         type="button"
         onClick={handleSubmit}
         disabled={!canSubmit || busy}
-        className="w-full cursor-pointer rounded-lg bg-[#1F4E79] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+        className="w-full cursor-pointer btn-primary disabled:cursor-not-allowed disabled:opacity-60"
       >
         {busy ? 'Uploading…' : 'Upload document'}
       </button>
@@ -100,7 +100,7 @@ function DocumentUploadModal({ isOpen, userId, onClose, onSuccess }) {
           <select
             value={docType}
             onChange={(e) => setDocType(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:border-[#1F4E79] focus:outline-none focus:ring-1 focus:ring-[#1F4E79]"
+            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:border-[var(--hwe-slate)] focus:outline-none focus:ring-1 focus:ring-[var(--hwe-sky)]"
           >
             {DOC_TYPES.map((d) => (
               <option key={d.type} value={d.type}>
@@ -120,7 +120,7 @@ function DocumentUploadModal({ isOpen, userId, onClose, onSuccess }) {
               value={customLabel}
               onChange={(e) => setCustomLabel(e.target.value)}
               placeholder="e.g. Proof of Work"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-[#1F4E79] focus:outline-none focus:ring-1 focus:ring-[#1F4E79]"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-[var(--hwe-slate)] focus:outline-none focus:ring-1 focus:ring-[var(--hwe-sky)]"
             />
           </div>
         ) : null}

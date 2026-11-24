@@ -67,7 +67,7 @@ function IdentitySubmissionModal({
         type="button"
         onClick={handleSubmit}
         disabled={!canSubmit || busy}
-        className="w-full cursor-pointer rounded-lg bg-[#1F4E79] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+        className="w-full cursor-pointer btn-primary disabled:cursor-not-allowed disabled:opacity-60"
       >
         {busy
           ? 'Submitting…'

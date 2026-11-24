@@ -252,7 +252,7 @@ export function scoreWorkerFactors(job, profile) {
 
   const eligible =
     matchedSkills.length > 0 &&
-    (profile.moderationStatus || 'active') === 'active';
+    (profile.moderationStatus || 'active') !== 'banned';
 
   return {
     eligible,

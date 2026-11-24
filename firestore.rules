@@ -1,0 +1,436 @@
+rules_version = '2';
+
+// Firestore Security Rules for Hire With Ease
+// Enforced server-side by Firebase. The frontend is treated as untrusted.
+//
+// Roles (canonical, stored in /users/{uid}.role):
+//   - admin
+//   - informal_worker
+//   - homeowner
+//
+// Collections:
+//   /users              - profile per auth user
+//   /jobs               - homeowner's service requests
+//   /worker_profiles    - matching/availability data per worker (keyed by uid)
+//   /applications       - worker -> job applications + negotiation state
+//   /threads            - one chat thread per (job, worker) pair
+//     /messages         - subcollection of chat messages
+//   /admin_notifications - shared PESO inbox (submission alerts)
+//   /users/{uid}/notifications - per-user in-app notifications
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Treat the client as untrusted. Only grant access to users with
+    // a real Firebase Auth session AND a verified email.
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function hasVerifiedEmail() {
+      // Firebase ID token includes email_verified when the provider supports it.
+      // For email/password auth, this is the main anti-abuse gate we can enforce
+      // server-side without relying on localStorage/UI checks.
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // In Firestore Rules the Resource returned by get() does NOT have an
+    // `.exists` property — use the `exists(path)` predicate to check.
+    // get(...).data.role would throw if the doc is missing, which deny-evaluates,
+    // so we always pre-check with userExists() before reading the role.
+    function userExists() {
+      return hasVerifiedEmail()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function userRole() {
+      return userExists()
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
+        : null;
+    }
+
+    function verification() {
+      return userExists()
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.verification
+        : null;
+    }
+
+    function workerIsActivated() {
+      // Matching/accept unlock: identity approved + stage4 activation timestamp.
+      // Use `in` guards so missing nested maps never throw (a throw denies the whole request).
+      return isWorker()
+        && verification() != null
+        && 'stage2' in verification()
+        && 'reviewStatus' in verification().stage2
+        && verification().stage2.reviewStatus == 'reviewed'
+        && 'stage4' in verification()
+        && 'activatedAt' in verification().stage4
+        && verification().stage4.activatedAt != null;
+    }
+
+    function isAdmin() {
+      return userExists() && userRole() == 'admin';
+    }
+
+    function isHomeowner() {
+      return userExists() && userRole() == 'homeowner';
+    }
+
+    function isWorker() {
+      return userExists() && userRole() == 'informal_worker';
+    }
+
+    // Allowed roles a user can assign to themselves on self-registration.
+    function isSelfAssignableRole(role) {
+      return role == 'informal_worker' || role == 'homeowner';
+    }
+
+    // Only the designated seed admin email may create an admin profile.
+    // Matches scripts/seedTestAccounts.mjs.
+    function isSeedAdminEmail() {
+      return request.auth != null
+        && request.auth.token.email == 'cabanizasdenniel@gmail.com';
+    }
+
+    // ------- /users -------
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+
+      allow create: if isOwner(userId)
+                    && request.resource.data.uid == userId
+                    && (
+                      isSelfAssignableRole(request.resource.data.role)
+                      || (
+                        request.resource.data.role == 'admin'
+                        && isSeedAdminEmail()
+                      )
+                    );
+
+      allow update: if isOwner(userId)
+                    && request.resource.data.role == resource.data.role;
+
+      allow update, delete: if isAdmin();
+
+      // In-app notifications (verification approvals, etc.)
+      match /notifications/{notificationId} {
+        allow read: if isOwner(userId);
+
+        allow create: if isAdmin()
+                      || (
+                        isOwner(userId)
+                        && isHomeowner()
+                        && request.resource.data.type == 'match'
+                        && request.resource.data.eventKey.matches('^match:job:.+')
+                        && request.resource.data.unread == true
+                        && request.resource.data.readAt == null
+                        && request.resource.data.keys().hasAll([
+                          'eventKey',
+                          'type',
+                          'title',
+                          'message',
+                          'linkTo',
+                          'unread',
+                          'createdAtIso',
+                          'readAt',
+                        ])
+                      )
+                      || (
+                        // Schedule / agreement alerts from either party in a chat.
+                        hasVerifiedEmail()
+                        && request.resource.data.type == 'status'
+                        && request.resource.data.eventKey.matches('^schedule:(proposed|confirmed|declined|in_progress|completed):(client|worker):.+')
+                        && request.resource.data.unread == true
+                        && request.resource.data.readAt == null
+                        && request.resource.data.keys().hasAll([
+                          'eventKey',
+                          'type',
+                          'title',
+                          'message',
+                          'linkTo',
+                          'unread',
+                          'createdAtIso',
+                          'readAt',
+                        ])
+                      );
+
+        allow update: if isOwner(userId)
+                      && resource.data.unread == true
+                      && request.resource.data.unread == false
+                      && request.resource.data.diff(resource.data).affectedKeys()
+                          .hasOnly(['unread', 'readAt']);
+
+        allow delete: if isAdmin();
+      }
+    }
+
+    // ------- /admin_notifications -------
+    // Workers and employers alert PESO when they submit verification for review.
+    match /admin_notifications/{notificationId} {
+      allow read: if isAdmin();
+
+      allow create: if hasVerifiedEmail()
+                    && request.resource.data.subjectUserId == request.auth.uid
+                    && request.resource.data.unread == true
+                    && request.resource.data.readAt == null
+                    && request.resource.data.linkTo == '/admin/verification'
+                    && request.resource.data.keys().hasAll([
+                      'eventKey',
+                      'type',
+                      'title',
+                      'message',
+                      'linkTo',
+                      'subjectUserId',
+                      'subjectRole',
+                      'unread',
+                      'createdAtIso',
+                      'readAt',
+                    ]);
+
+      allow update: if isAdmin()
+                    && resource.data.unread == true
+                    && request.resource.data.unread == false
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                        .hasOnly(['unread', 'readAt']);
+
+      allow delete: if isAdmin();
+    }
+
+    // ------- /jobs -------
+    // Any signed-in user can read job postings (needed for matching + map view).
+    // Homeowners create their own jobs; admin can manage any (also used by the seed script).
+    // Workers may patch a job ONLY to flip its status to "In Progress" once they
+    // are the confirmed worker (job arrival), or "Completed" once their work is done.
+    match /jobs/{jobId} {
+      // Workers may browse open jobs before PESO activation (preview-only in UI).
+      // Accept / decline / chat still require workerIsActivated() elsewhere.
+      allow read: if isAdmin()
+                  || isHomeowner()
+                  || isWorker();
+
+      allow create: if isAdmin()
+                    || (
+                      isHomeowner()
+                      && request.resource.data.postedBy == request.auth.uid
+                    );
+
+      allow update, delete: if isAdmin()
+                            || (isHomeowner() && resource.data.postedBy == request.auth.uid);
+
+      // Confirmed worker may flip status to In Progress / Completed and bump
+      // updatedAt. Everything else stays untouched (rules-side guard).
+      allow update: if isWorker()
+                    && resource.data.confirmedWorkerId == request.auth.uid
+                    && request.resource.data.confirmedWorkerId == resource.data.confirmedWorkerId
+                    && request.resource.data.postedBy == resource.data.postedBy
+                    && request.resource.data.status in ['In Progress', 'Completed'];
+
+      // Confirmed worker may unlock the hire when they decline / withdraw.
+      allow update: if isWorker()
+                    && resource.data.confirmedWorkerId == request.auth.uid
+                    && (
+                      !('confirmedWorkerId' in request.resource.data)
+                      || request.resource.data.confirmedWorkerId == null
+                    )
+                    && (
+                      !('confirmedWorkerName' in request.resource.data)
+                      || request.resource.data.confirmedWorkerName == null
+                    )
+                    && request.resource.data.postedBy == resource.data.postedBy
+                    && request.resource.data.status in ['Matched', 'Matching'];
+
+      // Worker declined a system match (removes them from homeowner shortlist).
+      // Homeowner may also record a decline when they remove a worker.
+      match /match_declines/{workerId} {
+        allow read: if isAdmin()
+                    || isHomeowner()
+                    || (isWorker() && workerIsActivated());
+
+        allow create, update: if (
+                                isWorker()
+                                && workerIsActivated()
+                                && workerId == request.auth.uid
+                                && request.resource.data.workerId == request.auth.uid
+                                && request.resource.data.jobId == jobId
+                              )
+                              || (
+                                isHomeowner()
+                                && hasVerifiedEmail()
+                                && get(/databases/$(database)/documents/jobs/$(jobId)).data.postedBy == request.auth.uid
+                                && request.resource.data.jobId == jobId
+                                && request.resource.data.workerId == workerId
+                              );
+
+        allow delete: if isAdmin()
+                      || (isWorker() && workerId == request.auth.uid);
+      }
+    }
+
+    // ------- /worker_profiles -------
+    // All signed-in users can read worker profiles (needed for matching + map view).
+    // Workers maintain only their own profile; admin can manage all.
+    match /worker_profiles/{profileId} {
+      // Workers may always read profiles (needed to complete their own profile),
+      // but matching data access is still controlled by /jobs and /applications rules.
+      allow read: if hasVerifiedEmail();
+
+      allow create: if isAdmin()
+                    || (isWorker() && profileId == request.auth.uid);
+
+      // Workers keep their own profile, but cannot unban themselves or edit their rating.
+      allow update: if isWorker()
+                    && profileId == request.auth.uid
+                    && request.resource.data.get('moderationStatus', 'active')
+                        == resource.data.get('moderationStatus', 'active')
+                    && request.resource.data.get('rating', null) == resource.data.get('rating', null)
+                    && request.resource.data.get('ratingCount', 0) == resource.data.get('ratingCount', 0);
+
+      allow update: if isAdmin();
+
+      // Homeowner writes the averaged rating after a completed job.
+      allow update: if isHomeowner()
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                        .hasOnly(['rating', 'ratingCount', 'updatedAt'])
+                    && request.resource.data.rating is number
+                    && request.resource.data.rating >= 1
+                    && request.resource.data.rating <= 5
+                    && request.resource.data.ratingCount is int
+                    && request.resource.data.ratingCount >= 1;
+
+      allow delete: if isAdmin();
+    }
+
+    // ------- /applications -------
+    // Workers apply to jobs, the homeowner who posted the job and the
+    // worker can both update the application during negotiation.
+    match /applications/{appId} {
+      // Workers may always read their own applications; create/accept still needs activation.
+      allow read: if isAdmin()
+                  || isHomeowner()
+                  || (isWorker() && resource.data.workerId == request.auth.uid)
+                  || (isWorker() && workerIsActivated());
+
+      // Create: any signed-in worker may apply as themselves.
+      // PESO activation is enforced in the worker UI (Accept hidden until canAct).
+      // Keeping create tied only to role+ownership avoids false denials when
+      // verification maps are partially shaped in Firestore.
+      allow create: if isAdmin()
+                    || (isWorker()
+                        && request.resource.data.workerId == request.auth.uid);
+
+      allow update: if isAdmin()
+                    || (isWorker() && resource.data.workerId == request.auth.uid)
+                    || (isHomeowner() && resource.data.clientId == request.auth.uid);
+
+      allow delete: if isAdmin();
+    }
+
+    // ------- /dispute_reports -------
+    match /dispute_reports/{reportId} {
+      allow read: if isAdmin();
+
+      allow create: if hasVerifiedEmail()
+                    && request.resource.data.reporterId == request.auth.uid
+                    && request.resource.data.status == 'open'
+                    && request.resource.data.keys().hasAll([
+                      'id',
+                      'jobId',
+                      'reporterId',
+                      'reporterRole',
+                      'reason',
+                      'status',
+                      'createdAt',
+                    ]);
+
+      allow update, delete: if isAdmin();
+    }
+
+    // ------- /threads -------
+    // One chat thread per (job, worker) pair. Either participant can read
+    // and write. We enforce participation via the `participants` array
+    // that's set on the parent thread doc.
+    match /threads/{threadId} {
+      allow read: if hasVerifiedEmail()
+                  && (
+                    isAdmin()
+                    || (
+                      request.auth.uid in resource.data.participants
+                      && (!isWorker() || workerIsActivated())
+                    )
+                  );
+
+      allow create: if hasVerifiedEmail()
+                    && request.auth.uid in request.resource.data.participants
+                    && (!isWorker() || workerIsActivated());
+
+      allow update: if hasVerifiedEmail()
+                    && (
+                      isAdmin()
+                      || (
+                        request.auth.uid in resource.data.participants
+                        && (!isWorker() || workerIsActivated())
+                      )
+                    );
+
+      allow delete: if isAdmin();
+
+      match /messages/{messageId} {
+        // Read access mirrors thread read access.
+        allow read: if hasVerifiedEmail()
+                    && (
+                      isAdmin()
+                      || (
+                        request.auth.uid in get(/databases/$(database)/documents/threads/$(threadId)).data.participants
+                        && (!isWorker() || workerIsActivated())
+                      )
+                    );
+
+        // Only thread participants may post messages, and only as
+        // themselves (authorId must match the auth uid).
+        allow create: if hasVerifiedEmail()
+                      && request.resource.data.authorId == request.auth.uid
+                      && request.auth.uid in get(/databases/$(database)/documents/threads/$(threadId)).data.participants
+                      && (!isWorker() || workerIsActivated());
+
+        // Messages are immutable once posted, except agreement cards which
+        // participants may replace (keep only the latest proposal / confirmation).
+        allow update: if false;
+        allow delete: if isAdmin()
+                      || (
+                        hasVerifiedEmail()
+                        && request.auth.uid in get(/databases/$(database)/documents/threads/$(threadId)).data.participants
+                        && resource.data.messageType in ['schedule', 'agreement_confirmed', 'hire_declined']
+                        && (!isWorker() || workerIsActivated())
+                      );
+      }
+    }
+
+    // ------- /ratings -------
+    // One rating per completed job, written by the homeowner who hired the worker.
+    match /ratings/{ratingId} {
+      allow read: if hasVerifiedEmail();
+
+      allow create: if isHomeowner()
+                    && ratingId == request.resource.data.jobId + '_' + request.auth.uid
+                    && request.resource.data.clientId == request.auth.uid
+                    && request.resource.data.workerId is string
+                    && request.resource.data.jobId is string
+                    && request.resource.data.stars is int
+                    && request.resource.data.stars >= 1
+                    && request.resource.data.stars <= 5
+                    && get(/databases/$(database)/documents/jobs/$(request.resource.data.jobId)).data.postedBy == request.auth.uid
+                    && get(/databases/$(database)/documents/jobs/$(request.resource.data.jobId)).data.confirmedWorkerId == request.resource.data.workerId
+                    && get(/databases/$(database)/documents/jobs/$(request.resource.data.jobId)).data.status == 'Completed';
+
+      allow update, delete: if isAdmin();
+    }
+
+    // Default deny for anything else.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

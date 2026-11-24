@@ -42,7 +42,7 @@ function ModalShell({ isOpen, title, subtitle, children, onClose, footer, size =
       >
         <div className="flex items-start justify-between border-b border-gray-100 px-5 py-4">
           <div>
-            <h2 className="text-lg font-semibold text-[#1F4E79]">{title}</h2>
+            <h2 className="text-lg font-semibold text-[var(--hwe-slate)]">{title}</h2>
             {subtitle ? (
               <p className="mt-0.5 text-xs text-gray-500">{subtitle}</p>
             ) : null}

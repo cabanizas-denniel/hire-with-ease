@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { AiOutlineClose } from 'react-icons/ai';
 import { Link, NavLink } from 'react-router-dom';
 import BrandMark from '../../components/BrandMark.jsx';
+import Reveal from '../../components/Reveal.jsx';
 import heroVector from '../../assets/images/hero-vector-hire-with-ease.png';
 import { useAuth } from '../../context/AuthContext.jsx';
 
@@ -16,32 +17,38 @@ const features = [
   {
     k: '01',
     title: 'Push-based matching',
-    description: 'Workers don\'t scroll job boards. The system evaluates skills, location, and reputation — then pushes relevant jobs directly to qualified workers.',
+    description:
+      "Workers don't scroll job boards. The system evaluates skills, location, and reputation — then pushes relevant jobs directly to qualified workers.",
   },
   {
     k: '02',
     title: 'Agree the schedule in chat',
-    description: 'After a match, both sides lock a final start date & time, agreed price, and what is / isn\'t included — no calendar slots to maintain up front.',
+    description:
+      "After a match, both sides lock a final start date & time, agreed price, and what is / isn't included — no calendar slots to maintain up front.",
   },
   {
     k: '03',
     title: 'Structured profiles',
-    description: 'Skills, certifications, and experience are captured as structured data — not free-text résumés — so the matching engine can reason about them.',
+    description:
+      'Skills, certifications, and experience are captured as structured data — not free-text résumés — so the matching engine can reason about them.',
   },
   {
     k: '04',
     title: 'Trust signals',
-    description: 'Verification status, completion rates, and client ratings are visible so both sides can make informed decisions about real-world, in-person work.',
+    description:
+      'Verification status, completion rates, and client ratings are visible so both sides can make informed decisions about real-world, in-person work.',
   },
   {
     k: '05',
     title: 'Auto-notification',
-    description: 'Workers receive actionable match alerts they accept or decline. Clients see ranked results as workers respond. No manual searching on either side.',
+    description:
+      'Workers receive actionable match alerts they accept or decline. Clients see ranked results as workers respond. No manual searching on either side.',
   },
   {
     k: '06',
     title: 'Labor-market view',
-    description: 'An admin dashboard surfaces demand signals, skill shortages, and workforce trends — the kind of data a local employment office would use for planning.',
+    description:
+      'An admin dashboard surfaces demand signals, skill shortages, and workforce trends — the kind of data a local employment office would use for planning.',
   },
 ];
 
@@ -54,28 +61,43 @@ const howItWorks = [
   {
     step: '2',
     title: 'Clients describe what they need',
-    description: 'A structured service request: category, title, budget, preferred start, location, and photos or video of the issue. No vague postings.',
+    description:
+      'A structured service request: category, title, budget, preferred start, location, and photos or video of the issue. No vague postings.',
   },
   {
     step: '3',
     title: 'The system matches automatically',
-    description: 'Skill fit, proximity, category preference, and worker reliability are evaluated. Qualified workers get notified instantly.',
+    description:
+      'Skill fit, proximity, category preference, and worker reliability are evaluated. Qualified workers get notified instantly.',
   },
   {
     step: '4',
     title: 'Workers accept — not apply',
-    description: 'Workers see only jobs they\'re matched to. They accept or decline. No browsing, no keyword guessing, no wasted applications.',
+    description:
+      "Workers see only jobs they're matched to. They accept or decline. No browsing, no keyword guessing, no wasted applications.",
   },
   {
     step: '5',
     title: 'Clients review ranked matches',
-    description: 'As workers respond, clients see a ranked list: skills overlap, ratings, completion history. Select the best fit.',
+    description:
+      'As workers respond, clients see a ranked list: skills overlap, ratings, completion history. Select the best fit.',
   },
   {
     step: '6',
     title: 'Job completes, feedback loops',
-    description: 'Ratings, completion data, and reliability scores feed back into the matching engine — so future matches improve over time.',
+    description:
+      'Ratings, completion data, and reliability scores feed back into the matching engine — so future matches improve over time.',
   },
+];
+
+const tickerPhrases = [
+  'Plumbers',
+  'Electricians',
+  'Carpenters',
+  'Verified workers',
+  'Matched in minutes',
+  'Pushed to you, not searched for',
+  'Describe the job once',
 ];
 
 const faqs = [
@@ -85,7 +107,7 @@ const faqs = [
   },
   {
     q: 'How is this different from a job board?',
-    a: 'Job boards rely on workers scrolling and applying. Here, the system pushes matched jobs to workers based on skills and location. Workers accept — they don\'t apply. Think Grab for skilled services, not LinkedIn.',
+    a: "Job boards rely on workers scrolling and applying. Here, the system pushes matched jobs to workers based on skills and location. Workers accept — they don't apply. Think Grab for skilled services, not LinkedIn.",
   },
   {
     q: 'How do start times get set?',
@@ -109,64 +131,31 @@ function navLabelUpper(label) {
   return label.toUpperCase();
 }
 
-function WaveEdge() {
-  return (
-    <svg
-      className="pointer-events-none absolute right-0 top-0 z-10 hidden h-full w-[min(13vw,6.5rem)] min-w-[3.25rem] translate-x-[calc(100%-1px)] lg:block"
-      viewBox="0 0 100 400"
-      preserveAspectRatio="none"
-      aria-hidden
-    >
-      <g transform="scale(-1, 1) translate(-100, 0)">
-        <path
-          fill="#ffffff"
-          d="M100,0 L100,400 L18,400 Q-2,340 22,280 Q48,220 18,160 Q-4,100 24,52 Q48,8 12,0 Z"
-        />
-      </g>
-    </svg>
-  );
-}
-
-function LandingSplitHeader({ links }) {
-  const [open, setOpen] = useState(false);
+function LandingPublicHeader({ links }) {
   const { isAuthenticated, getDefaultRoute } = useAuth();
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return undefined;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
     const onKey = (e) => {
       if (e.key === 'Escape') setOpen(false);
     };
-    window.addEventListener('keydown', onKey);
+    document.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';
     return () => {
-      document.body.style.overflow = prev;
-      window.removeEventListener('keydown', onKey);
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = '';
     };
   }, [open]);
 
   const navLinkClass =
-    'text-xs font-semibold tracking-[0.14em] text-[#1F4E79] hover:text-[#2E75B6] lg:text-[#1F4E79] lg:hover:text-[#2E75B6]';
-  const btnOutline =
-    'rounded-md border px-4 py-2 text-xs font-semibold uppercase tracking-wide border-[#1F4E79] text-[#1F4E79] hover:bg-[#1F4E79]/8 lg:border-[#1F4E79] lg:text-[#1F4E79] lg:hover:bg-[#1F4E79]/10';
+    'text-xs font-semibold tracking-[0.14em] text-[var(--hwe-slate)] hover:opacity-80';
 
   return (
-    <header className="relative z-30 border-b border-gray-200 bg-white lg:absolute lg:inset-x-0 lg:top-0 lg:grid lg:grid-cols-[1.14fr_0.86fr] lg:border-0 lg:bg-transparent">
-      <div className="flex items-center justify-between gap-3 px-4 py-4 sm:px-6 lg:px-10 xl:pl-16">
-        <BrandMark to="/" variant="landingSplit" />
-        <button
-          type="button"
-          className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-gray-300 text-[#1F4E79] lg:hidden"
-          aria-expanded={open}
-          aria-label={open ? 'Close menu' : 'Open menu'}
-          onClick={() => setOpen((o) => !o)}
-        >
-          {open ? <AiOutlineClose className="text-xl" aria-hidden /> : <span className="text-lg leading-none">☰</span>}
-        </button>
-      </div>
-
-      <div className="hidden items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:flex lg:px-10 lg:pr-12 xl:pr-16">
-        <nav className="flex flex-wrap items-center justify-center gap-5 xl:gap-7">
+    <header className="relative z-30 bg-[var(--hwe-strong)]">
+      <div className="flex min-w-0 items-center justify-between gap-3 px-[var(--hwe-page-pad)] py-4">
+        <BrandMark to="/" variant="onStrong" />
+        <nav className="hidden items-center gap-6 md:flex" aria-label="Primary">
           {links.map((item) =>
             item.hash ? (
               <a key={item.label} href={item.hash} className={navLinkClass}>
@@ -177,114 +166,86 @@ function LandingSplitHeader({ links }) {
                 key={item.label}
                 to={item.to}
                 className={({ isActive }) =>
-                  `${navLinkClass} ${isActive ? 'underline underline-offset-4' : ''}`}
+                  `${navLinkClass} ${isActive ? 'font-bold' : ''}`
+                }
               >
                 {navLabelUpper(item.label)}
               </NavLink>
-            )
+            ),
           )}
         </nav>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="hidden shrink-0 items-center gap-2 md:flex">
           {isAuthenticated ? (
-            <Link to={getDefaultRoute()} className={`${btnOutline} inline-flex bg-[#1F4E79]/5`}>
+            <Link to={getDefaultRoute()} className="btn-primary">
               Dashboard
             </Link>
           ) : (
             <>
-              <Link to="/register" state={{ defaultRole: 'applicant' }} className={btnOutline}>
+              <Link to="/register" state={{ defaultRole: 'applicant' }} className="btn-secondary">
                 Sign up
               </Link>
-              <Link to="/login" className={btnOutline}>
+              <Link to="/login" className="btn-primary">
                 Sign in
               </Link>
             </>
           )}
         </div>
+        <button
+          type="button"
+          className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-[var(--hwe-slate)]/25 text-[var(--hwe-slate)] md:hidden"
+          aria-expanded={open}
+          aria-label={open ? 'Close menu' : 'Open menu'}
+          onClick={() => setOpen((o) => !o)}
+        >
+          {open ? <AiOutlineClose className="text-xl" aria-hidden /> : <span className="text-lg leading-none">☰</span>}
+        </button>
       </div>
 
       {open ? (
-        <div
-          className="fixed inset-0 z-[60] lg:hidden"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="landing-menu-title"
-        >
-          <button
-            type="button"
-            className="absolute inset-0 bg-[#0f172a]/45 backdrop-blur-[2px]"
-            aria-label="Close menu"
-            onClick={() => setOpen(false)}
-          />
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
-            <div className="pointer-events-auto flex max-h-[min(85dvh,28rem)] w-full max-w-sm flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-black/5">
-              <div className="flex shrink-0 items-center justify-between border-b border-gray-100 px-4 py-4">
-                <p id="landing-menu-title" className="text-lg font-semibold text-[#1F4E79]">
-                  Menu
-                </p>
-                <button
-                  type="button"
-                  className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100"
-                  aria-label="Close menu"
+        <div className="border-t border-[var(--hwe-slate)]/15 bg-[var(--hwe-strong)] px-[var(--hwe-page-pad)] py-4 md:hidden">
+          <nav className="flex flex-col gap-1" aria-label="Mobile">
+            {links.map((item) =>
+              item.hash ? (
+                <a
+                  key={item.label}
+                  href={item.hash}
+                  className="rounded-xl px-3 py-3 text-base font-semibold text-[var(--hwe-slate)]"
                   onClick={() => setOpen(false)}
                 >
-                  <AiOutlineClose className="text-2xl" />
-                </button>
-              </div>
-              <nav className="flex min-h-0 flex-col gap-1 overflow-y-auto px-3 py-4">
-                <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Explore</p>
-                {links.map((item) =>
-                  item.hash ? (
-                    <a
-                      key={item.label}
-                      href={item.hash}
-                      className="rounded-xl px-3 py-3 text-base font-medium text-[#1F4E79] transition hover:bg-[#1F4E79]/8"
-                      onClick={() => setOpen(false)}
-                    >
-                      {item.label}
-                    </a>
-                  ) : (
-                    <Link
-                      key={item.label}
-                      to={item.to}
-                      className="rounded-xl px-3 py-3 text-base font-medium text-[#1F4E79] transition hover:bg-[#1F4E79]/8"
-                      onClick={() => setOpen(false)}
-                    >
-                      {item.label}
-                    </Link>
-                  )
-                )}
-                <div className="my-3 border-t border-gray-100" />
-                <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Account</p>
-                {!isAuthenticated ? (
-                  <>
-                    <Link
-                      to="/register"
-                      state={{ defaultRole: 'applicant' }}
-                      className="rounded-xl px-3 py-3 text-base font-semibold text-[#1F4E79] transition hover:bg-[#1F4E79]/8"
-                      onClick={() => setOpen(false)}
-                    >
-                      Sign up
-                    </Link>
-                    <Link
-                      to="/login"
-                      className="rounded-xl border border-[#1F4E79]/25 bg-[#1F4E79]/5 px-3 py-3 text-center text-base font-semibold text-[#1F4E79] transition hover:bg-[#1F4E79]/10"
-                      onClick={() => setOpen(false)}
-                    >
-                      Sign in
-                    </Link>
-                  </>
-                ) : (
-                  <Link
-                    to={getDefaultRoute()}
-                    className="rounded-xl border border-[#1F4E79]/25 bg-[#1F4E79]/5 px-3 py-3 text-center text-base font-semibold text-[#1F4E79] transition hover:bg-[#1F4E79]/10"
-                    onClick={() => setOpen(false)}
-                  >
-                    Dashboard
-                  </Link>
-                )}
-              </nav>
-            </div>
-          </div>
+                  {item.label}
+                </a>
+              ) : (
+                <Link
+                  key={item.label}
+                  to={item.to}
+                  className="rounded-xl px-3 py-3 text-base font-semibold text-[var(--hwe-slate)]"
+                  onClick={() => setOpen(false)}
+                >
+                  {item.label}
+                </Link>
+              ),
+            )}
+            <div className="my-2 border-t border-[var(--hwe-slate)]/15" />
+            {isAuthenticated ? (
+              <Link to={getDefaultRoute()} className="btn-primary w-full" onClick={() => setOpen(false)}>
+                Dashboard
+              </Link>
+            ) : (
+              <>
+                <Link
+                  to="/register"
+                  state={{ defaultRole: 'applicant' }}
+                  className="btn-secondary w-full"
+                  onClick={() => setOpen(false)}
+                >
+                  Sign up
+                </Link>
+                <Link to="/login" className="btn-primary w-full" onClick={() => setOpen(false)}>
+                  Sign in
+                </Link>
+              </>
+            )}
+          </nav>
         </div>
       ) : null}
     </header>
@@ -293,192 +254,231 @@ function LandingSplitHeader({ links }) {
 
 function LandingPage() {
   return (
-    <div className="min-h-screen bg-white text-gray-900">
-      <LandingSplitHeader links={landingNavLinks} />
+    <div className="min-h-screen bg-[var(--hwe-canvas)] text-[var(--hwe-slate)]">
+      <LandingPublicHeader links={landingNavLinks} />
 
-      <section className="relative flex min-h-0 flex-col lg:grid lg:min-h-screen lg:grid-cols-2">
-        <div className="relative flex min-h-[280px] flex-col justify-center overflow-hidden bg-[#2E75B6] lg:min-h-0 lg:pt-24">
-          <WaveEdge />
-          <div className="landing-illustration-float relative z-0 flex flex-1 items-center justify-center px-4 py-8 sm:px-6 lg:min-h-0 lg:px-4 lg:py-12 xl:px-6">
-            <img
-              src={heroVector}
-              alt="Skilled worker and client connected through the platform"
-              className="h-auto w-full max-w-xl object-contain drop-shadow-lg max-h-[min(54vh,400px)] sm:max-h-[min(60vh,480px)] lg:max-h-[min(86vh,680px)] lg:max-w-2xl xl:max-w-[720px]"
-              decoding="async"
-              loading="eager"
-            />
+      {/* Full-width blue hero */}
+      <section className="relative overflow-hidden bg-[var(--hwe-strong)]">
+        <div className="relative grid w-full min-w-0 grid-cols-1 items-center gap-8 px-[var(--hwe-page-pad)] py-12 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:gap-10 lg:pb-16 lg:pt-16 xl:pb-20 xl:pt-20">
+          <div className="reveal-hero relative z-10 min-w-0">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--hwe-slate-mid)]">
+              Hire With Ease
+            </p>
+            <h1 className="mt-3 text-3xl font-bold leading-tight tracking-tight text-[var(--hwe-slate)] sm:text-4xl lg:text-5xl">
+              Connect with skilled workers—simple,{' '}
+              <span className="highlight-mark">fast</span>, and effortless
+            </h1>
+            <p className="mt-4 max-w-2xl text-base leading-relaxed text-[var(--hwe-slate-mid)] sm:text-lg">
+              Need a plumber, electrician, or carpenter? Describe the job — the system finds available,
+              qualified workers and pushes them to you.
+            </p>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+              <Link to="/register" state={{ defaultRole: 'employer' }} className="btn-primary px-6 py-3 text-base">
+                I need work done
+              </Link>
+              <Link
+                to="/register"
+                state={{ defaultRole: 'applicant' }}
+                className="btn-secondary border-[var(--hwe-slate)]/25 bg-white/80 px-6 py-3 text-base"
+              >
+                I&apos;m a skilled worker
+              </Link>
+            </div>
+          </div>
+          <div className="relative z-10 flex min-w-0 items-center justify-center">
+            <div className="landing-illustration-float relative w-full">
+              <img
+                src={heroVector}
+                alt="Skilled worker and client connected through the platform"
+                className="h-auto w-full max-h-[min(52vh,420px)] object-contain lg:max-h-[min(70vh,560px)]"
+                decoding="async"
+                loading="eager"
+              />
+            </div>
           </div>
         </div>
 
-        <div className="flex flex-col justify-center bg-white px-4 pb-12 pt-6 sm:px-8 lg:px-10 lg:pb-20 lg:pl-8 lg:pr-12 lg:pt-28 xl:pr-16">
-          <h1 className="max-w-xl text-3xl font-bold leading-tight tracking-tight text-gray-800 sm:text-4xl lg:text-[2.35rem] xl:text-[2.55rem]">
-            Connect with skilled workers—simple, fast, and effortless
-       
-          </h1>
-          <p className="mt-4 max-w-lg text-sm leading-relaxed text-gray-600 sm:text-base">
-            Need a plumber, electrician, or carpenter? Describe the job — the system finds available, qualified workers
-            and pushes them to you. No browsing. No guessing. Just matched results.
-          </p>
-
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-            <Link
-              to="/register"
-              state={{ defaultRole: 'employer' }}
-              className="inline-flex items-center justify-center rounded-lg bg-[#2E75B6] px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#1F4E79]"
-            >
-              I need work done
-            </Link>
-            <Link
-              to="/register"
-              state={{ defaultRole: 'applicant' }}
-              className="inline-flex items-center justify-center rounded-lg border-2 border-[#2E75B6] bg-white px-6 py-3 text-sm font-semibold text-[#1F4E79] transition hover:bg-[#1F4E79]/5"
-            >
-              I'm a skilled worker
-            </Link>
-          </div>
-
-          <div className="mt-8 grid max-w-md grid-cols-3 gap-4 text-center">
-            <div>
-              <p className="text-2xl font-bold text-[#1F4E79]">&lt; 4m</p>
-              <p className="mt-1 text-xs text-gray-500">Avg match time</p>
+        <div className="hero-ticker" tabIndex={0} aria-label="Service highlights">
+          <div className="hero-ticker-track">
+            <div className="hero-ticker-set">
+              {tickerPhrases.map((phrase) => (
+                <span key={phrase} className="hero-ticker-item">
+                  {phrase}
+                  <span className="hero-ticker-sep" aria-hidden="true" />
+                </span>
+              ))}
             </div>
-            <div>
-              <p className="text-2xl font-bold text-[#1F4E79]">94%</p>
-              <p className="mt-1 text-xs text-gray-500">Completion rate</p>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-[#1F4E79]">4.6</p>
-              <p className="mt-1 text-xs text-gray-500">Avg worker rating</p>
+            <div className="hero-ticker-set" data-ticker-clone aria-hidden="true">
+              {tickerPhrases.map((phrase) => (
+                <span key={`clone-${phrase}`} className="hero-ticker-item">
+                  {phrase}
+                  <span className="hero-ticker-sep" aria-hidden="true" />
+                </span>
+              ))}
             </div>
           </div>
         </div>
       </section>
 
-      <section id="landing-features" className="scroll-mt-24 border-t border-gray-200 bg-[#f6f8fb] py-16 sm:py-20">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="mx-auto max-w-2xl text-center">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#2E75B6]">Platform</p>
-            <h2 className="mt-3 text-3xl font-bold tracking-tight text-[#1F4E79] sm:text-4xl">Not a job board. A matching engine.</h2>
-            <p className="mt-4 text-sm text-gray-600 sm:text-base">
-              If users are browsing endlessly or searching manually, the core idea has failed. This platform pushes —
-              it doesn't wait.
+      {/* Off-white features */}
+      <section id="landing-features" className="relative scroll-mt-24 overflow-hidden bg-[var(--hwe-canvas)] py-16 sm:py-20">
+        <div className="section-glow-bleed" aria-hidden="true" />
+        <div className="section-glow-corner section-glow-corner-tl" aria-hidden="true" />
+        <div className="section-glow-corner section-glow-corner-br" aria-hidden="true" />
+        <div className="relative z-[1] w-full min-w-0 px-[var(--hwe-page-pad)]">
+          <Reveal className="w-full">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--hwe-slate-soft)]">
+              Platform
             </p>
-          </div>
-          <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
-            {features.map((feature) => (
-              <article
-                key={feature.k}
-                className="group relative flex flex-col rounded-2xl border border-gray-100 bg-white p-6 shadow-sm transition hover:border-[#2E75B6]/35 hover:shadow-md"
-              >
-                <span className="font-mono text-3xl font-bold tabular-nums text-[#2E75B6]/40 transition group-hover:text-[#2E75B6]/70">
+            <h2 className="mt-3 text-3xl font-bold tracking-tight text-[var(--hwe-slate)] sm:text-4xl">
+              Not a job board. A matching engine.
+            </h2>
+            <p className="mt-4 max-w-3xl text-base leading-relaxed text-[var(--hwe-muted)]">
+              If users are browsing endlessly or searching manually, the core idea has failed. This
+              platform pushes — it doesn&apos;t wait.
+            </p>
+          </Reveal>
+          <div className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-5">
+            {features.map((feature, i) => (
+              <Reveal key={feature.k} as="article" className="card-surface min-w-0 p-6" delayMs={i * 100}>
+                <span className="font-mono text-2xl font-bold tabular-nums text-[var(--hwe-strong)]">
                   {feature.k}
                 </span>
-                <h3 className="mt-3 text-lg font-semibold text-[#1F4E79]">{feature.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-gray-600">{feature.description}</p>
-              </article>
+                <h3 className="mt-3 text-lg font-semibold text-[var(--hwe-slate)]">{feature.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-[var(--hwe-muted)]">{feature.description}</p>
+              </Reveal>
             ))}
           </div>
         </div>
       </section>
 
-      <section id="landing-how" className="scroll-mt-24 bg-white py-16 sm:py-20">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="mx-auto max-w-2xl text-center">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#2E75B6]">Flow</p>
-            <h2 className="mt-3 text-3xl font-bold tracking-tight text-[#1F4E79] sm:text-4xl">How it works end to end</h2>
-            <p className="mt-4 text-sm text-gray-600 sm:text-base">
-              Two sides — workers and clients — connected by automated matching. No manual searching on either side.
+      {/* Blue band — split value */}
+      <section className="bg-[var(--hwe-strong)] py-14 sm:py-16">
+        <div className="grid w-full min-w-0 grid-cols-1 gap-8 px-[var(--hwe-page-pad)] md:grid-cols-2 md:items-center">
+          <Reveal className="min-w-0">
+            <h2 className="text-2xl font-bold text-[var(--hwe-slate)] sm:text-3xl">
+              Two sides. One matching engine.
+            </h2>
+            <p className="mt-3 text-base leading-relaxed text-[var(--hwe-slate-mid)]">
+              Workers get jobs pushed to them. Clients get ranked shortlists. No endless scrolling on
+              either side.
+            </p>
+          </Reveal>
+          <ul className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-3">
+            {[
+              { v: '< 4m', l: 'Avg match time' },
+              { v: '94%', l: 'Completion rate' },
+              { v: '4.6', l: 'Avg worker rating' },
+            ].map((s, i) => (
+              <Reveal key={s.l} as="li" className="rounded-xl bg-white/70 px-4 py-4 text-center" delayMs={i * 90}>
+                <p className="text-2xl font-bold text-[var(--hwe-slate)]">{s.v}</p>
+                <p className="mt-1 text-xs text-[var(--hwe-slate-mid)]">{s.l}</p>
+              </Reveal>
+            ))}
+          </ul>
+        </div>
+      </section>
+
+      {/* How it works — surface */}
+      <section id="landing-how" className="scroll-mt-24 bg-[var(--hwe-surface)] py-16 sm:py-20">
+        <div className="w-full min-w-0 px-[var(--hwe-page-pad)]">
+          <Reveal className="w-full">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--hwe-slate-soft)]">
+              Flow
+            </p>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight text-[var(--hwe-slate)] sm:text-4xl">
+              How it works end to end
+            </h2>
+            <p className="mt-4 max-w-3xl text-base text-[var(--hwe-muted)]">
+              Two sides — workers and clients — connected by automated matching.
+            </p>
+          </Reveal>
+          <ol className="mt-12 grid list-none grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-5">
+            {howItWorks.map((item, i) => (
+              <Reveal key={item.step} as="li" className="card-surface relative min-w-0 p-5 sm:p-6" delayMs={i * 100}>
+                <span className="highlight-pill">{item.step}</span>
+                <h3 className="mt-3 text-lg font-semibold text-[var(--hwe-slate)]">{item.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-[var(--hwe-muted)]">{item.description}</p>
+              </Reveal>
+            ))}
+          </ol>
+        </div>
+      </section>
+
+      {/* FAQ — canvas */}
+      <section id="landing-faqs" className="scroll-mt-24 bg-[var(--hwe-canvas-deep)] py-16 sm:py-20">
+        <div className="w-full min-w-0 px-[var(--hwe-page-pad)]">
+          <Reveal>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--hwe-slate-soft)]">
+              Help
+            </p>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight text-[var(--hwe-slate)] sm:text-4xl">
+              Questions &amp; Answers
+            </h2>
+          </Reveal>
+          <div className="mt-10 divide-y divide-[var(--hwe-border)] rounded-2xl border border-[var(--hwe-border)] bg-[var(--hwe-surface)]">
+            {faqs.map((item, i) => (
+              <Reveal
+                key={item.q}
+                as="details"
+                className="group px-5 py-4 first:rounded-t-2xl last:rounded-b-2xl [&_summary::-webkit-details-marker]:hidden"
+                delayMs={i * 80}
+              >
+                <summary className="flex cursor-pointer list-none items-start justify-between gap-3 text-left font-semibold text-[var(--hwe-slate)]">
+                  <span className="min-w-0">{item.q}</span>
+                  <span className="mt-0.5 shrink-0 text-[var(--hwe-strong)] transition group-open:rotate-180">
+                    ⌄
+                  </span>
+                </summary>
+                <p className="mt-3 text-sm leading-relaxed text-[var(--hwe-muted)]">{item.a}</p>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA band — blue */}
+      <section className="bg-[var(--hwe-strong)] py-12 sm:py-14">
+        <Reveal className="flex w-full min-w-0 flex-col items-start gap-6 px-[var(--hwe-page-pad)] md:flex-row md:items-center md:justify-between">
+          <div className="min-w-0">
+            <p className="text-xl font-semibold text-[var(--hwe-slate)] sm:text-2xl">
+              Get started in under a minute
+            </p>
+            <p className="mt-2 text-sm text-[var(--hwe-slate-mid)]">
+              Create an account, pick your role, and explore the full platform.
             </p>
           </div>
-          <div className="relative mx-auto mt-12 max-w-4xl lg:max-w-5xl">
-            <div
-              className="absolute left-[1.125rem] top-3 bottom-3 w-px bg-[#2E75B6]/50 sm:left-[1.25rem]"
-              aria-hidden
-            />
-            <ul className="relative space-y-5 sm:space-y-6">
-              {howItWorks.map((item) => (
-                <li key={item.step} className="relative pl-10 sm:pl-12">
-                  <div className="absolute left-0 top-5 flex h-9 w-9 items-center justify-center rounded-xl border-[3px] border-white bg-[#1F4E79] text-xs font-bold text-white shadow-sm sm:top-6 sm:h-10 sm:w-10 sm:text-sm">
-                    {item.step}
-                  </div>
-                  <div className="rounded-2xl border border-gray-200/90 bg-[#f6f8fb] p-5 shadow-sm sm:p-6 lg:p-7">
-                    <h3 className="text-lg font-semibold text-[#1F4E79]">{item.title}</h3>
-                    <p className="mt-2 text-sm leading-relaxed text-gray-600 sm:text-[0.9375rem]">{item.description}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </section>
-
-      <section id="landing-faqs" className="scroll-mt-24 border-t border-gray-200 bg-[#f6f8fb] py-16 sm:py-20">
-        <div className="mx-auto max-w-2xl px-4 sm:px-6">
-          <div className="text-center">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#2E75B6]">Help</p>
-            <h2 className="mt-3 text-3xl font-bold tracking-tight text-[#1F4E79] sm:text-4xl">Questions &amp; Answers</h2>
-            <p className="mt-4 text-sm text-gray-600">Clear answers about what this platform does and doesn't do.</p>
-          </div>
-          <div className="mt-10 divide-y divide-gray-200 rounded-2xl border border-gray-200 bg-white">
-            {faqs.map((item) => (
-              <details key={item.q} className="group px-5 py-4 first:rounded-t-2xl last:rounded-b-2xl [&_summary::-webkit-details-marker]:hidden">
-                <summary className="flex cursor-pointer list-none items-start justify-between gap-3 text-left font-semibold text-[#1F4E79]">
-                  <span>{item.q}</span>
-                  <span className="mt-0.5 inline-block text-[#2E75B6] transition group-open:rotate-180">⌄</span>
-                </summary>
-                <p className="mt-3 text-sm leading-relaxed text-gray-600">{item.a}</p>
-              </details>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="bg-[#1F4E79] py-12 sm:py-14">
-        <div className="mx-auto flex max-w-7xl flex-col items-center gap-6 px-4 text-center sm:px-6 md:flex-row md:justify-between md:text-left">
-          <div className="max-w-xl">
-            <p className="text-xl font-semibold text-white sm:text-2xl">Get started in under a minute</p>
-            <p className="mt-2 text-sm text-white/80">Create an account, pick your role, and explore the full platform.</p>
-          </div>
-          <Link
-            to="/login"
-            className="inline-flex shrink-0 items-center justify-center rounded-xl bg-white px-8 py-3.5 text-sm font-semibold text-[#1F4E79] shadow-lg transition hover:bg-gray-100"
-          >
+          <Link to="/login" className="btn-primary shrink-0 px-8 py-3.5">
             Open login
           </Link>
-        </div>
+        </Reveal>
       </section>
 
-      <footer className="border-t border-gray-200 bg-[#f0f3f7]">
-        <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
+      <footer className="bg-[var(--hwe-slate)] text-[var(--hwe-on-slate)]">
+        <div className="w-full min-w-0 px-[var(--hwe-page-pad)] py-10">
           <div className="flex flex-col gap-8 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <p className="text-lg font-bold text-[#1F4E79]">Hire With Ease</p>
-              <p className="mt-2 max-w-sm text-sm text-gray-600">
+            <div className="min-w-0 flex-1">
+              <p className="text-lg font-bold">Hire With Ease</p>
+              <p className="mt-2 w-full text-sm leading-relaxed text-white/70">
                 On-demand skilled worker matching — connecting clients with qualified workers through
                 scored shortlists for informal labor markets in Olongapo.
               </p>
               <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
-                <Link
-                  to="/privacy"
-                  className="text-sm font-semibold text-[#2E75B6] hover:underline"
-                >
+                <Link to="/privacy" className="text-sm font-semibold text-[var(--hwe-strong)] hover:underline">
                   Privacy Policy
                 </Link>
-                <Link
-                  to="/terms"
-                  className="text-sm font-semibold text-[#2E75B6] hover:underline"
-                >
+                <Link to="/terms" className="text-sm font-semibold text-[var(--hwe-strong)] hover:underline">
                   Terms & Conditions
                 </Link>
               </div>
             </div>
-            <div className="text-sm text-gray-600">
-              <p className="font-semibold text-[#1F4E79]">Contact</p>
+            <div className="shrink-0 text-sm text-white/70">
+              <p className="font-semibold text-white">Contact</p>
               <p className="mt-1">support@hirewithease.ph</p>
               <p>+63 900 000 0000</p>
             </div>
           </div>
-          <p className="mt-8 border-t border-gray-200/80 pt-8 text-center text-xs text-gray-500 sm:text-left">
+          <p className="mt-8 border-t border-white/15 pt-8 text-center text-xs text-white/50 sm:text-left">
             &copy; {new Date().getFullYear()} Hire With Ease. All rights reserved.
           </p>
         </div>

@@ -234,7 +234,7 @@ function EmployerPostJobPage() {
         subtitle="Follow the steps below. Your request is saved to the database and matched to workers by skill and location."
       />
 
-      <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4 text-sm text-[#1F4E79]">
+      <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4 text-sm text-[var(--hwe-slate)]">
         <p className="font-semibold">You don't need to search for workers</p>
         <p className="mt-1 text-gray-600">
           After you submit, qualified workers in Olongapo who have matching skills will see your
@@ -248,11 +248,14 @@ function EmployerPostJobPage() {
         </div>
       ) : null}
 
+      <div className="mt-2 w-full min-w-0 rounded-none border-b border-[var(--hwe-border)] bg-[var(--hwe-surface)] px-0 py-3 sm:rounded-xl sm:border sm:px-4 sm:py-4 sm:shadow-[var(--hwe-shadow)]">
+        <FormStepper steps={WIZARD_STEPS} currentStep={step} />
+      </div>
+
       <form
         onSubmit={(event) => event.preventDefault()}
-        className="mt-5 space-y-5 rounded-xl bg-white p-4 shadow-sm sm:p-5"
+        className="mt-5 space-y-5 rounded-xl bg-[var(--hwe-surface)] p-4 shadow-[var(--hwe-shadow)] sm:p-5"
       >
-        <FormStepper steps={WIZARD_STEPS} currentStep={step} />
 
         {step === 0 ? (
           <IssueStep
@@ -302,7 +305,7 @@ function EmployerPostJobPage() {
             <button
               type="button"
               onClick={goNext}
-              className="inline-flex items-center justify-center gap-1 rounded-lg bg-[#1F4E79] px-5 py-2.5 text-sm font-semibold text-white"
+              className="inline-flex items-center justify-center gap-1 btn-primary"
             >
               Continue
               <HiOutlineArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -312,7 +315,7 @@ function EmployerPostJobPage() {
               type="button"
               disabled={submitting}
               onClick={handleSubmit}
-              className="inline-flex items-center justify-center rounded-lg bg-[#1F4E79] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+              className="inline-flex items-center justify-center btn-primary disabled:opacity-60"
             >
               {submitting ? 'Submitting…' : 'Submit Request'}
             </button>
@@ -336,7 +339,7 @@ function IssueStep({
 }) {
   return (
     <section className="space-y-4">
-      <h2 className="text-sm font-semibold text-[#1F4E79]">Step 1 — Identify the issue</h2>
+      <h2 className="text-sm font-semibold text-[var(--hwe-slate)]">Step 1 — Identify the issue</h2>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <label className="mb-1 block text-xs font-medium text-gray-600">Category</label>
@@ -396,7 +399,7 @@ function BudgetScheduleStep({ form, setForm, minScheduleDate }) {
 
   return (
     <section className="space-y-4">
-      <h2 className="text-sm font-semibold text-[#1F4E79]">Step 2 — Budget &amp; schedule</h2>
+      <h2 className="text-sm font-semibold text-[var(--hwe-slate)]">Step 2 — Budget &amp; schedule</h2>
       <p className="text-xs text-gray-500">
         All requests are scheduled. Pick when you want the worker to start — date and time are
         separate so it's easy to read.
@@ -419,7 +422,7 @@ function BudgetScheduleStep({ form, setForm, minScheduleDate }) {
       </div>
 
       <div className="rounded-xl border border-gray-200 bg-gray-50/60 p-4">
-        <p className="text-xs font-semibold uppercase tracking-wide text-[#1F4E79]">
+        <p className="text-xs font-semibold uppercase tracking-wide text-[var(--hwe-slate)]">
           Preferred start
         </p>
         <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -452,7 +455,7 @@ function BudgetScheduleStep({ form, setForm, minScheduleDate }) {
           </div>
         </div>
         {preview ? (
-          <p className="mt-3 rounded-lg border border-blue-100 bg-blue-50/80 px-3 py-2 text-sm text-[#1F4E79]">
+          <p className="mt-3 rounded-lg border border-blue-100 bg-blue-50/80 px-3 py-2 text-sm text-[var(--hwe-slate)]">
             <span className="font-semibold">Scheduled for:</span> {preview}
           </p>
         ) : (
@@ -477,13 +480,13 @@ function ReviewStep({
 }) {
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-semibold text-[#1F4E79]">Step 3 — Review &amp; submit</h2>
+      <h2 className="text-sm font-semibold text-[var(--hwe-slate)]">Step 3 — Review &amp; submit</h2>
       <p className="text-xs text-gray-500">
         When you submit, we save your request and find qualified workers by skill and location.
         You'll see who matches, then workers can apply and chat with you.
       </p>
       {submitting ? (
-        <p className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-[#1F4E79]">
+        <p className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-[var(--hwe-slate)]">
           {submitPhase || 'Submitting your request…'}
         </p>
       ) : null}
@@ -509,7 +512,7 @@ function ReviewStep({
 function ReviewRow({ label, value }) {
   return (
     <div className="grid gap-1 px-3 py-2.5 sm:grid-cols-[140px_1fr]">
-      <dt className="text-xs font-semibold text-[#1F4E79]">{label}</dt>
+      <dt className="text-xs font-semibold text-[var(--hwe-slate)]">{label}</dt>
       <dd className="text-gray-700">{value || '—'}</dd>
     </div>
   );
@@ -525,7 +528,7 @@ function IssueMediaSection({
 }) {
   return (
     <div>
-      <h3 className="mb-1 text-sm font-semibold text-[#1F4E79]">
+      <h3 className="mb-1 text-sm font-semibold text-[var(--hwe-slate)]">
         Photos of the issue <span className="text-red-500">*</span>
       </h3>
       <p className="mb-3 text-xs text-gray-500">
@@ -561,7 +564,7 @@ function IssueMediaSection({
               </div>
             ))}
           </div>
-          <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-[#1F4E79] bg-[#1F4E79]/5 px-3 py-2 text-sm font-medium text-[#1F4E79]">
+          <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-[var(--hwe-slate)] bg-[var(--hwe-canvas-deep)] px-3 py-2 text-sm font-medium text-[var(--hwe-slate)]">
             Add more
             <input
               ref={mediaInputRef}
@@ -582,7 +585,7 @@ function IssueMediaSection({
           </button>
         </div>
       ) : (
-        <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-center hover:border-[#1F4E79] hover:bg-blue-50/40">
+        <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-center hover:border-[var(--hwe-slate)] hover:bg-blue-50/40">
           <HiOutlinePhoto className="h-8 w-8 text-gray-400" aria-hidden="true" />
           <p className="text-sm font-semibold text-gray-700">Add photos</p>
           <p className="text-xs text-gray-500">JPEG, PNG, or WEBP only</p>

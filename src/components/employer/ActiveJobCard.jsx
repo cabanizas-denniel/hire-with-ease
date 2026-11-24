@@ -28,7 +28,9 @@ import {
 } from '../../lib/notifications.js';
 import { useApplication } from '../../lib/matching/hooks.js';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { submitWorkerRating } from '../../lib/ratings.js';
 import Modal from '../Modal.jsx';
+import NumberedStepRail from '../NumberedStepRail.jsx';
 
 /**
  * Central "ongoing job" card for the client. Dominates the dashboard and
@@ -50,6 +52,7 @@ function ActiveJobCard({ job, variant = 'full', applicantsCount = 0 }) {
   const [completeOpen, setCompleteOpen] = useState(false);
   const [completeBusy, setCompleteBusy] = useState(false);
   const [completeError, setCompleteError] = useState(null);
+  const [completeStars, setCompleteStars] = useState(0);
   const [progressOpen, setProgressOpen] = useState(false);
   const [progressBusy, setProgressBusy] = useState(false);
   const [progressError, setProgressError] = useState(null);
@@ -122,16 +125,18 @@ function ActiveJobCard({ job, variant = 'full', applicantsCount = 0 }) {
     if (completeBusy) return;
     setCompleteOpen(false);
     setCompleteError(null);
+    setCompleteStars(0);
   };
 
   const openCompleteModal = () => {
     if (!jobId || !canMarkCompleted) return;
     setCompleteError(null);
+    setCompleteStars(0);
     setCompleteOpen(true);
   };
 
   const confirmMarkComplete = async () => {
-    if (!jobId || completeBusy) return;
+    if (!jobId || completeBusy || completeStars < 1) return;
     setCompleteBusy(true);
     setCompleteError(null);
     try {
@@ -156,6 +161,13 @@ function ActiveJobCard({ job, variant = 'full', applicantsCount = 0 }) {
         } catch (notifyErr) {
           console.warn('Could not create completed notifications', notifyErr);
         }
+        await submitWorkerRating({
+          jobId,
+          workerId,
+          clientId,
+          clientName: auth?.user?.fullName || job.postedByName || 'Homeowner',
+          stars: completeStars,
+        });
       }
       setCompleteOpen(false);
     } catch (err) {
@@ -222,29 +234,32 @@ function ActiveJobCard({ job, variant = 'full', applicantsCount = 0 }) {
 
   return (
     <>
-    <section className="panel-surface overflow-hidden rounded-2xl border border-[#1F4E79]/25 bg-white shadow-sm">
-      <header className="flex flex-col gap-3 border-b border-gray-100 bg-[#1F4E79] p-4 text-white sm:flex-row sm:items-start sm:justify-between sm:p-5">
+    <section className="panel-surface overflow-hidden rounded-2xl border border-[var(--hwe-slate)]/25 bg-white shadow-sm">
+      <header className="flex flex-col gap-3 bg-[var(--hwe-strong)] p-4 text-[var(--hwe-slate)] sm:flex-row sm:items-center sm:justify-between sm:p-5">
         <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-white/75">
+          <p className="text-[11px] font-semibold uppercase tracking-wide">
             Your ongoing job
           </p>
-          <h2 className="mt-0.5 break-words text-lg font-semibold sm:text-xl">
+          <h2 className="mt-0.5 break-words text-lg font-bold sm:text-xl">
             {job.title}
           </h2>
-          <p className="mt-0.5 text-xs text-white/80">
+          <p className="mt-0.5 text-xs">
             Request ID · {job.docId || job.id}
           </p>
         </div>
-        <span className="inline-flex shrink-0 items-center gap-1.5 self-start rounded-full bg-white/15 px-3 py-1 text-xs font-semibold ring-1 ring-inset ring-white/30 backdrop-blur">
-          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-300" />
+        <span className="inline-flex shrink-0 items-center self-start rounded-full border border-[var(--hwe-slate)]/20 bg-white/50 px-3 py-1 text-xs font-medium sm:self-center">
           {job.status}
         </span>
       </header>
 
       <div className="space-y-4 p-4 sm:p-5">
-        <StatusStepper currentStep={currentStep} status={job.status} />
+        <NumberedStepRail
+          steps={JOB_STATUS_FLOW}
+          currentStep={currentStep}
+          ariaLabel="Job status"
+        />
 
-        <div className="rounded-lg bg-blue-50/70 px-3 py-2.5 text-xs text-[#1F4E79] sm:text-sm">
+        <div className="rounded-lg bg-blue-50/70 px-3 py-2.5 text-xs text-[var(--hwe-slate)] sm:text-sm">
           <p className="font-semibold">{statusCopy.title}</p>
           <p className="mt-0.5 text-gray-600">{statusCopy.detail}</p>
         </div>
@@ -278,7 +293,7 @@ function ActiveJobCard({ job, variant = 'full', applicantsCount = 0 }) {
           {action ? (
             <Link
               to={action.to}
-              className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-[#1F4E79] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:brightness-110 sm:w-auto"
+              className="inline-flex w-full items-center justify-center gap-1.5 btn-primary sm:w-auto"
             >
               {action.icon ? <action.icon className="h-4 w-4" aria-hidden="true" /> : null}
               {action.label}
@@ -386,9 +401,30 @@ function ActiveJobCard({ job, variant = 'full', applicantsCount = 0 }) {
       onClose={closeCompleteModal}
       onConfirm={confirmMarkComplete}
       confirmText={completeBusy ? 'Completing…' : 'Mark as completed'}
-      confirmDisabled={completeBusy}
+      confirmDisabled={completeBusy || completeStars < 1}
     >
       <p>This cannot be undone. The request will move to your past jobs and the worker will be notified.</p>
+      <div className="mt-3">
+        <p className="text-xs font-semibold text-[var(--hwe-slate)]">Rate this worker</p>
+        <div className="mt-1 flex gap-1" role="group" aria-label="Star rating">
+          {[1, 2, 3, 4, 5].map((star) => (
+            <button
+              key={star}
+              type="button"
+              onClick={() => setCompleteStars(star)}
+              className={`h-9 w-9 cursor-pointer rounded-lg border text-sm font-bold ${
+                star <= completeStars
+                  ? 'border-[var(--hwe-highlight)] bg-[var(--hwe-highlight)] text-[var(--hwe-slate)]'
+                  : 'border-gray-200 bg-white text-gray-400'
+              }`}
+              aria-label={`${star} star${star === 1 ? '' : 's'}`}
+              aria-pressed={star <= completeStars}
+            >
+              {star}
+            </button>
+          ))}
+        </div>
+      </div>
       {completeError ? (
         <p className="mt-2 rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700">
           {completeError}
@@ -403,7 +439,7 @@ function Fact({ icon, label, value }) {
   const Icon = icon;
   return (
     <div className="flex items-start gap-2 rounded-lg bg-gray-50 px-3 py-2">
-      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-[#1F4E79]" aria-hidden="true" />
+      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-[var(--hwe-slate)]" aria-hidden="true" />
       <div className="min-w-0">
         <dt className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
           {label}
@@ -411,66 +447,6 @@ function Fact({ icon, label, value }) {
         <dd className="truncate text-sm text-gray-800">{value}</dd>
       </div>
     </div>
-  );
-}
-
-function StatusStepper({ currentStep }) {
-  return (
-    <ol className="flex items-center justify-between gap-1 overflow-x-auto">
-      {JOB_STATUS_FLOW.map((step, index) => {
-        const isDone = index < currentStep;
-        const isActive = index === currentStep;
-        return (
-          <li
-            key={step}
-            className="flex min-w-0 flex-1 flex-col items-center text-center"
-          >
-            <div className="flex w-full items-center">
-              <div
-                className={`h-0.5 flex-1 ${
-                  index === 0
-                    ? 'bg-transparent'
-                    : isDone || isActive
-                      ? 'bg-[#1F4E79]'
-                      : 'bg-gray-200'
-                }`}
-              />
-              <span
-                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 text-[11px] font-bold ${
-                  isDone
-                    ? 'border-[#1F4E79] bg-[#1F4E79] text-white'
-                    : isActive
-                      ? 'border-[#1F4E79] bg-white text-[#1F4E79] ring-2 ring-[#1F4E79]/20'
-                      : 'border-gray-300 bg-white text-gray-400'
-                }`}
-              >
-                {isDone ? '✓' : index + 1}
-              </span>
-              <div
-                className={`h-0.5 flex-1 ${
-                  index === JOB_STATUS_FLOW.length - 1
-                    ? 'bg-transparent'
-                    : isDone
-                      ? 'bg-[#1F4E79]'
-                      : 'bg-gray-200'
-                }`}
-              />
-            </div>
-            <span
-              className={`mt-1 text-[10px] font-medium leading-tight sm:text-xs ${
-                isActive
-                  ? 'text-[#1F4E79]'
-                  : isDone
-                    ? 'text-gray-600'
-                    : 'text-gray-400'
-              }`}
-            >
-              {step}
-            </span>
-          </li>
-        );
-      })}
-    </ol>
   );
 }
 

@@ -30,6 +30,10 @@ const DASHBOARD_BY_ROLE = {
   admin: '/admin/dashboard',
 };
 
+// Held true only while registration is writing the Firestore profile.
+// The auth listener must not sign the new user out until that write finishes.
+let keepUnverifiedSession = false;
+
 const INITIAL_STATE = {
   isAuthenticated: false,
   role: null,
@@ -73,10 +77,12 @@ export function AuthProvider({ children }) {
       // we do for unverified users.
       if (!firebaseUser.emailVerified) {
         setAuthState({ ...INITIAL_STATE, loading: false });
-        try {
-          void signOut(auth);
-        } catch {
-          /* ignore */
+        if (!keepUnverifiedSession) {
+          try {
+            void signOut(auth);
+          } catch {
+            /* ignore */
+          }
         }
         return;
       }
@@ -208,44 +214,62 @@ export function AuthProvider({ children }) {
       // Admin role can never be self-assigned. Frontend guard mirrors Firestore Rules.
       throw new Error('Invalid role for self-registration.');
     }
-    const cred = await createUserWithEmailAndPassword(auth, email, password);
-
-    // Don't block the registration flow on these writes. The user will be
-    // logged in and the onAuthStateChanged handler will eventually reconcile
-    // the profile information. This makes the UI feel much faster.
-    const profilePromise = fullName ? updateProfile(cred.user, { displayName: fullName }) : Promise.resolve();
-    const verifyPromise = sendEmailVerification(cred.user).catch(() => null);
-    const firestorePromise = setDoc(doc(db, 'users', cred.user.uid), {
-      uid: cred.user.uid,
-      email,
-      fullName: fullName || '',
-      role: firestoreRole,
-      verification: {
-        // Keep a stable shape so rules + UI can rely on it.
-        role: firestoreRole === FIRESTORE_ROLES.HOMEOWNER ? 'client' : 'service-provider',
-        stage1: { mobile: null, email: email || null, otpVerifiedAt: null },
-        stage2: {
-          idSubmittedAt: null,
-          selfieSubmittedAt: null,
-          reviewStatus: 'not-started',
-          reviewedBy: null,
-          reviewedAt: null,
-          reviewNote: '',
-          idImage: null,
-          idBackImage: null,
-          selfieImage: null,
+    keepUnverifiedSession = true;
+    let cred = null;
+    try {
+      cred = await createUserWithEmailAndPassword(auth, email, password);
+      if (fullName) {
+        await updateProfile(cred.user, { displayName: fullName });
+      }
+      await setDoc(doc(db, 'users', cred.user.uid), {
+        uid: cred.user.uid,
+        email,
+        fullName: fullName || '',
+        role: firestoreRole,
+        verification: {
+          role: firestoreRole === FIRESTORE_ROLES.HOMEOWNER ? 'client' : 'service-provider',
+          stage1: { mobile: null, email: email || null, otpVerifiedAt: null },
+          stage2: {
+            idSubmittedAt: null,
+            selfieSubmittedAt: null,
+            reviewStatus: 'not-started',
+            reviewedBy: null,
+            reviewedAt: null,
+            reviewNote: '',
+            idImage: null,
+            idBackImage: null,
+            selfieImage: null,
+          },
+          stage3: { documents: [], documentBacked: false },
+          stage4: { activatedAt: null, activatedBy: null },
         },
-        stage3: { documents: [], documentBacked: false },
-        stage4: { activatedAt: null, activatedBy: null },
-      },
-      createdAt: serverTimestamp(),
-    });
+        createdAt: serverTimestamp(),
+      });
+      try {
+        await sendEmailVerification(cred.user);
+      } catch {
+        // Profile is saved. Login can resend the verification email.
+      }
+    } catch (writeErr) {
+      if (cred?.user) {
+        try {
+          await cred.user.delete();
+        } catch {
+          // Auth user may already be gone; the caller still sees the original error.
+        }
+      }
+      throw writeErr;
+    } finally {
+      keepUnverifiedSession = false;
+      if (auth.currentUser) {
+        try {
+          await signOut(auth);
+        } catch {
+          /* ignore */
+        }
+      }
+    }
 
-    void verifyPromise;
-
-    // Option A: account is not usable until email is verified.
-    // Create the profile, send the verification email, then sign out.
-    await signOut(auth);
     const err = new Error('Please verify your email to activate your account.');
     err.code = 'auth/email-verification-required';
     throw err;

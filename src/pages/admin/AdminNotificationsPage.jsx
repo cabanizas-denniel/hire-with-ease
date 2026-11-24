@@ -37,16 +37,16 @@ function AdminNotificationsPage() {
               return (
                 <article
                   key={item.id}
-                  className={`rounded-xl border-l-4 bg-white p-4 shadow-sm ${TYPE_STYLES[item.type] || 'border-l-[#2E75B6]'} ${
-                    item.unread ? 'ring-1 ring-[#2E75B6]/20' : ''
+                  className={`rounded-xl border-l-4 bg-white p-4 shadow-sm ${TYPE_STYLES[item.type] || 'border-l-[var(--hwe-sky)]'} ${
+                    item.unread ? 'ring-1 ring-[var(--hwe-sky)]/20' : ''
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <div className="flex items-center gap-2">
-                        <h3 className="text-base font-semibold text-[#1F4E79]">{item.title}</h3>
+                        <h3 className="text-base font-semibold text-[var(--hwe-slate)]">{item.title}</h3>
                         {item.unread ? (
-                          <span className="h-2 w-2 shrink-0 rounded-full bg-[#2E75B6]" />
+                          <span className="h-2 w-2 shrink-0 rounded-full bg-[var(--hwe-accent)]" />
                         ) : null}
                       </div>
                       <p className="mt-1 text-sm text-gray-600">{item.message}</p>
@@ -56,7 +56,7 @@ function AdminNotificationsPage() {
                   <div className="mt-3">
                     <Link
                       to={action.to}
-                      className="inline-block rounded-lg bg-[#1F4E79] px-4 py-2 text-sm font-medium text-white"
+                      className="inline-block btn-primary"
                     >
                       {action.label}
                     </Link>

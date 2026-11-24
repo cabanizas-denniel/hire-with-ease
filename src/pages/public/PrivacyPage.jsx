@@ -12,7 +12,7 @@ function PrivacyPage() {
       title="Privacy Policy"
       updatedLabel="Last updated · November 2026 · Hire With Ease (Olongapo prototype)"
     >
-      <p className="rounded-xl border border-[#1F4E79]/15 bg-white p-5 text-gray-600 shadow-sm">
+      <p className="rounded-xl border border-[var(--hwe-slate)]/15 bg-white p-5 text-gray-600 shadow-sm">
         This Privacy Policy explains what personal information Hire With Ease collects, how it is
         used, who can access it, and the safeguards built into the system. By creating an account
         you acknowledge this policy. This document describes the current design of the prototype

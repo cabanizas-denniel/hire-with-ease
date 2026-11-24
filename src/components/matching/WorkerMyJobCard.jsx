@@ -40,11 +40,11 @@ function WorkerMyJobCard({ application, selected, statusLabel, onSelect }) {
       aria-label={selected ? `Chatting about ${title}` : `Open chat for ${title}`}
       className={`group relative flex aspect-[4/5] cursor-pointer flex-col overflow-hidden rounded-2xl border bg-white shadow-[0_12px_28px_rgba(8,45,90,0.18)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(8,45,90,0.24)] ${
         selected
-          ? 'border-[#1F4E79] ring-2 ring-[#1F4E79]/30'
-          : 'border-[#1F4E79]/20'
+          ? 'border-[var(--hwe-slate)] ring-2 ring-[var(--hwe-sky)]/30'
+          : 'border-[var(--hwe-slate)]/20'
       }`}
     >
-      <div className="relative flex-[1.15] overflow-hidden bg-gradient-to-br from-[#1a3d5c] via-[#2E75B6] to-[#5eb0d8]">
+      <div className="relative flex-[1.15] overflow-hidden bg-[var(--hwe-slate-mid)]">
         {cover ? (
           isVideoMediaEntry(cover) ? (
             <video
@@ -63,15 +63,15 @@ function WorkerMyJobCard({ application, selected, statusLabel, onSelect }) {
           )
         ) : null}
         <div
-          className="absolute inset-0 bg-gradient-to-t from-[#0d2a44]/90 via-[#0d2a44]/35 to-transparent"
+            className="absolute inset-0 bg-gradient-to-t from-[var(--hwe-slate)]/90 via-[var(--hwe-slate)]/35 to-transparent"
           aria-hidden="true"
         />
         <div className="absolute left-3 top-3 z-10 flex flex-wrap gap-1.5">
           <span
             className={`rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-wide shadow-sm ${
               selected
-                ? 'bg-[#1F4E79] text-white'
-                : 'bg-white/95 text-[#1F4E79]'
+                ? 'bg-[var(--hwe-accent)] text-[var(--hwe-slate)]'
+                : 'bg-white/95 text-[var(--hwe-slate)]'
             }`}
           >
             {selected ? 'Chatting' : statusLabel}
@@ -104,31 +104,31 @@ function WorkerMyJobCard({ application, selected, statusLabel, onSelect }) {
         <ul className="space-y-1.5 text-[11px] text-gray-600">
           {address ? (
             <li className="flex items-start gap-1.5">
-              <HiOutlineMapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#1F4E79]" aria-hidden="true" />
+              <HiOutlineMapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--hwe-slate)]" aria-hidden="true" />
               <span className="line-clamp-1">{address}, Olongapo</span>
             </li>
           ) : null}
           {job?.budget ? (
             <li className="flex items-start gap-1.5">
-              <HiOutlineBanknotes className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#1F4E79]" aria-hidden="true" />
+              <HiOutlineBanknotes className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--hwe-slate)]" aria-hidden="true" />
               <span className="line-clamp-1">{job.budget}</span>
             </li>
           ) : null}
           {job?.schedule ? (
             <li className="flex items-start gap-1.5">
-              <HiOutlineCalendarDays className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#1F4E79]" aria-hidden="true" />
+              <HiOutlineCalendarDays className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--hwe-slate)]" aria-hidden="true" />
               <span className="line-clamp-2">{job.schedule}</span>
             </li>
           ) : null}
           {postedLabel ? (
             <li className="flex items-start gap-1.5">
-              <HiOutlineClock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#1F4E79]" aria-hidden="true" />
+              <HiOutlineClock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--hwe-slate)]" aria-hidden="true" />
               <span className="line-clamp-1">Posted {postedLabel}</span>
             </li>
           ) : null}
         </ul>
 
-        <p className="mt-auto pt-3 text-center text-[11px] font-medium text-[#2E75B6]">
+        <p className="mt-auto pt-3 text-center text-[11px] font-medium text-[var(--hwe-sky)]">
           {selected ? 'Chat open below' : 'Tap to open chat'}
         </p>
       </div>

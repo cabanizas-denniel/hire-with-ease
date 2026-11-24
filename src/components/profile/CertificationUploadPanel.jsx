@@ -44,12 +44,12 @@ function CertificationUploadPanel({ certifications = [], onAddFiles, onRemoveAt,
           type="button"
           onClick={openPicker}
           disabled={busy}
-          className="flex w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[#1F4E79]/35 bg-[#1F4E79]/5 px-4 py-8 text-center transition hover:border-[#1F4E79] hover:bg-[#1F4E79]/10 disabled:cursor-not-allowed disabled:opacity-60"
+          className="flex w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[var(--hwe-slate)]/35 bg-[var(--hwe-canvas-deep)] px-4 py-8 text-center transition hover:border-[var(--hwe-slate)] hover:bg-[var(--hwe-sky-soft)] disabled:cursor-not-allowed disabled:opacity-60"
         >
-          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-[#1F4E79]/15">
-            <HiOutlineArrowUpTray className="h-7 w-7 text-[#1F4E79]" aria-hidden="true" />
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-[var(--hwe-sky)]/15">
+            <HiOutlineArrowUpTray className="h-7 w-7 text-[var(--hwe-slate)]" aria-hidden="true" />
           </span>
-          <span className="text-sm font-semibold text-[#1F4E79]">Upload certification</span>
+          <span className="text-sm font-semibold text-[var(--hwe-slate)]">Upload certification</span>
           <span className="max-w-xs text-xs text-gray-600">
             Add any certifications or licenses relevant to your work (JPG, PNG, or PDF).
           </span>
@@ -67,7 +67,7 @@ function CertificationUploadPanel({ certifications = [], onAddFiles, onRemoveAt,
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-[#1F4E79]">
+                    <p className="truncate text-sm font-semibold text-[var(--hwe-slate)]">
                       {cert?.label || 'Certification'}
                     </p>
                     <p className="mt-0.5 text-[11px] text-gray-500">
@@ -103,7 +103,7 @@ function CertificationUploadPanel({ certifications = [], onAddFiles, onRemoveAt,
                     href={cert.fileData}
                     target="_blank"
                     rel="noreferrer"
-                    className="mt-2 inline-block text-xs font-semibold text-[#2E75B6] underline"
+                    className="mt-2 inline-block text-xs font-semibold text-[var(--hwe-sky)] underline"
                   >
                     Preview PDF
                   </a>
@@ -117,7 +117,7 @@ function CertificationUploadPanel({ certifications = [], onAddFiles, onRemoveAt,
               type="button"
               onClick={openPicker}
               disabled={busy}
-              className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-[#1F4E79] bg-[#1F4E79]/5 px-4 py-2 text-sm font-semibold text-[#1F4E79] hover:bg-[#1F4E79]/10 disabled:opacity-60"
+              className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-[var(--hwe-slate)] bg-[var(--hwe-canvas-deep)] px-4 py-2 text-sm font-semibold text-[var(--hwe-slate)] hover:bg-[var(--hwe-sky-soft)] disabled:opacity-60"
             >
               <HiOutlineArrowUpTray className="h-4 w-4" aria-hidden="true" />
               Add another file

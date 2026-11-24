@@ -65,7 +65,7 @@ function ReportFlagDialog({
         <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-sm rounded-xl bg-white p-4 shadow-xl">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-[#1F4E79]">Report {reportedLabel}</h3>
+              <h3 className="text-sm font-semibold text-[var(--hwe-slate)]">Report {reportedLabel}</h3>
               <button type="button" onClick={() => setOpen(false)} aria-label="Close" className="cursor-pointer">
                 <HiOutlineXMark className="h-5 w-5 text-gray-500" />
               </button>

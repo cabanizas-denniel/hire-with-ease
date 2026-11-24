@@ -51,7 +51,7 @@ function EmployerJobsPage() {
           </p>
           <Link
             to="/employer/post-job"
-            className="mt-2 text-sm font-semibold text-[#1F4E79] underline-offset-2 hover:underline"
+            className="mt-2 text-sm font-semibold text-[var(--hwe-slate)] underline-offset-2 hover:underline"
           >
             Request a service
           </Link>
@@ -83,7 +83,7 @@ function HistoryRow({ job }) {
     <article className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm sm:p-5">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <h3 className="truncate text-sm font-semibold text-[#1F4E79] sm:text-base">
+          <h3 className="truncate text-sm font-semibold text-[var(--hwe-slate)] sm:text-base">
             {job.title}
           </h3>
           <p className="mt-0.5 text-xs text-gray-600 sm:text-sm">

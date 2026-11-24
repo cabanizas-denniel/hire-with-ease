@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { HiOutlineArrowLeft, HiOutlineArrowRight, HiOutlineCheckCircle } from 'react-icons/hi2';
+import {
+  HiOutlineArrowLeft,
+  HiOutlineArrowRight,
+  HiOutlineCheckCircle,
+  HiOutlineInformationCircle,
+} from 'react-icons/hi2';
 import { Link } from 'react-router-dom';
 import FormStepper from '../../components/FormStepper.jsx';
 import PageHeader from '../../components/PageHeader.jsx';
@@ -234,19 +239,35 @@ function ApplicantProfilePage() {
   return (
     <div>
       <PageHeader
-        title="Service Profile"
+        title={
+          <span className="inline-flex items-center gap-2">
+            Service Profile
+            <span className="group relative inline-flex">
+              <button
+                type="button"
+                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[var(--hwe-slate-soft)] transition hover:bg-[var(--hwe-strong-soft)] hover:text-[var(--hwe-slate)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--hwe-strong)]"
+                aria-describedby="service-profile-why-info"
+                aria-label="Why this profile matters"
+              >
+                <HiOutlineInformationCircle className="h-5 w-5" aria-hidden="true" />
+              </button>
+              <span
+                id="service-profile-why-info"
+                role="tooltip"
+                className="pointer-events-none absolute left-1/2 top-full z-30 mt-2 w-[min(22rem,calc(100vw-2.5rem))] -translate-x-1/2 rounded-xl border border-[var(--hwe-border)] bg-[var(--hwe-surface)] p-3 text-left text-sm font-normal normal-case tracking-normal text-[var(--hwe-slate)] opacity-0 shadow-[var(--hwe-shadow)] transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
+              >
+                <span className="block font-semibold">Why this matters</span>
+                <span className="mt-1 block leading-relaxed text-[var(--hwe-slate-soft)]">
+                  Clients never browse worker lists. The system uses your primary skill, additional
+                  skills, and map pin to push relevant jobs. Final start time and price are agreed in
+                  chat after you accept. Complete every step and save on the last step.
+                </span>
+              </span>
+            </span>
+          </span>
+        }
         subtitle="Complete each step below. Your profile powers job matching — save when you reach the final step."
       />
-
-      <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4 text-sm text-[#1F4E79]">
-        <p className="font-medium">Why this matters</p>
-        <p className="mt-1 text-gray-600">
-          Clients never browse worker lists. The system uses your <strong>primary skill</strong>,{' '}
-          <strong>additional skills</strong>, and <strong>map pin</strong> to push relevant jobs.
-          Final start time and price are agreed in chat after you accept. Complete every step and
-          save on the last step.
-        </p>
-      </div>
 
       {workerUid ? (
         <VerificationCenter userId={workerUid} role="service-provider" className="mt-5" />
@@ -318,7 +339,7 @@ function ApplicantProfilePage() {
               <button
                 type="button"
                 onClick={goNext}
-                className="inline-flex cursor-pointer items-center justify-center gap-1 rounded-lg bg-[#1F4E79] px-5 py-2.5 text-sm font-semibold text-white hover:brightness-110"
+                className="inline-flex cursor-pointer items-center justify-center gap-1 btn-primary"
               >
                 Continue
                 <HiOutlineArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -327,7 +348,7 @@ function ApplicantProfilePage() {
               <button
                 type="submit"
                 disabled={busy}
-                className="inline-flex cursor-pointer items-center justify-center rounded-lg bg-[#1F4E79] px-5 py-2.5 text-sm font-semibold text-white hover:brightness-110 disabled:opacity-60"
+                className="inline-flex cursor-pointer items-center justify-center btn-primary disabled:opacity-60"
               >
                 {busy ? 'Saving…' : profileSaved ? 'Save again' : 'Save profile'}
               </button>
@@ -342,8 +363,8 @@ function ApplicantProfilePage() {
 function SkillChip({ skill, active, disabled = false, onClick, variant = 'default' }) {
   const activeClass =
     variant === 'primary'
-      ? 'bg-[#1F4E79] text-white ring-2 ring-[#1F4E79]/30'
-      : 'bg-[#2E75B6] text-white';
+      ? 'bg-[var(--hwe-highlight)] text-[var(--hwe-slate)] ring-2 ring-[var(--hwe-highlight)]/40'
+      : 'bg-[var(--hwe-strong-soft)] text-[var(--hwe-slate)]';
   return (
     <button
       type="button"
@@ -377,7 +398,7 @@ function SkillsStep({
   return (
     <section className="space-y-6">
       <div>
-        <h2 className="text-sm font-semibold text-[#1F4E79]">Step 1 — Primary Skill</h2>
+        <h2 className="text-sm font-semibold text-[var(--hwe-slate)]">Step 1 — Primary Skill</h2>
         <p className="mt-1 text-xs text-gray-500">
           Select the primary skill that best represents the work you do.
         </p>
@@ -395,7 +416,7 @@ function SkillsStep({
         <p className="mt-3 text-xs text-gray-500">
           {primarySkill ? (
             <>
-              Primary: <span className="font-semibold text-[#1F4E79]">{primarySkill}</span>
+              Primary: <span className="font-semibold text-[var(--hwe-slate)]">{primarySkill}</span>
             </>
           ) : (
             'Choose exactly one primary skill to continue.'
@@ -406,13 +427,13 @@ function SkillsStep({
       <div
         className={`rounded-xl border p-4 transition ${
           primarySkill
-            ? 'border-[#2E75B6]/25 bg-[#2E75B6]/5'
+            ? 'border-[var(--hwe-sky)]/25 bg-[var(--hwe-canvas-deep)]'
             : 'border-gray-100 bg-gray-50 opacity-70'
         }`}
       >
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <div>
-            <h2 className="text-sm font-semibold text-[#1F4E79]">Step 2 — Additional Skills</h2>
+            <h2 className="text-sm font-semibold text-[var(--hwe-slate)]">Step 2 — Additional Skills</h2>
             <p className="mt-1 text-xs text-gray-500">
               Select up to {MAX_SECONDARY_SKILLS} additional skills you can perform.
             </p>
@@ -420,8 +441,8 @@ function SkillsStep({
           <span
             className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
               secondaryAtMax
-                ? 'bg-[#1F4E79] text-white'
-                : 'bg-white text-[#1F4E79] ring-1 ring-[#1F4E79]/20'
+                ? 'bg-[var(--hwe-accent)] text-[var(--hwe-slate)]'
+                : 'bg-white text-[var(--hwe-slate)] ring-1 ring-[var(--hwe-sky)]/20'
             }`}
           >
             {secondaryCount}/{MAX_SECONDARY_SKILLS} selected
@@ -458,7 +479,7 @@ function SkillsStep({
       </div>
 
       <div className="rounded-xl border border-emerald-100 bg-emerald-50/40 p-4">
-        <h2 className="text-sm font-semibold text-[#1F4E79]">Certifications</h2>
+        <h2 className="text-sm font-semibold text-[var(--hwe-slate)]">Certifications</h2>
         <p className="mt-1 text-xs text-gray-500">
           Add any certifications or licenses relevant to your work.
         </p>
@@ -479,7 +500,7 @@ function LocationDetailsStep({ auth, form, setForm }) {
   return (
     <section className="space-y-5">
       <div>
-        <h2 className="text-sm font-semibold text-[#1F4E79]">Step 2 — Location &amp; details</h2>
+        <h2 className="text-sm font-semibold text-[var(--hwe-slate)]">Step 2 — Location &amp; details</h2>
         <p className="mt-1 text-xs text-gray-500">
           Pin where you are based and confirm your barangay for matching.
         </p>
@@ -549,7 +570,7 @@ function ProfileFormStatus({ error, success, form, onEditStep }) {
             <div className="mt-4 flex flex-wrap gap-2">
               <Link
                 to="/applicant/jobs"
-                className="inline-flex rounded-lg bg-[#1F4E79] px-4 py-2 text-sm font-semibold text-white hover:brightness-110"
+                className="inline-flex btn-primary"
               >
                 View jobs
               </Link>
@@ -577,7 +598,7 @@ function ReviewStep({ auth, form, homeLabel, saved = false }) {
 
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-semibold text-[#1F4E79]">Step 3 — Review &amp; save</h2>
+      <h2 className="text-sm font-semibold text-[var(--hwe-slate)]">Step 3 — Review &amp; save</h2>
       <p className="text-xs text-gray-500">
         Check everything below, then press <strong>Save profile</strong>. Confirmation appears right
         below this summary.
@@ -620,7 +641,7 @@ function ReviewStep({ auth, form, homeLabel, saved = false }) {
 function ReviewRow({ label, value }) {
   return (
     <div className="grid gap-1 px-3 py-2.5 sm:grid-cols-[140px_1fr]">
-      <dt className="text-xs font-semibold text-[#1F4E79]">{label}</dt>
+      <dt className="text-xs font-semibold text-[var(--hwe-slate)]">{label}</dt>
       <dd className="text-gray-700">{value || '—'}</dd>
     </div>
   );

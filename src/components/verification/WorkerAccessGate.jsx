@@ -5,13 +5,13 @@ import { useVerification } from '../../context/VerificationContext.jsx';
 
 function GateCard({ title, body, actionTo = '/applicant/profile', actionLabel = 'Open Verification Center' }) {
   return (
-    <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50/60 p-4 text-sm text-[#1F4E79]">
+    <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50/60 p-4 text-sm text-[var(--hwe-slate)]">
       <p className="text-sm font-semibold">{title}</p>
       <p className="mt-1 text-sm text-gray-600">{body}</p>
       <div className="mt-3">
         <Link
           to={actionTo}
-          className="inline-flex items-center justify-center rounded-lg bg-[#1F4E79] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:brightness-110"
+          className="inline-flex items-center justify-center btn-primary"
         >
           {actionLabel}
         </Link>

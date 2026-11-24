@@ -1,9 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
+import { doc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { HiOutlineArrowUturnLeft, HiOutlineFlag, HiOutlineNoSymbol } from 'react-icons/hi2';
 import PageHeader from '../../components/PageHeader.jsx';
 import SkillBadge from '../../components/SkillBadge.jsx';
-import { useWorkerModeration } from '../../context/WorkerModerationContext.jsx';
+import { db } from '../../lib/firebase.js';
+import { useWorkerProfiles } from '../../lib/useFirestoreData.js';
 import { normalizeWorkerSkills } from '../../data/skills.js';
+
+function locationText(location) {
+  if (!location) return '—';
+  if (typeof location === 'string') return location;
+  return location.label || location.barangay || '—';
+}
+
+function workerIdOf(worker) {
+  return worker.docId || worker.uid || worker.id;
+}
 
 const PAGE_SIZE = 10;
 
@@ -44,7 +56,7 @@ function WorkerSkillBadges({ worker }) {
   ));
 }
 
-function ModerationActions({ worker, onFlag, onBan, onRestore }) {
+function ModerationActions({ worker, onFlag, onBan, onRestore, disabled }) {
   const s = worker.moderationStatus || 'active';
   return (
     <div className="flex flex-wrap gap-2">
@@ -53,8 +65,9 @@ function ModerationActions({ worker, onFlag, onBan, onRestore }) {
           type="button"
           title="Flag this worker for review"
           aria-label={`Flag ${worker.name} for review`}
-          className={`${ACTION_BUTTON_BASE} ${ACTION_VARIANTS.flag}`}
-          onClick={() => onFlag(worker.id)}
+          className={`${ACTION_BUTTON_BASE} ${ACTION_VARIANTS.flag} disabled:cursor-not-allowed disabled:opacity-60`}
+          disabled={disabled}
+          onClick={() => onFlag(worker)}
         >
           <HiOutlineFlag className="h-4 w-4" aria-hidden="true" />
           Flag
@@ -65,8 +78,9 @@ function ModerationActions({ worker, onFlag, onBan, onRestore }) {
           type="button"
           title="Ban this worker from matching"
           aria-label={`Ban ${worker.name} from matching`}
-          className={`${ACTION_BUTTON_BASE} ${ACTION_VARIANTS.ban}`}
-          onClick={() => onBan(worker.id)}
+          className={`${ACTION_BUTTON_BASE} ${ACTION_VARIANTS.ban} disabled:cursor-not-allowed disabled:opacity-60`}
+          disabled={disabled}
+          onClick={() => onBan(worker)}
         >
           <HiOutlineNoSymbol className="h-4 w-4" aria-hidden="true" />
           Ban
@@ -77,8 +91,9 @@ function ModerationActions({ worker, onFlag, onBan, onRestore }) {
           type="button"
           title="Restore this worker to active status"
           aria-label={`Restore ${worker.name} to active`}
-          className={`${ACTION_BUTTON_BASE} ${ACTION_VARIANTS.restore}`}
-          onClick={() => onRestore(worker.id)}
+          className={`${ACTION_BUTTON_BASE} ${ACTION_VARIANTS.restore} disabled:cursor-not-allowed disabled:opacity-60`}
+          disabled={disabled}
+          onClick={() => onRestore(worker)}
         >
           <HiOutlineArrowUturnLeft className="h-4 w-4" aria-hidden="true" />
           Restore
@@ -89,9 +104,11 @@ function ModerationActions({ worker, onFlag, onBan, onRestore }) {
 }
 
 function AdminWorkersPage() {
-  const { workers, setModerationStatus } = useWorkerModeration();
+  const { data: workers, loading, error: loadError } = useWorkerProfiles();
   const [filters, setFilters] = useState({ skill: '', location: '', status: '' });
   const [page, setPage] = useState(1);
+  const [busyId, setBusyId] = useState(null);
+  const [actionError, setActionError] = useState(null);
 
   const filteredWorkers = useMemo(
     () =>
@@ -101,9 +118,12 @@ function AdminWorkersPage() {
           ...(Array.isArray(worker.secondarySkills) ? worker.secondarySkills : []),
           ...(Array.isArray(worker.skills) ? worker.skills : []),
         ].filter(Boolean);
-        const bySkill = filters.skill ? workerSkills.includes(filters.skill) : true;
+        const skillQuery = filters.skill.trim().toLowerCase();
+        const bySkill = skillQuery
+          ? workerSkills.join(' ').toLowerCase().includes(skillQuery)
+          : true;
         const byLocation = filters.location
-          ? worker.location.toLowerCase().includes(filters.location.toLowerCase())
+          ? locationText(worker.location).toLowerCase().includes(filters.location.trim().toLowerCase())
           : true;
         const st = worker.moderationStatus || 'active';
         const byStatus = filters.status ? st === filters.status : true;
@@ -129,9 +149,26 @@ function AdminWorkersPage() {
     return filteredWorkers.slice(start, start + PAGE_SIZE);
   }, [filteredWorkers, page]);
 
-  const handleFlag = (id) => setModerationStatus(id, 'flagged');
-  const handleBan = (id) => setModerationStatus(id, 'banned');
-  const handleRestore = (id) => setModerationStatus(id, 'active');
+  const setStatus = async (worker, status) => {
+    const id = workerIdOf(worker);
+    if (!db || !id || busyId) return;
+    setBusyId(id);
+    setActionError(null);
+    try {
+      await updateDoc(doc(db, 'worker_profiles', id), {
+        moderationStatus: status,
+        updatedAt: serverTimestamp(),
+      });
+    } catch (err) {
+      setActionError(err.message || 'Could not update this worker.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleFlag = (worker) => setStatus(worker, 'flagged');
+  const handleBan = (worker) => setStatus(worker, 'banned');
+  const handleRestore = (worker) => setStatus(worker, 'active');
 
   return (
     <div>
@@ -139,6 +176,25 @@ function AdminWorkersPage() {
         title="Registered Workers"
         subtitle="LGU-PESO validation, moderation, and workforce registry. Flag accounts for review; banned workers are removed from employer matching."
       />
+
+      {loadError ? (
+        <p className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          Could not load workers. {loadError.message || 'Check your connection and try again.'}
+        </p>
+      ) : null}
+      {actionError ? (
+        <p className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          {actionError}
+        </p>
+      ) : null}
+      {loading ? (
+        <p className="rounded-xl bg-white p-6 text-sm text-gray-500 shadow-sm">Loading workers…</p>
+      ) : null}
+      {!loading && !loadError && totalWorkers === 0 ? (
+        <p className="rounded-xl bg-white p-6 text-sm text-gray-500 shadow-sm">
+          No registered workers yet.
+        </p>
+      ) : null}
 
       <div className="mb-4 grid grid-cols-1 gap-2 rounded-xl bg-white p-4 shadow-sm sm:grid-cols-3">
         <input
@@ -204,13 +260,13 @@ function AdminWorkersPage() {
 
       <div className="space-y-3 md:hidden">
         {pagedWorkers.map((worker) => (
-          <article key={worker.id} className="rounded-xl bg-white p-4 shadow-sm">
+          <article key={workerIdOf(worker)} className="rounded-xl bg-white p-4 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
-                <p className="text-base font-semibold text-[#1F4E79]">{worker.name}</p>
-                <p className="text-sm text-gray-600">{worker.location}</p>
+                <p className="text-base font-semibold text-[var(--hwe-slate)]">{worker.name || 'Worker'}</p>
+                <p className="text-sm text-gray-600">{locationText(worker.location)}</p>
                 <p className="mt-1 text-sm text-gray-600">
-                  ★ {worker.rating} · {worker.yearsExperience} yrs
+                  ★ {worker.rating != null ? Number(worker.rating).toFixed(1) : '—'} · {worker.yearsExperience || 0} yrs
                 </p>
               </div>
               <StatusBadge status={worker.moderationStatus || 'active'} />
@@ -219,7 +275,13 @@ function AdminWorkersPage() {
               <WorkerSkillBadges worker={worker} />
             </div>
             <div className="mt-3 border-t border-gray-100 pt-3">
-              <ModerationActions worker={worker} onFlag={handleFlag} onBan={handleBan} onRestore={handleRestore} />
+              <ModerationActions
+                worker={worker}
+                disabled={busyId === workerIdOf(worker)}
+                onFlag={handleFlag}
+                onBan={handleBan}
+                onRestore={handleRestore}
+              />
             </div>
           </article>
         ))}
@@ -239,14 +301,15 @@ function AdminWorkersPage() {
           </thead>
           <tbody>
             {pagedWorkers.map((worker) => (
-              <tr key={worker.id} className="border-t border-gray-100 align-top">
-                <td className="px-4 py-3 font-medium text-[#1F4E79]">{worker.name}</td>
+              <tr key={workerIdOf(worker)} className="border-t border-gray-100 align-top">
+                <td className="px-4 py-3 font-medium text-[var(--hwe-slate)]">{worker.name || 'Worker'}</td>
                 <td className="px-4 py-3">
                   <StatusBadge status={worker.moderationStatus || 'active'} />
                 </td>
-                <td className="px-4 py-3">{worker.location}</td>
+                <td className="px-4 py-3">{locationText(worker.location)}</td>
                 <td className="px-4 py-3">
-                  ★ {worker.rating} <span className="text-gray-500">· {worker.yearsExperience} yrs</span>
+                  ★ {worker.rating != null ? Number(worker.rating).toFixed(1) : '—'}{' '}
+                  <span className="text-gray-500">· {worker.yearsExperience || 0} yrs</span>
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex flex-wrap gap-1">
@@ -254,7 +317,13 @@ function AdminWorkersPage() {
                   </div>
                 </td>
                 <td className="px-4 py-3">
-                  <ModerationActions worker={worker} onFlag={handleFlag} onBan={handleBan} onRestore={handleRestore} />
+                  <ModerationActions
+                    worker={worker}
+                    disabled={busyId === workerIdOf(worker)}
+                    onFlag={handleFlag}
+                    onBan={handleBan}
+                    onRestore={handleRestore}
+                  />
                 </td>
               </tr>
             ))}

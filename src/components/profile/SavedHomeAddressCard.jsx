@@ -18,7 +18,7 @@ function SavedHomeAddressCard({ profile, profilePath = '/employer/profile' }) {
         </p>
         <Link
           to={profilePath}
-          className="mt-3 inline-block text-xs font-semibold text-[#1F4E79] underline"
+          className="mt-3 inline-block text-xs font-semibold text-[var(--hwe-slate)] underline"
         >
           Go to Profile →
         </Link>
@@ -29,7 +29,7 @@ function SavedHomeAddressCard({ profile, profilePath = '/employer/profile' }) {
   return (
     <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
       <div className="flex items-start gap-2">
-        <HiOutlineMapPin className="mt-0.5 h-5 w-5 shrink-0 text-[#1F4E79]" aria-hidden="true" />
+        <HiOutlineMapPin className="mt-0.5 h-5 w-5 shrink-0 text-[var(--hwe-slate)]" aria-hidden="true" />
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
             Service location (from your profile)
@@ -37,7 +37,7 @@ function SavedHomeAddressCard({ profile, profilePath = '/employer/profile' }) {
           <p className="mt-1 text-sm text-gray-800">{display || '—'}</p>
           <Link
             to={profilePath}
-            className="mt-2 inline-block text-xs font-semibold text-[#2E75B6] underline"
+            className="mt-2 inline-block text-xs font-semibold text-[var(--hwe-sky)] underline"
           >
             Update home address on Profile
           </Link>

@@ -12,13 +12,14 @@ const NOTIFICATION_ROUTE = {
   admin: '/admin/notifications',
 };
 
-function Navbar({ links = [], onMenuClick }) {
+function Navbar({ links = [], onMenuClick, variant = 'app' }) {
   const { isAuthenticated, role, logout, getDefaultRoute } = useAuth();
   const notifications = useNotificationsOptional();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [accountModalOpen, setAccountModalOpen] = useState(false);
   const unreadCount = notifications?.unreadCount ?? 0;
+  const isApp = variant === 'app';
 
   const handleLogout = () => {
     if (!window.confirm('Log out of Hire With Ease?')) return;
@@ -26,10 +27,12 @@ function Navbar({ links = [], onMenuClick }) {
     navigate('/login');
   };
 
-  const linkBase =
-    'inline-flex items-center rounded-md px-2.5 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-[#1F4E79]';
-  const linkInactive = linkBase;
-  const linkActive = `${linkBase} bg-[#1F4E79]/10 font-semibold text-[#1F4E79] ring-1 ring-[#1F4E79]/15`;
+  const linkInactive = isApp
+    ? 'inline-flex items-center rounded-lg px-2.5 py-1.5 text-sm font-medium text-white/75 transition-colors hover:bg-white/10 hover:text-white'
+    : 'inline-flex items-center rounded-lg px-2.5 py-1.5 text-sm font-medium text-[var(--hwe-slate-soft)] transition-colors hover:bg-[var(--hwe-strong-soft)] hover:text-[var(--hwe-slate)]';
+  const linkActive = isApp
+    ? 'inline-flex items-center rounded-lg bg-[var(--hwe-strong)] px-2.5 py-1.5 text-sm font-semibold text-[var(--hwe-slate)]'
+    : 'inline-flex items-center rounded-lg bg-[var(--hwe-slate)] px-2.5 py-1.5 text-sm font-semibold text-[var(--hwe-on-slate)]';
 
   const renderLink = (item) => {
     if (item.hash) {
@@ -62,111 +65,140 @@ function Navbar({ links = [], onMenuClick }) {
 
   return (
     <>
-    <header className="sticky top-0 z-40 border-b border-white/30 bg-white/90 backdrop-blur-md">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
-        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
-          {onMenuClick ? (
-            <button
-              type="button"
-              onClick={onMenuClick}
-              className="cursor-pointer rounded-md border border-gray-300 p-2 text-gray-700 lg:hidden"
-              aria-label="Open menu"
-            >
-              ☰
-            </button>
-          ) : null}
-          <BrandMark
-            to={isAuthenticated ? getDefaultRoute() : '/'}
-            variant="dark"
-            className="min-w-0 max-w-[calc(100%-3rem)] sm:max-w-none"
-          />
-        </div>
-
-        <nav className="hidden flex-wrap items-center justify-center gap-x-5 gap-y-1 md:flex">
-          {links.map((item) => renderLink(item))}
-        </nav>
-
-        {showMobileNav ? (
-          <div className="flex items-center md:hidden">
-            <button
-              type="button"
-              className="cursor-pointer rounded-md border border-gray-300 px-2 py-2 text-sm text-[#1F4E79]"
-              aria-expanded={mobileOpen}
-              aria-label="Toggle menu"
-              onClick={() => setMobileOpen((o) => !o)}
-            >
-              ☰
-            </button>
-          </div>
-        ) : null}
-
-        <div className="flex shrink-0 items-center gap-2">
-          {isAuthenticated ? (
-            <>
-              {NOTIFICATION_ROUTE[role] ? (
-                <NotificationBell
-                  to={NOTIFICATION_ROUTE[role]}
-                  unread={unreadCount}
-                  items={notifications?.items || []}
-                  loading={notifications?.loading}
-                  onMarkAsRead={notifications?.markAsRead}
-                />
-              ) : null}
-              {role === 'admin' ? (
-                <AdminProfileButton onOpenAccount={() => setAccountModalOpen(true)} />
-              ) : null}
+      <header
+        className={`sticky top-0 z-40 ${
+          isApp
+            ? 'border-b border-white/10 bg-[var(--hwe-slate)]'
+            : 'border-b border-[var(--hwe-slate)]/15 bg-[var(--hwe-strong)]'
+        }`}
+      >
+        <div className="flex w-full min-w-0 items-center justify-between gap-3 px-[var(--hwe-page-pad)] py-3">
+          <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+            {onMenuClick ? (
               <button
                 type="button"
-                onClick={handleLogout}
-                aria-label="Log out"
-                title="Log out"
-                className="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg border border-[#1F4E79] bg-[#1F4E79] text-white transition-colors hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1F4E79] focus-visible:ring-offset-1"
+                onClick={onMenuClick}
+                className={`cursor-pointer rounded-lg border p-2 lg:hidden ${
+                  isApp
+                    ? 'border-white/25 text-white hover:bg-white/10'
+                    : 'border-[var(--hwe-slate)]/25 text-[var(--hwe-slate)] hover:bg-black/5'
+                }`}
+                aria-label="Open menu"
               >
-                <HiOutlineArrowRightOnRectangle className="h-5 w-5" aria-hidden="true" />
+                ☰
               </button>
-            </>
-          ) : (
-            <>
-              <Link to="/login" className="rounded-lg border border-[#1F4E79] px-3 py-2 text-sm font-medium text-[#1F4E79]">
-                Login
-              </Link>
-              <Link to="/register" className="rounded-lg bg-[#1F4E79] px-3 py-2 text-sm font-medium text-white">
-                Register
-              </Link>
-            </>
-          )}
-        </div>
-      </div>
+            ) : null}
+            <BrandMark
+              to={isAuthenticated ? getDefaultRoute() : '/'}
+              variant={isApp || !isAuthenticated ? (isApp ? 'light' : 'dark') : 'dark'}
+              className="min-w-0 max-w-[calc(100%-3rem)] sm:max-w-none"
+            />
+          </div>
 
-      {showMobileNav && mobileOpen ? (
-        <div className="border-t border-gray-100 bg-white px-4 py-3 md:hidden">
-          <div className="flex flex-col gap-3">{links.map((item) => renderLink(item))}</div>
+          <nav className="hidden flex-wrap items-center justify-center gap-x-1 gap-y-1 md:flex" aria-label="Primary">
+            {links.map((item) => renderLink(item))}
+          </nav>
+
+          {showMobileNav ? (
+            <div className="flex items-center md:hidden">
+              <button
+                type="button"
+                className={`cursor-pointer rounded-lg border px-2.5 py-2 text-sm ${
+                  isApp
+                    ? 'border-white/25 text-white'
+                    : 'border-[var(--hwe-slate)]/25 text-[var(--hwe-slate)]'
+                }`}
+                aria-expanded={mobileOpen}
+                aria-label="Toggle menu"
+                onClick={() => setMobileOpen((o) => !o)}
+              >
+                ☰
+              </button>
+            </div>
+          ) : null}
+
+          <div className="flex shrink-0 items-center gap-2">
+            {isAuthenticated ? (
+              <>
+                {NOTIFICATION_ROUTE[role] ? (
+                  <NotificationBell
+                    to={NOTIFICATION_ROUTE[role]}
+                    unread={unreadCount}
+                    items={notifications?.items || []}
+                    loading={notifications?.loading}
+                    onMarkAsRead={notifications?.markAsRead}
+                    dark={isApp}
+                  />
+                ) : null}
+                {role === 'admin' ? (
+                  <AdminProfileButton onOpenAccount={() => setAccountModalOpen(true)} dark={isApp} />
+                ) : null}
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  aria-label="Log out"
+                  title="Log out"
+                  className={`inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hwe-strong)] focus-visible:ring-offset-1 ${
+                    isApp
+                      ? 'border-white/25 bg-white/10 text-white hover:bg-white/20'
+                      : 'border-[var(--hwe-slate)]/20 bg-[var(--hwe-slate)] text-[var(--hwe-on-slate)] hover:bg-[var(--hwe-slate-mid)]'
+                  }`}
+                >
+                  <HiOutlineArrowRightOnRectangle className="h-5 w-5" aria-hidden="true" />
+                </button>
+              </>
+            ) : (
+              <>
+                <Link
+                  to="/login"
+                  className={`px-3 py-2 text-sm ${isApp ? 'btn-ghost text-white hover:bg-white/10' : 'btn-secondary'}`}
+                >
+                  Login
+                </Link>
+                <Link to="/register" className="btn-primary px-3 py-2 text-sm">
+                  Register
+                </Link>
+              </>
+            )}
+          </div>
         </div>
+
+        {showMobileNav && mobileOpen ? (
+          <div
+            className={`border-t px-[var(--hwe-page-pad)] py-3 md:hidden ${
+              isApp ? 'border-white/10 bg-[var(--hwe-slate-mid)]' : 'border-[var(--hwe-slate)]/10 bg-[var(--hwe-strong-hover)]'
+            }`}
+          >
+            <div className="flex flex-col gap-1">{links.map((item) => renderLink(item))}</div>
+          </div>
+        ) : null}
+      </header>
+
+      {role === 'admin' ? (
+        <AdminAccountModal
+          isOpen={accountModalOpen}
+          onClose={() => setAccountModalOpen(false)}
+        />
       ) : null}
-
-    </header>
-
-    {role === 'admin' ? (
-      <AdminAccountModal
-        isOpen={accountModalOpen}
-        onClose={() => setAccountModalOpen(false)}
-      />
-    ) : null}
     </>
   );
 }
 
 const navIconButtonClass =
-  'inline-flex h-10 w-10 items-center justify-center rounded-lg border transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1F4E79] focus-visible:ring-offset-1';
+  'inline-flex h-10 w-10 items-center justify-center rounded-lg border transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hwe-sky)] focus-visible:ring-offset-1';
 
-function AdminProfileButton({ onOpenAccount }) {
+function AdminProfileButton({ onOpenAccount, dark = false }) {
   return (
     <button
       type="button"
       onClick={onOpenAccount}
       aria-label="Account settings"
       title="Account"
-      className={`${navIconButtonClass} border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:text-[#1F4E79]`}
+      className={`${navIconButtonClass} ${
+        dark
+          ? 'border-white/25 bg-white/10 text-white hover:bg-white/20'
+          : 'border-[var(--hwe-border-strong)] bg-[var(--hwe-surface)] text-[var(--hwe-slate-soft)] hover:text-[var(--hwe-slate)]'
+      }`}
     >
       <HiOutlineUserCircle className="h-5 w-5" aria-hidden="true" />
     </button>
@@ -179,6 +211,7 @@ function NotificationBell({
   items = [],
   loading = false,
   onMarkAsRead,
+  dark = false,
 }) {
   const hasUnread = unread > 0;
   const badge = unread > 9 ? '9+' : String(unread);
@@ -194,15 +227,17 @@ function NotificationBell({
         className={({ isActive }) =>
           `relative ${navIconButtonClass} ${
             isActive
-              ? 'border-[#1F4E79]/30 bg-[#1F4E79]/10 text-[#1F4E79]'
-              : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:text-[#1F4E79]'
+              ? 'border-[var(--hwe-highlight)]/50 bg-[var(--hwe-highlight)] text-[var(--hwe-slate)]'
+              : dark
+                ? 'border-white/25 bg-white/10 text-white hover:bg-white/20'
+                : 'border-[var(--hwe-border-strong)] bg-[var(--hwe-surface)] text-[var(--hwe-slate-soft)] hover:text-[var(--hwe-slate)]'
           }`
         }
       >
         <HiOutlineBell className="h-5 w-5" aria-hidden="true" />
         {hasUnread ? (
           <span
-            className="absolute -right-1 -top-1 inline-flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-white"
+            className="highlight-pill absolute -right-1 -top-1 min-h-[18px] min-w-[18px] px-1 ring-2 ring-[var(--hwe-slate)]"
             aria-hidden="true"
           >
             {badge}
@@ -215,18 +250,20 @@ function NotificationBell({
         role="menu"
         aria-label="Notifications preview"
       >
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg ring-1 ring-black/5">
-          <div className="border-b border-gray-100 px-3 py-2">
-            <p className="text-xs font-semibold text-[#1F4E79]">Notifications</p>
+        <div className="overflow-hidden rounded-xl border border-[var(--hwe-border)] bg-[var(--hwe-surface)] shadow-[var(--hwe-shadow)]">
+          <div className="border-b border-[var(--hwe-border)] px-3 py-2">
+            <p className="text-xs font-semibold text-[var(--hwe-slate)]">Notifications</p>
           </div>
 
           <div className="max-h-72 overflow-y-auto">
             {loading ? (
-              <p className="px-3 py-4 text-center text-xs text-gray-500">Loading…</p>
+              <p className="px-3 py-4 text-center text-xs text-[var(--hwe-muted)]">Loading…</p>
             ) : preview.length === 0 ? (
-              <p className="px-3 py-4 text-center text-xs text-gray-500">No notifications yet.</p>
+              <p className="px-3 py-4 text-center text-xs text-[var(--hwe-muted)]">
+                No notifications yet.
+              </p>
             ) : (
-              <ul className="divide-y divide-gray-100">
+              <ul className="divide-y divide-[var(--hwe-border)]">
                 {preview.map((item) => (
                   <li key={item.id}>
                     {item.linkTo ? (
@@ -235,7 +272,7 @@ function NotificationBell({
                         onClick={() => {
                           if (item.unread && onMarkAsRead) void onMarkAsRead(item.id);
                         }}
-                        className="block cursor-pointer px-3 py-2.5 text-left hover:bg-gray-50"
+                        className="block cursor-pointer px-3 py-2.5 text-left hover:bg-[var(--hwe-canvas-deep)]"
                         role="menuitem"
                       >
                         <NotificationPreviewRow item={item} />
@@ -246,7 +283,7 @@ function NotificationBell({
                         onClick={() => {
                           if (item.unread && onMarkAsRead) void onMarkAsRead(item.id);
                         }}
-                        className="block w-full cursor-pointer px-3 py-2.5 text-left hover:bg-gray-50"
+                        className="block w-full cursor-pointer px-3 py-2.5 text-left hover:bg-[var(--hwe-canvas-deep)]"
                         role="menuitem"
                       >
                         <NotificationPreviewRow item={item} />
@@ -258,13 +295,13 @@ function NotificationBell({
             )}
           </div>
 
-          <div className="border-t border-gray-100 bg-gray-50">
+          <div className="border-t border-[var(--hwe-border)] bg-[var(--hwe-canvas-deep)]">
             <Link
               to={to}
-              className="block cursor-pointer px-3 py-2.5 text-center text-xs font-semibold text-[#1F4E79] hover:bg-gray-100"
+              className="block cursor-pointer px-3 py-2.5 text-center text-xs font-semibold text-[var(--hwe-sky)] hover:bg-[var(--hwe-sky-soft)]"
               role="menuitem"
             >
-              View History
+              View all
             </Link>
           </div>
         </div>
@@ -278,14 +315,17 @@ function NotificationPreviewRow({ item }) {
     <div className="flex items-start gap-2">
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
-          <p className="truncate text-xs font-semibold text-gray-900">{item.title}</p>
+          <p className="truncate text-xs font-semibold text-[var(--hwe-slate)]">{item.title}</p>
           {item.unread ? (
-            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#2E75B6]" aria-hidden="true" />
+            <span
+              className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--hwe-sky)]"
+              aria-hidden="true"
+            />
           ) : null}
         </div>
-        <p className="mt-0.5 line-clamp-2 text-[11px] text-gray-600">{item.message}</p>
+        <p className="mt-0.5 line-clamp-2 text-[11px] text-[var(--hwe-muted)]">{item.message}</p>
       </div>
-      <span className="shrink-0 text-[10px] text-gray-400">{item.time}</span>
+      <span className="shrink-0 text-[10px] text-[var(--hwe-muted)]">{item.time}</span>
     </div>
   );
 }

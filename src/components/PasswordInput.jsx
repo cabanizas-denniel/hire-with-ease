@@ -37,7 +37,7 @@ function PasswordInput({
         aria-label={visible ? 'Hide password' : 'Show password'}
         aria-pressed={visible}
         title={visible ? 'Hide password' : 'Show password'}
-        className="absolute inset-y-0 right-0 flex items-center rounded-r-lg px-3 text-gray-400 hover:text-[#1F4E79] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1F4E79] focus-visible:ring-offset-1 cursor-pointer"
+        className="absolute inset-y-0 right-0 flex items-center rounded-r-lg px-3 text-gray-400 hover:text-[var(--hwe-slate)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hwe-sky)] focus-visible:ring-offset-1 cursor-pointer"
       >
         {visible ? (
           <HiOutlineEyeSlash className="h-5 w-5" aria-hidden="true" />

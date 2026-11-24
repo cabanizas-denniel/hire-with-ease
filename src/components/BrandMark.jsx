@@ -7,33 +7,28 @@ function BrandMark({ to = '/', variant = 'dark', className = '' }) {
     return (
       <Link
         to={to}
-        className={`flex min-w-0 items-center gap-2.5 sm:gap-3 text-[#1F4E79] lg:text-white ${className}`.trim()}
+        className={`flex min-w-0 items-center gap-2.5 text-[var(--hwe-slate)] sm:gap-3 lg:text-white ${className}`.trim()}
       >
-        <img
-          src={logoBlue}
-          alt=""
-          width={40}
-          height={40}
-          className="h-8 w-8 shrink-0 object-contain sm:h-9 sm:w-9 lg:hidden"
-          decoding="async"
-        />
         <img
           src={logoWhite}
           alt=""
           width={40}
           height={40}
-          className="hidden h-8 w-8 shrink-0 object-contain sm:h-9 sm:w-9 lg:block"
+          className="h-8 w-8 shrink-0 object-contain sm:h-9 sm:w-9"
           decoding="async"
         />
-        <span className="truncate text-lg font-bold tracking-tight lg:drop-shadow-sm">
-          Hire With Ease
-        </span>
+        <span className="truncate text-lg font-bold tracking-tight">Hire With Ease</span>
       </Link>
     );
   }
 
-  const logo = variant === 'light' ? logoWhite : logoBlue;
-  const textColor = variant === 'light' ? 'text-white' : 'text-[#1F4E79]';
+  // onStrong: white wrench on blue bands (slate label). blueOnDark: blue wrench on slate panels.
+  const logo =
+    variant === 'light' || variant === 'onStrong' ? logoWhite : logoBlue;
+  const textColor =
+    variant === 'light' || variant === 'blueOnDark'
+      ? 'text-white'
+      : 'text-[var(--hwe-slate)]';
 
   return (
     <Link
@@ -48,11 +43,7 @@ function BrandMark({ to = '/', variant = 'dark', className = '' }) {
         className="h-8 w-8 shrink-0 object-contain sm:h-9 sm:w-9"
         decoding="async"
       />
-      <span
-        className={`truncate text-lg font-bold tracking-tight ${variant === 'light' ? 'drop-shadow-sm' : ''}`.trim()}
-      >
-        Hire With Ease
-      </span>
+      <span className="truncate text-lg font-bold tracking-tight">Hire With Ease</span>
     </Link>
   );
 }

@@ -89,15 +89,12 @@ export function scoreMatch(job, profile) {
 
 /**
  * Workers who qualify for this job (skill overlap), ranked for homeowner view.
- * Excludes suspended/banned profiles when moderationStatus is set.
+ * Banned profiles are left out of matching. Flagged profiles stay visible for review.
  */
 export function rankWorkersForJob(job, workerProfiles = []) {
   if (!job?.requiredSkills?.length) return [];
   return filterRealWorkerProfiles(workerProfiles)
-    .filter((profile) => {
-      const status = profile.moderationStatus || 'active';
-      return status === 'active';
-    })
+    .filter((profile) => (profile.moderationStatus || 'active') !== 'banned')
     .map((profile) => {
       const { score, reasons, matchedSkills } = scoreMatch(job, profile);
       return { profile, score, reasons, matchedSkills };
